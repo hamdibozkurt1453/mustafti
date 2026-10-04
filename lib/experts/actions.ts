@@ -1,6 +1,6 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { AuthzError, requireRole } from "@/lib/auth/roles";
@@ -10,6 +10,11 @@ import { translateAnswer } from "./translate";
 import {
   ANSWER_LIMITS,
   ApplicationSchema,
+  AVATAR_BUCKET,
+  isOwnAvatarPath,
+  makeSlug,
+  ProfileEditSchema,
+  type Contact,
   DOC_TYPES,
   EXPERT_BUCKET,
   MAX_DOCS,
@@ -83,6 +88,19 @@ export async function removeDocUpload(path: string): Promise<ActionResult> {
   }
 }
 
+/** هل الصورة في مجلد صاحبها وموجودة فعلاً في المخزن العام؟ */
+async function avatarExists(path: string, userId: string): Promise<boolean> {
+  if (!isOwnAvatarPath(path, userId)) return false;
+  const name = path.slice(userId.length + 1);
+  const { data, error } = await createAdminClient().storage.from(AVATAR_BUCKET).list(userId, { search: name, limit: 10 });
+  return !error && (data ?? []).some((o) => o.name === name);
+}
+
+/** يحذف الحقول الفارغة من التواصل. */
+function cleanContact(c: Contact): Partial<Contact> {
+  return Object.fromEntries(Object.entries(c).filter(([, v]) => v)) as Partial<Contact>;
+}
+
 /** يرسل الطلب: status = pending. طلب واحد لكل حساب (المفتاح الأساسي يمنع السباق أيضاً). */
 export async function submitApplication(input: unknown): Promise<ActionResult> {
   try {
@@ -103,11 +121,18 @@ export async function submitApplication(input: unknown): Promise<ActionResult> {
       if (!docPaths.every((p) => names.has(p))) return fail("docsMissing");
     }
 
+    if (a.avatarPath && !(await avatarExists(a.avatarPath, userId))) return fail("invalid");
+
     const { error: profileError } = await db.from("profiles").update({ display_name: a.displayName }).eq("id", userId);
     if (profileError) return fail("generic");
 
     const { error } = await db.from("experts").insert({
       id: userId,
+      slug: makeSlug(a.displayName, randomBytes(6).toString("hex").slice(0, 6)),
+      bio: a.bio,
+      avatar_path: a.avatarPath,
+      contact: cleanContact(a.contact),
+      socials: a.socials,
       role: a.role,
       specialty: a.specialty,
       country: a.country,
@@ -284,3 +309,28 @@ export async function reportMissing(input: { caseId: string; note: string }): Pr
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// «ملفي الشخصي» (/expert/profile): المختص المقبول يعدّل الصورة والنبذة والتواصل والحسابات فقط.
+// الاسم والدور والتخصص والبلد واللغات تبقى كما راجعها المشرف.
+// ---------------------------------------------------------------------------
+
+export async function updateOwnProfile(input: unknown): Promise<ActionResult> {
+  try {
+    const self = await requireApprovedExpert();
+    const parsed = ProfileEditSchema.safeParse(input);
+    if (!parsed.success) return fail("invalid");
+    const p = parsed.data;
+    if (p.avatarPath && !(await avatarExists(p.avatarPath, self.id))) return fail("invalid");
+    const { error } = await createAdminClient()
+      .from("experts")
+      .update({ bio: p.bio, avatar_path: p.avatarPath, contact: cleanContact(p.contact), socials: p.socials })
+      .eq("id", self.id)
+      .eq("status", "approved");
+    if (error) return fail("generic");
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (error) {
+    return authzFail(error);
+  }
+}

@@ -16,7 +16,14 @@
     "closeMenu": "Close menu",
     "language": "Language",
     "mainNav": "Main navigation",
-    "homeLink": "Mustafti — Home"
+    "homeLink": "Mustafti — Home",
+    "notifications": "{count} new notifications",
+    "accountMenu": {
+      "expertDashboard": "Specialist dashboard",
+      "expertProfile": "My profile",
+      "applicationStatus": "My application",
+      "expertApplications": "Specialist applications"
+    }
   },
   "disclosure": {
     "text": "Mustafti is an AI tool, not a mufti or a preacher. It answers from trusted sources only."
@@ -465,7 +472,10 @@
         "unauthorized": "Please sign in first.",
         "forbidden": "Not allowed.",
         "generic": "Something went wrong. Please try again."
-      }
+      },
+      "acceptedTitle": "You're approved",
+      "acceptedLead": "You were approved as a specialist on Mustafti. Files routed to your role are waiting in your dashboard.",
+      "enterDashboard": "Enter the specialist dashboard"
     },
     "dashboard": {
       "pendingTitle": "Your application is under review",
@@ -556,10 +566,81 @@
         "unauthorized": "Please sign in.",
         "invalid": "Invalid request.",
         "generic": "Something went wrong. Please try again."
-      }
+      },
+      "bio": "Bio",
+      "avatar": "Photo",
+      "contact": "Contact (reviewers only)",
+      "phone": "Phone",
+      "contactEmail": "Contact email",
+      "socials": "Accounts",
+      "publicProfile": "Public profile",
+      "pendingBadge": "{count} pending"
     },
     "answerArabic": "Specialist’s answer in Arabic",
     "dashboardLink": "Specialist dashboard",
-    "joinLink": "Join as a specialist"
+    "joinLink": "Join as a specialist",
+    "profile": {
+      "title": "My profile",
+      "lead": "This is what the askers you answer see, and what your public page shows. Phone and email are visible to reviewers only.",
+      "readOnlyNote": "Name, role, specialty, country and languages are as reviewed. Contact the team to change them.",
+      "avatar": "Profile photo (optional)",
+      "avatarPick": "Choose a photo",
+      "avatarChange": "Change photo",
+      "avatarRemove": "Remove",
+      "avatarUploading": "Uploading…",
+      "avatarHint": "Cropped square from the centre and shown as a circle. JPG, PNG or WebP.",
+      "avatarType": "Photo: JPG, PNG or WebP only.",
+      "avatarSize": "The photo is too large.",
+      "avatarUpload": "Upload failed. Please try again.",
+      "bio": "About you",
+      "bioHint": "{min} to {max} characters ({n} now). Shown on your public profile and under your answers.",
+      "contactTitle": "Contact details (optional)",
+      "contactHint": "Reviewers only. Never shown to the public or to askers.",
+      "phone": "Phone (with country code)",
+      "contactEmail": "Contact email",
+      "socialsTitle": "Your accounts (optional)",
+      "socialsHint": "Full links to your accounts. Shown on your public profile.",
+      "socials": {
+        "x": "X",
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "youtube": "YouTube",
+        "telegram": "Telegram",
+        "linkedin": "LinkedIn",
+        "website": "Website"
+      },
+      "linkInvalid": "Fix the fields marked in red: an account link on that platform, and a valid phone or email.",
+      "role": "Role",
+      "specialty": "Specialty",
+      "country": "Country",
+      "languages": "Languages",
+      "answered": "Questions answered",
+      "verified": "Verified Mustafti specialist",
+      "edit": "Edit profile",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Your profile was saved.",
+      "cancel": "Cancel",
+      "publicTitle": "Your public profile link",
+      "copyLink": "Copy my public profile link",
+      "copied": "Link copied",
+      "shareOn": "Share on:",
+      "share": {
+        "x": "X",
+        "facebook": "Facebook",
+        "whatsapp": "WhatsApp",
+        "telegram": "Telegram"
+      },
+      "shareText": "My specialist profile on Mustafti",
+      "answeredBy": "Answered your question",
+      "viewProfile": "Public profile",
+      "publicNote": "Answers questions routed through Mustafti. No question is shown here, to protect askers' privacy.",
+      "errors": {
+        "invalid": "Some fields are invalid.",
+        "forbidden": "Not allowed.",
+        "unauthorized": "Please sign in first.",
+        "generic": "Something went wrong. Please try again."
+      }
+    }
   }
 }

@@ -5,8 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { localeNames, type Locale } from "@/i18n/locales";
 import { createDocUpload, removeDocUpload, submitApplication } from "@/lib/experts/actions";
+import { AvatarPicker } from "./AvatarPicker";
+import { ContactSocialFields, contactSocialErrors, type ContactValue, type SocialsValue } from "./ContactSocialFields";
 import {
   ApplicationSchema,
+  BIO_MAX,
+  BIO_MIN,
   docProblem,
   EXPERT_BUCKET,
   EXPERT_ROLES,
@@ -21,6 +25,10 @@ type Doc = { path: string; name: string };
 
 type Form = {
   displayName: string;
+  bio: string;
+  avatar: { path: string; url: string } | null;
+  contact: ContactValue;
+  socials: SocialsValue;
   role: ExpertRole;
   specialty: string;
   country: string;
@@ -36,6 +44,10 @@ type Form = {
 
 const EMPTY: Form = {
   displayName: "",
+  bio: "",
+  avatar: null,
+  contact: { phone: "", email: "" },
+  socials: {},
   role: "mufti",
   specialty: "",
   country: "",
@@ -69,6 +81,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
  */
 export function ExpertJoinWizard({ userId, initialName }: { userId: string; initialName: string }) {
   const t = useTranslations("experts.join");
+  const tp = useTranslations("experts.profile");
   const router = useRouter();
   const storageKey = `mustafti:expert-join:${userId}`;
   const [form, setForm] = useState<Form>({ ...EMPTY, displayName: initialName });
@@ -76,6 +89,7 @@ export function ExpertJoinWizard({ userId, initialName }: { userId: string; init
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
   const loaded = useRef(false);
 
   // استعادة المسودة مرة واحدة بعد التحميل.
@@ -107,11 +121,13 @@ export function ExpertJoinWizard({ userId, initialName }: { userId: string; init
 
   function stepValid(i: number): boolean {
     if (i === 0) {
-      return form.displayName.trim().length >= 2 && form.specialty.trim().length >= 2 && form.country.trim().length >= 2 && form.languages.length > 0;
+      const bio = form.bio.trim().length;
+      return form.displayName.trim().length >= 2 && bio >= BIO_MIN && bio <= BIO_MAX && form.specialty.trim().length >= 2 && form.country.trim().length >= 2 && form.languages.length > 0;
     }
     if (i === 1) {
-      if (form.traditional) return true;
       const year = Number(form.gradYear);
+      if (contactSocialErrors(form.contact, form.socials).size) return false;
+      if (form.traditional) return true;
       return form.degree.trim().length >= 2 && form.institution.trim().length >= 2 && (!form.gradYear || (year >= 1940 && year <= 2100));
     }
     if (i === 2) {
@@ -125,9 +141,11 @@ export function ExpertJoinWizard({ userId, initialName }: { userId: string; init
   function go(next: number) {
     setError(null);
     if (next > step && !stepValid(step)) {
+      setShowErrors(true);
       setError(step === 2 ? (form.traditional ? t("needTazkiya") : t("needOne")) : t("required"));
       return;
     }
+    setShowErrors(false);
     setStep(next);
   }
 
@@ -163,6 +181,10 @@ export function ExpertJoinWizard({ userId, initialName }: { userId: string; init
     setError(null);
     const payload = {
       displayName: form.displayName,
+      bio: form.bio,
+      avatarPath: form.avatar?.path ?? null,
+      contact: { phone: form.contact.phone.trim(), email: form.contact.email.trim() },
+      socials: Object.fromEntries(Object.entries(form.socials).filter(([, v]) => v?.trim())),
       role: form.role,
       specialty: form.specialty,
       country: form.country,
@@ -216,6 +238,16 @@ export function ExpertJoinWizard({ userId, initialName }: { userId: string; init
         <div className="space-y-4">
           <Field label={t("name")}>
             <input className={input} value={form.displayName} maxLength={80} onChange={(e) => set("displayName", e.target.value)} />
+          </Field>
+          <AvatarPicker userId={userId} url={form.avatar?.url ?? null} onChange={(v) => set("avatar", v)} />
+          <Field label={tp("bio")} hint={tp("bioHint", { min: BIO_MIN, max: BIO_MAX, n: form.bio.trim().length })}>
+            <textarea
+              className={input}
+              rows={4}
+              maxLength={BIO_MAX}
+              value={form.bio}
+              onChange={(e) => set("bio", e.target.value)}
+            />
           </Field>
           <fieldset className="space-y-1.5">
             <legend className="text-sm font-semibold text-green-900">{t("role")}</legend>
@@ -286,6 +318,13 @@ export function ExpertJoinWizard({ userId, initialName }: { userId: string; init
               onChange={(e) => set("gradYear", e.target.value.replace(/\D/g, "").slice(0, 4))}
             />
           </Field>
+          <ContactSocialFields
+            contact={form.contact}
+            socials={form.socials}
+            onContact={(v) => set("contact", v)}
+            onSocials={(v) => set("socials", v)}
+            showErrors={showErrors}
+          />
         </div>
       )}
 
