@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { countryCodeOf } from "./countries";
 
 /**
  * طلب الانضمام كمختص (S9): مخططات المدخلات وحدود الوثائق، مشتركة بين الخادم والمتصفح.
@@ -119,8 +120,16 @@ export const ContactSchema = z.object({
 });
 export type Contact = z.infer<typeof ContactSchema>;
 
-/** ما يعدّله المختص المقبول في ملفه (الاسم والدور والتخصص تبقى كما راجعها المشرف). */
+/** ما يعدّله المختص المقبول في ملفه (الاسم والدور والتخصص واللغات تبقى كما راجعها المشرف). */
+/** رمز البلد (ISO) من القائمة فقط؛ الاسم يُحسب في الخادم من الرمز، لا يُؤخذ من المتصفح. */
+export const CountryCodeSchema = z
+  .string()
+  .trim()
+  .refine((v) => countryCodeOf(v) !== null)
+  .transform((v) => countryCodeOf(v)!);
+
 export const ProfileEditSchema = z.object({
+  countryCode: CountryCodeSchema,
   bio: s(BIO_MAX).min(BIO_MIN),
   avatarPath: s(200).nullable(),
   contact: ContactSchema,
@@ -154,7 +163,7 @@ export const ApplicationSchema = z
     displayName: s(80).min(2),
     role: z.enum(EXPERT_ROLES),
     specialty: s(160).min(2),
-    country: s(80).min(2),
+    countryCode: CountryCodeSchema,
     languages: z.array(s(40).min(2)).min(1).max(12),
     traditional: z.boolean(),
     degree: s(160),
@@ -177,15 +186,17 @@ export const LANGUAGE_OPTIONS = ["ar", "en", "id", "ur", "bn", "tr", "fa", "fr",
 /** الجواب وملاحظة «ينقص هذا السؤال». */
 export const ANSWER_LIMITS = { answer: 8000, note: 1000, reason: 500 } as const;
 
-export const CASE_STATUSES = ["submitted", "assigned", "answered", "closed"] as const;
+/** حالات تبويب «المسائل» (المجاب عنها في «الأرشيف»). */
+export const CASE_STATUSES = ["submitted", "assigned"] as const;
 
-/** ترتيب لوحة المختص: الأولوية العالية ثم الأقدم. */
-export function sortCases<T extends { priority: string | null; created_at: string }>(rows: T[]): T[] {
-  return [...rows].sort((a, b) => {
-    const pa = a.priority === "high" ? 0 : 1;
-    const pb = b.priority === "high" ? 0 : 1;
-    return pa - pb || a.created_at.localeCompare(b.created_at);
-  });
+/**
+ * ترتيب «المسائل»: ما كان من بلد المختص أولاً (fromMyCountry)، ثم الأحدث.
+ * الأولوية العالية تُعرض شارةً فقط، ولا تؤثر في الترتيب.
+ */
+export function sortCases<T extends { fromMyCountry: boolean; created_at: string }>(rows: T[]): T[] {
+  return [...rows].sort(
+    (a, b) => Number(b.fromMyCountry) - Number(a.fromMyCountry) || Date.parse(b.created_at) - Date.parse(a.created_at),
+  );
 }
 
 /** هل يحتاج الجواب ترجمة؟ (لغة السائل غير العربية) */

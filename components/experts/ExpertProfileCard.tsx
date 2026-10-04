@@ -1,5 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
+import { countryName } from "@/lib/experts/countries";
 import { languageName } from "@/lib/experts/format";
 import type { PublicExpert } from "@/lib/experts/store";
 import { ExpertAvatar } from "./ExpertAvatar";
@@ -16,7 +17,7 @@ export async function ExpertProfileCard({ expert, badge }: { expert: PublicExper
   const rows: [string, string][] = [
     [t("role"), tj(`roles.${expert.role}`)],
     [t("specialty"), expert.specialty ?? "—"],
-    [t("country"), expert.country ?? "—"],
+    [t("country"), countryName(expert.countryCode, locale) ?? expert.country ?? "—"],
     [t("languages"), expert.languages.map((l) => languageName(l, locale)).join(locale === "ar" ? "، " : ", ")],
   ];
   return (

@@ -8,6 +8,7 @@ import { ProfileEditor } from "@/components/experts/ProfileEditor";
 import { ShareProfile } from "@/components/experts/ShareProfile";
 import type { Locale } from "@/i18n/locales";
 import { AuthzError, getAuthContext } from "@/lib/auth/roles";
+import { countryOptions } from "@/lib/experts/countries";
 import { ownExpertProfile, requireApprovedExpert, type ExpertSelf } from "@/lib/experts/store";
 import { isAdminClientConfigured } from "@/lib/supabase/admin";
 
@@ -64,7 +65,9 @@ export default async function ExpertProfilePage({ params }: Props) {
       <section className="rounded-[22px] border border-sand-200 bg-white p-6">
         <ProfileEditor
           userId={self.id}
+          countries={countryOptions(locale)}
           initial={{
+            countryCode: profile.countryCode ?? "",
             bio: profile.bio ?? "",
             avatar: profile.avatarPath && profile.avatarUrl ? { path: profile.avatarPath, url: profile.avatarUrl } : null,
             contact: profile.contact,

@@ -139,7 +139,8 @@
     },
     "privacy": {
       "title": "Privacy policy",
-      "description": "What we keep, why, and when we delete it."
+      "description": "What we keep, why, and when we delete it.",
+      "country": "We store only your country (not your address) to route your question to a specialist from your country."
     },
     "eval": {
       "title": "Transparency & testing",
@@ -475,7 +476,8 @@
       },
       "acceptedTitle": "You're approved",
       "acceptedLead": "You were approved as a specialist on Mustafti. Files routed to your role are waiting in your dashboard.",
-      "enterDashboard": "Enter the specialist dashboard"
+      "enterDashboard": "Enter the specialist dashboard",
+      "countryPick": "Choose a country"
     },
     "dashboard": {
       "pendingTitle": "Your application is under review",
@@ -522,7 +524,15 @@
         "unauthorized": "Please sign in first.",
         "invalid": "Invalid request.",
         "generic": "Something went wrong. Please try again."
-      }
+      },
+      "tabCases": "Questions",
+      "tabArchive": "Archive",
+      "fromYourCountry": "From your country",
+      "archiveEmpty": "You have not answered any question yet.",
+      "answeredAt": "Answered",
+      "sentAt": "Sent",
+      "printAll": "Save all as PDF",
+      "archiveTitle": "My answers archive"
     },
     "review": {
       "tab": "Specialist applications",
@@ -582,7 +592,7 @@
     "profile": {
       "title": "My profile",
       "lead": "This is what the askers you answer see, and what your public page shows. Phone and email are visible to reviewers only.",
-      "readOnlyNote": "Name, role, specialty, country and languages are as reviewed. Contact the team to change them.",
+      "readOnlyNote": "Name, role, specialty and languages are as reviewed. Contact the team to change them.",
       "avatar": "Profile photo (optional)",
       "avatarPick": "Choose a photo",
       "avatarChange": "Change photo",

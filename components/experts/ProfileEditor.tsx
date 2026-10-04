@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { updateOwnProfile } from "@/lib/experts/actions";
 import { BIO_MAX, BIO_MIN } from "@/lib/experts/types";
+import type { CountryOption } from "@/lib/experts/countries";
 import { AvatarPicker } from "./AvatarPicker";
+import { CountrySelect } from "./CountrySelect";
 import { ContactSocialFields, contactSocialErrors, type ContactValue, type SocialsValue } from "./ContactSocialFields";
 
 type Initial = {
+  countryCode: string;
   bio: string;
   avatar: { path: string; url: string } | null;
   contact: ContactValue;
@@ -16,8 +19,9 @@ type Initial = {
 };
 
 /** تعديل الملف الشخصي للمختص المقبول: الصورة والنبذة والتواصل والحسابات. الحفظ يُفحص في الخادم. */
-export function ProfileEditor({ userId, initial }: { userId: string; initial: Initial }) {
+export function ProfileEditor({ userId, initial, countries }: { userId: string; initial: Initial; countries: CountryOption[] }) {
   const t = useTranslations("experts.profile");
+  const tj = useTranslations("experts.join");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Initial>(initial);
@@ -30,12 +34,13 @@ export function ProfileEditor({ userId, initial }: { userId: string; initial: In
   async function save() {
     setShowErrors(true);
     setMessage(null);
-    if (bioLen < BIO_MIN || bioLen > BIO_MAX || contactSocialErrors(form.contact, form.socials).size) {
+    if (!form.countryCode || bioLen < BIO_MIN || bioLen > BIO_MAX || contactSocialErrors(form.contact, form.socials).size) {
       setMessage({ ok: false, text: t("errors.invalid") });
       return;
     }
     setBusy(true);
     const res = await updateOwnProfile({
+      countryCode: form.countryCode,
       bio: form.bio,
       avatarPath: form.avatar?.path ?? null,
       contact: { phone: form.contact.phone.trim(), email: form.contact.email.trim() },
@@ -73,6 +78,16 @@ export function ProfileEditor({ userId, initial }: { userId: string; initial: In
   return (
     <div className="space-y-5">
       <AvatarPicker userId={userId} url={form.avatar?.url ?? null} onChange={(v) => setForm((f) => ({ ...f, avatar: v }))} />
+      <label className="block space-y-1.5">
+        <span className="text-sm font-semibold text-green-900">{t("country")}</span>
+        <CountrySelect
+          value={form.countryCode}
+          options={countries}
+          onChange={(v) => setForm((f) => ({ ...f, countryCode: v }))}
+          placeholder={tj("countryPick")}
+          invalid={showErrors && !form.countryCode}
+        />
+      </label>
       <label className="block space-y-1.5">
         <span className="text-sm font-semibold text-green-900">{t("bio")}</span>
         <textarea

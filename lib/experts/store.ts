@@ -12,7 +12,7 @@ import { avatarUrl, sortCases, type Contact, type ExpertRole, type Socials } fro
  * ولا المحادثة الخام (case_messages). المختص يرى الملف المرتب فقط.
  */
 
-export type ExpertSelf = { id: string; role: ExpertRole; ctx: AuthContext };
+export type ExpertSelf = { id: string; role: ExpertRole; countryCode: string | null; ctx: AuthContext };
 
 /**
  * المختص المقبول للطلب الحالي، أو AuthzError.
@@ -23,11 +23,11 @@ export async function requireApprovedExpert(): Promise<ExpertSelf> {
   if (!ctx.userId) throw new AuthzError(401);
   const { data } = await createAdminClient()
     .from("experts")
-    .select("role, status")
+    .select("role, status, country_code")
     .eq("id", ctx.userId)
-    .maybeSingle<{ role: ExpertRole; status: string }>();
+    .maybeSingle<{ role: ExpertRole; status: string; country_code: string | null }>();
   if (data?.status !== "approved") throw new AuthzError(403);
-  return { id: ctx.userId, role: data.role, ctx };
+  return { id: ctx.userId, role: data.role, countryCode: data.country_code, ctx };
 }
 
 export type QueueCase = {
@@ -38,10 +38,15 @@ export type QueueCase = {
   lang: string | null;
   created_at: string;
   mine: boolean;
+  /** السائل من بلد المختص (مقارنة في الخادم؛ رمز بلد السائل نفسه لا يصل إلى الواجهة). */
+  fromMyCountry: boolean;
   summary: string;
 };
 
-/** ملفات لوحة المختص: المحالة إلى دوره وتنتظر (submitted بلا مختص)، أو المسندة إليه. */
+/**
+ * تبويب «المسائل»: المحالة إلى دوره وتنتظر (submitted بلا مختص)، أو المسندة إليه ولم يُجب عنها.
+ * المجاب عنها في «الأرشيف». الترتيب: بلد المختص أولاً ثم الأحدث (sortCases).
+ */
 export async function expertQueue(
   self: ExpertSelf,
   filter: { chapter?: string; status?: string },
@@ -49,9 +54,11 @@ export async function expertQueue(
   const db = createAdminClient();
   let q = db
     .from("cases")
-    .select("id, chapter, priority, status, lang, created_at, assigned_expert, case_files(summary_ar)")
-    .or(`and(route_to.eq.${self.role},status.eq.submitted,assigned_expert.is.null),assigned_expert.eq.${self.id}`)
-    .order("created_at", { ascending: true })
+    .select("id, chapter, priority, status, lang, created_at, assigned_expert, asker_country, case_files(summary_ar)")
+    .or(
+      `and(route_to.eq.${self.role},status.eq.submitted,assigned_expert.is.null),and(assigned_expert.eq.${self.id},status.eq.assigned)`,
+    )
+    .order("created_at", { ascending: false })
     .limit(300);
   if (filter.chapter) q = q.eq("chapter", filter.chapter);
   if (filter.status) q = q.eq("status", filter.status);
@@ -64,6 +71,7 @@ export async function expertQueue(
       lang: string | null;
       created_at: string;
       assigned_expert: string | null;
+      asker_country: string | null;
       case_files: { summary_ar: string | null }[];
     }[]
   >();
@@ -77,9 +85,60 @@ export async function expertQueue(
       lang: c.lang,
       created_at: c.created_at,
       mine: c.assigned_expert === self.id,
+      fromMyCountry: Boolean(self.countryCode && c.asker_country && c.asker_country === self.countryCode),
       summary: c.case_files[0]?.summary_ar ?? "",
     })),
   );
+}
+
+export type ArchiveCase = {
+  id: string;
+  chapter: string | null;
+  createdAt: string;
+  answeredAt: string;
+  summaryAr: string;
+  rows: CaseRow[];
+  answerAr: string;
+};
+
+/**
+ * «الأرشيف»: المسائل التي أجاب عنها المختص نفسه، بالأحدث جواباً.
+ * بلا أي بيانات للسائل: لا لغة ولا بلد ولا بريد ولا حساب، والملف المرتب وجوابه فقط.
+ */
+export async function expertArchive(self: ExpertSelf, filter: { chapter?: string } = {}, limit = 200): Promise<ArchiveCase[]> {
+  const { data, error } = await createAdminClient()
+    .from("expert_answers")
+    .select("answer_ar, created_at, cases!inner(id, chapter, created_at, case_files(summary_ar, pillars, created_at))")
+    .eq("expert_id", self.id)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .returns<
+      {
+        answer_ar: string;
+        created_at: string;
+        cases: {
+          id: string;
+          chapter: string | null;
+          created_at: string;
+          case_files: { summary_ar: string | null; pillars: { rows?: CaseRow[] } | null; created_at: string }[];
+        };
+      }[]
+    >();
+  if (error) console.error("expert archive:", error.message);
+  return (data ?? [])
+    .filter((a) => !filter.chapter || a.cases.chapter === filter.chapter)
+    .map((a) => {
+      const file = [...a.cases.case_files].sort((x, y) => y.created_at.localeCompare(x.created_at))[0];
+      return {
+        id: a.cases.id,
+        chapter: a.cases.chapter,
+        createdAt: a.cases.created_at,
+        answeredAt: a.created_at,
+        summaryAr: file?.summary_ar ?? "",
+        rows: file?.pillars?.rows ?? [],
+        answerAr: a.answer_ar,
+      };
+    });
 }
 
 export type ExpertCase = {
@@ -159,6 +218,7 @@ export async function audit(adminId: string, action: string, target: string, det
 
 export type PublicExpert = {
   id: string;
+  countryCode: string | null;
   slug: string;
   name: string;
   role: ExpertRole;
@@ -173,6 +233,7 @@ export type PublicExpert = {
 
 type PublicRow = {
   id: string;
+  country_code: string | null;
   slug: string | null;
   role: ExpertRole;
   specialty: string | null;
@@ -185,7 +246,7 @@ type PublicRow = {
 };
 
 const PUBLIC_COLUMNS =
-  "id, slug, role, specialty, country, languages, bio, avatar_path, socials, profiles!experts_id_fkey(display_name)";
+  "id, slug, role, specialty, country, country_code, languages, bio, avatar_path, socials, profiles!experts_id_fkey(display_name)";
 
 /** عدد المسائل التي أجاب عنها المختص (عدد فقط، بلا أي مسألة). */
 export async function answeredCount(expertId: string): Promise<number> {
@@ -200,6 +261,7 @@ export async function answeredCount(expertId: string): Promise<number> {
 function toPublic(row: PublicRow, answered: number): PublicExpert {
   return {
     id: row.id,
+    countryCode: row.country_code,
     slug: row.slug ?? "",
     name: row.profiles?.display_name ?? "",
     role: row.role,
