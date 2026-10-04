@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { GlossaryTerm } from "@/lib/brain/glossary";
 import { BotReply } from "../chat/BotReply";
+import type { CaseApi } from "../chat/CaseFlow";
 import { TermDialog } from "../chat/TermDialog";
 import type { ChatMessage } from "../chat/useChat";
 import { BubbleMark } from "./BubbleMark";
@@ -17,6 +18,7 @@ type Props = {
   onSubmit: () => void;
   onReset: () => void;
   onRetry: (id: string) => void;
+  caseApi: CaseApi;
   busy: boolean;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   reduced: boolean;
@@ -26,7 +28,7 @@ type Props = {
  * واجهة المحادثة: السائل في فقاعة خضراء داكنة، ومُستفتي في فقاعة بيضاء مع بطاقات المصادر،
  * والخانة مثبتة في الأسفل. اتجاه كل فقاعة حسب لغة نصها (RTL للعربية والأردية والفارسية).
  */
-export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, busy, inputRef, reduced }: Props) {
+export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, caseApi, busy, inputRef, reduced }: Props) {
   const t = useTranslations();
   const endRef = useRef<HTMLDivElement>(null);
   const [term, setTerm] = useState<GlossaryTerm | null>(null);
@@ -65,16 +67,18 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, 
                 <span className="sr-only">{msg.role === "user" ? t("chat.you") : t("chat.bot")}: </span>
                 {msg.role === "user" ? (
                   <div
-                    dir={msg.dir}
-                    className="max-w-[85%] whitespace-pre-wrap rounded-[22px] rounded-ss-md bg-green-900 px-4 py-3 text-[15px] leading-relaxed text-ivory-50 sm:text-base"
+                    dir={msg.skipped ? undefined : msg.dir}
+                    className={`max-w-[85%] whitespace-pre-wrap rounded-[22px] rounded-ss-md px-4 py-3 text-[15px] leading-relaxed sm:text-base ${
+                      msg.skipped ? "bg-green-900/70 italic text-ivory-50/90" : "bg-green-900 text-ivory-50"
+                    }`}
                   >
-                    {msg.text}
+                    {msg.skipped ? t("case.skipped") : msg.text}
                   </div>
                 ) : (
                   <>
                     <BubbleMark className="mt-1 h-8 w-8 flex-none" />
                     <div className="min-w-0 max-w-[calc(100%-2.75rem)] flex-1 sm:max-w-[88%] sm:flex-none" aria-live="polite">
-                      <BotReply msg={msg} onTerm={setTerm} onRetry={onRetry} />
+                      <BotReply msg={msg} onTerm={setTerm} onRetry={onRetry} caseApi={caseApi} />
                     </div>
                   </>
                 )}
