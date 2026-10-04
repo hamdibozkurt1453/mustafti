@@ -109,6 +109,19 @@ export function formatPassages(passages: Passage[]): string {
   ].join("\n\n");
 }
 
+/**
+ * شكل الجواب: يقرأ كإنسان عالم، لا كقائمة مراجع. الجملة الأولى جواب مباشر بكلام الأداة مع [n]،
+ * ثم الدليل حرفياً من المصدر، ثم سطر أو سطران من الشرح المجلوب. (يُفحص بـ format.ts.)
+ */
+export function ANSWER_FORMAT(lang: string): string {
+  return `ANSWER FORMAT (write in the asker's language: ${lang}; plain text, no headings, no tables, no source list at the end):
+1. FIRST: one direct, complete answer sentence in your own plain words, ending with its passage number [n]. Example for «من بنى الكعبة؟»: «بنى الكعبةَ نبيُّ الله إبراهيم عليه السلام، وأعانه ابنه إسماعيل عليه السلام [1].» For a multi-part question, answer each part in its own direct sentence, each with its [n].
+2. THEN the evidence, copied exactly from a passage: a Qur'an verse in Arabic inside ﴿…﴾ with its surah name and number:verse, or a hadith inside «…» with its grade as written; then [n]. If the asker is not Arabic-speaking, give the meaning after the Arabic text, OUTSIDE quotation marks, labelled ${message("translationOfMeaning", lang)}.
+3. OPTIONALLY 1–2 short sentences of explanation taken from the tafsir/sharh in the passages, each with its [n].
+Never start the answer with a quotation, ﴿, «, a verse or a bare reference (never reply with only «البقرة 127: ﴿…﴾»).
+The direct sentence states ONLY what a cited passage states or directly says: no dates, places, names, numbers or details that are not in the passages. Use honorifics where fitting (عليه السلام، ﷺ، رضي الله عنه). Keep your own wording short (normally under 90 words).`;
+}
+
 export type AnswerMode = "general" | "khilaf";
 
 const MODE_NOTES: Record<AnswerMode, string> = {
@@ -133,13 +146,13 @@ export function answerSystem(input: AnswerInput): string {
     NON_NEGOTIABLE_RULES,
     `MODE: ${MODE_NOTES[input.mode]}`,
     input.misconception
-      ? `MISCONCEPTION DETECTED in the question: «${input.misconception}». Begin by correcting it gently, with a verbatim quote and its passage number. Never mock or blame the asker.`
+      ? `MISCONCEPTION DETECTED in the question: «${input.misconception}». Your first sentence gently corrects it in plain words with its [n]; then give the verbatim evidence. Never mock or blame the asker.`
       : "",
     input.userType === "non_muslim" || input.userType === "new_muslim"
       ? "AUDIENCE: the asker may not know Islamic terms. Explain the idea in plain words first, then give the term."
       : "",
     glossary,
-    `OUTPUT: plain text in the asker's language (${input.lang}), short (normally under 120 words of your own wording, plus quotations). No headings, no markdown tables. End each quotation with its passage number like [1]. Do not list the sources at the end (the system shows them).`,
+    ANSWER_FORMAT(input.lang),
   ]
     .filter(Boolean)
     .join("\n\n");

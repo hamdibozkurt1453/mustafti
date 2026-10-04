@@ -302,6 +302,33 @@ export async function mcpQuranVerses(surah: number, ayah: number, lang: string):
     : [];
 }
 
+/**
+ * آيات متتالية (surah:ayah-through) عبر get_quran_verses في طلب واحد: النص العربي، والترجمة
+ * المعتمدة بلغة السائل (وللعربية التفسير الميسر arabic_moyassar). يرمي إن رد الخادم بخطأ
+ * (آية خارج السورة مثلاً)، ويعيد [] إن لم يرد شيء.
+ */
+export async function mcpQuranRange(surah: number, ayah: number, through: number | undefined, lang: string): Promise<McpItem[]> {
+  const tool = await findTool("get_quran_verses");
+  if (!tool) throw new Error("MCP tool `get_quran_verses` not found");
+  const props = tool.inputSchema.properties ?? {};
+  const key = props.translation_key ? await serverTranslationKey(lang) : undefined;
+  const args: Record<string, unknown> = { surah, ayah };
+  if (through && through > ayah && props.through) args.through = through;
+  if (props.language) args.language = lang;
+  if (key) args.translation_key = key;
+  const result = await callTool(tool.name, args);
+  const text = toolText(result).trim();
+  if (!text) return [];
+  const quran = { lang, key: key ?? translationKey(lang) };
+  return [
+    {
+      title: clip(htmlToText(text.split("\n").find((l) => l.trim() && !/─{3,}/.test(l))?.replace(/[#*_`>]/g, "") ?? `${surah}:${ayah}`), 160),
+      text: clip(htmlToText(text.replace(/[#*_`>]/g, "")), 2400),
+      url: quranencUrl(surah, ayah, lang, quran.key),
+    },
+  ];
+}
+
 /** عيّنة خام من ردود أدوات القرآن (لـ /api/health?debug=1): لفهم صيغة الرد إن بقيت النتائج صفراً. */
 export async function mcpQuranSamples(): Promise<{ tool: string; args: Record<string, unknown>; structured: string; text: string; error?: string }[]> {
   const calls: [string, Record<string, unknown>][] = [
