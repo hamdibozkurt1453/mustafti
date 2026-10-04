@@ -2,34 +2,47 @@
 
 import { AnimatePresence, m } from "motion/react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import type { GlossaryTerm } from "@/lib/brain/glossary";
+import { BotReply } from "../chat/BotReply";
+import { TermDialog } from "../chat/TermDialog";
+import type { ChatMessage } from "../chat/useChat";
 import { BubbleMark } from "./BubbleMark";
 import { Composer } from "./Composer";
 
-export type Message = { id: number; role: "user" | "bot"; text: string; pending?: boolean };
-
 type Props = {
-  messages: Message[];
+  messages: ChatMessage[];
   text: string;
   setText: (v: string) => void;
   onSubmit: () => void;
   onReset: () => void;
+  onRetry: (id: string) => void;
+  busy: boolean;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   reduced: boolean;
 };
 
-/** واجهة المحادثة: الرسائل في الوسط، والخانة مثبتة في الأسفل. */
-export function ChatView({ messages, text, setText, onSubmit, onReset, inputRef, reduced }: Props) {
+/**
+ * واجهة المحادثة: السائل في فقاعة خضراء داكنة، ومُستفتي في فقاعة بيضاء مع بطاقات المصادر،
+ * والخانة مثبتة في الأسفل. اتجاه كل فقاعة حسب لغة نصها (RTL للعربية والأردية والفارسية).
+ */
+export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, busy, inputRef, reduced }: Props) {
   const t = useTranslations();
   const endRef = useRef<HTMLDivElement>(null);
+  const [term, setTerm] = useState<GlossaryTerm | null>(null);
+  const last = messages[messages.length - 1];
 
+  // التمرير مع الجواب: عند كل رسالة جديدة، ومع البث ما دام السائل قريباً من الأسفل.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "end" });
-  }, [messages, reduced]);
+    const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 320;
+    if (nearBottom || last?.role === "user" || (last?.role === "bot" && last.status === "pending")) {
+      endRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "end" });
+    }
+  }, [messages.length, last, reduced]);
 
   return (
     <div className="flex min-h-[100svh] flex-col bg-ivory-50">
-      <section aria-label={t("chat.label")} className="mx-auto w-full max-w-3xl flex-1 px-4 pb-44 pt-24">
+      <section aria-label={t("chat.label")} className="mx-auto w-full max-w-3xl flex-1 px-4 pb-48 pt-24">
         <div className="mb-6 flex justify-center">
           <button
             type="button"
@@ -39,7 +52,7 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, inputRef,
             + {t("chat.newChat")}
           </button>
         </div>
-        <ol className="flex flex-col gap-5" aria-live="polite">
+        <ol className="flex flex-col gap-5">
           <AnimatePresence initial={false}>
             {messages.map((msg) => (
               <m.li
@@ -49,30 +62,22 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, inputRef,
                 transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 className={`flex gap-3 ${msg.role === "user" ? "justify-start" : "flex-row-reverse justify-start"}`}
               >
-                {msg.role === "bot" && <BubbleMark className="mt-1 h-8 w-8 flex-none" />}
-                <div
-                  dir="auto"
-                  className={`max-w-[85%] whitespace-pre-wrap rounded-[22px] px-4 py-3 text-[15px] leading-relaxed sm:text-base ${
-                    msg.role === "user"
-                      ? "rounded-ss-md bg-green-900 text-ivory-50"
-                      : "rounded-se-md border border-sand-200 bg-white text-green-900"
-                  }`}
-                >
-                  <span className="sr-only">{msg.role === "user" ? t("chat.you") : t("chat.bot")}: </span>
-                  {msg.pending ? (
-                    <span className="flex items-center gap-1.5 py-1" aria-label={t("chat.thinking")}>
-                      {[0, 1, 2].map((i) => (
-                        <span
-                          key={i}
-                          className="mf-dot h-2 w-2 rounded-full bg-green-600"
-                          style={{ animationDelay: `${i * 0.15}s`, animationDuration: "1.2s", ["--mf-dot-lift" as string]: "-5px" }}
-                        />
-                      ))}
-                    </span>
-                  ) : (
-                    msg.text
-                  )}
-                </div>
+                <span className="sr-only">{msg.role === "user" ? t("chat.you") : t("chat.bot")}: </span>
+                {msg.role === "user" ? (
+                  <div
+                    dir={msg.dir}
+                    className="max-w-[85%] whitespace-pre-wrap rounded-[22px] rounded-ss-md bg-green-900 px-4 py-3 text-[15px] leading-relaxed text-ivory-50 sm:text-base"
+                  >
+                    {msg.text}
+                  </div>
+                ) : (
+                  <>
+                    <BubbleMark className="mt-1 h-8 w-8 flex-none" />
+                    <div className="min-w-0 max-w-[calc(100%-2.75rem)] flex-1 sm:max-w-[88%] sm:flex-none" aria-live="polite">
+                      <BotReply msg={msg} onTerm={setTerm} onRetry={onRetry} />
+                    </div>
+                  </>
+                )}
               </m.li>
             ))}
           </AnimatePresence>
@@ -82,10 +87,12 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, inputRef,
 
       <div className="fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-ivory-50 via-ivory-50/95 to-transparent pt-8">
         <div className="mx-auto w-full max-w-3xl px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Composer ref={inputRef} value={text} onChange={setText} onSubmit={onSubmit} variant="dock" reduced={reduced} />
+          <Composer ref={inputRef} value={text} onChange={setText} onSubmit={onSubmit} variant="dock" reduced={reduced} disabled={busy} />
           <p className="mt-2 text-center text-[11px] text-ink-600">{t("disclosure.text")}</p>
         </div>
       </div>
+
+      <TermDialog term={term} onClose={() => setTerm(null)} />
     </div>
   );
 }

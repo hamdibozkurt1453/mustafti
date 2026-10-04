@@ -6,7 +6,7 @@ import { checkOutput, guardAndLog, matchKey, type GuardResult } from "./guard";
 import { looksPersonal, looksUrgent } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
 import { message } from "./messages";
-import { retrieve, type RetrievalDiag } from "./retrieval";
+import { retrieve, warmSearch, type RetrievalDiag } from "./retrieval";
 import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } from "./prompts";
 
 /**
@@ -118,8 +118,24 @@ async function generate(question: string, c: Classification, mode: AnswerMode, p
   return { text: guard.text, raw, guard, ok: !reason, reason, ms, cost, attempts };
 }
 
-export async function respond(question: string, options: { history?: ChatMessage[] } = {}): Promise<BrainReply> {
+/** مراحل الرد (لمؤشر «يبحث في المصادر…» في المحادثة). */
+export type BrainStage = "understanding" | "searching" | "writing";
+
+export type RespondOptions = {
+  history?: ChatMessage[];
+  /** يُستدعى عند بدء كل مرحلة (للبث فقط؛ لا يغيّر شيئاً في الرد). */
+  onStage?: (stage: BrainStage) => void;
+};
+
+export async function respond(question: string, options: RespondOptions = {}): Promise<BrainReply> {
   const started = Date.now();
+  const stage = (s: BrainStage) => {
+    try {
+      options.onStage?.(s);
+    } catch {
+      /* المؤشر لا يوقف الرد */
+    }
+  };
   const overrides: string[] = [];
   const probe = detectIdentityProbe(question);
   const diag: BrainReply["diag"] = { attempts: [] };
@@ -139,7 +155,9 @@ export async function respond(question: string, options: { history?: ChatMessage
   const prefix = probe === "manipulation" ? identityReply("manipulation", guessLang(question)) : "";
   const withPrefix = (text: string) => (prefix ? `${prefix}\n\n${text}` : text);
 
-  // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض).
+  // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض)، والبحث يُسخَّن بالتوازي (لا لحالة شخصية أو عاجلة).
+  stage("understanding");
+  if (!looksPersonal(question) && !looksUrgent(question)) warmSearch(question, guessLang(question));
   const cls = await classify(question, { history: options.history });
   const c = { ...cls.classification };
   base.costUsd += cls.costUsd ?? 0;
@@ -167,6 +185,7 @@ export async function respond(question: string, options: { history?: ChatMessage
   }
 
   // 4) A / B / C: الاسترجاع.
+  stage("searching");
   const t0 = Date.now();
   const found = await retrieve(c, question);
   timings.searchMs = Date.now() - t0;
@@ -180,6 +199,7 @@ export async function respond(question: string, options: { history?: ChatMessage
   }
 
   // 5) الصياغة من النصوص فقط، ثم الحارس.
+  stage("writing");
   const gen = await generate(question, c, c.level === "C" ? "khilaf" : "general", passages);
   timings.generateMs = gen.ms;
   base.costUsd += gen.cost;

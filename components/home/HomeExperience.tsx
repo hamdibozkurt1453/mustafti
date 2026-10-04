@@ -1,10 +1,10 @@
 "use client";
 
 import { AnimatePresence, LazyMotion, m, MotionConfig, useReducedMotion } from "motion/react";
-import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { setChatMode } from "@/lib/ui-store";
-import { ChatView, type Message } from "./ChatView";
+import { useChat } from "../chat/useChat";
+import { ChatView } from "./ChatView";
 import { Hero, type Persona } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
 import { PathCards } from "./PathCards";
@@ -14,17 +14,15 @@ import { Stats } from "./Stats";
 const loadFeatures = () => import("@/lib/motion-features").then((mod) => mod.default);
 
 /**
- * الصفحة الرئيسية: الواجهة الأولى والأقسام، ثم تتحول إلى محادثة عند أول سؤال.
- * غير مربوطة بالنموذج بعد (S5): الرد مؤقت يقول إن المحادثة قيد التفعيل.
+ * الصفحة الرئيسية: الواجهة الأولى والأقسام، ثم تتحول إلى محادثة حية عند أول سؤال
+ * (من الخانة الأولى أو من سؤال مقترح). المحادثة محفوظة في المتصفح، فتعود عند فتح الصفحة.
  */
 export function HomeExperience() {
-  const t = useTranslations();
   const reduced = useReducedMotion() ?? false;
   const [persona, setPersona] = useState<Persona | null>(null);
   const [text, setText] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { messages, send, retry, reset, busy } = useChat();
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const idRef = useRef(0);
   const chatting = messages.length > 0;
 
   useEffect(() => {
@@ -32,28 +30,16 @@ export function HomeExperience() {
   }, [chatting]);
   useEffect(() => () => setChatMode(false), []);
 
-  function send() {
-    const q = text.trim();
-    if (!q) return;
-    const userId = ++idRef.current;
-    const botId = ++idRef.current;
-    setMessages((prev) => [
-      ...prev,
-      { id: userId, role: "user", text: q },
-      { id: botId, role: "bot", text: "", pending: true },
-    ]);
+  function ask(question: string) {
+    const q = question.trim();
+    if (!q || busy) return;
+    send(q);
     setText("");
     if (!chatting) window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-    // يُستبدل بالجواب الحقيقي في S5.
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === botId ? { ...m, pending: false, text: t("composer.notice") } : m)),
-      );
-    }, 1100);
   }
 
-  function reset() {
-    setMessages([]);
+  function newChat() {
+    reset();
     setText("");
   }
 
@@ -77,7 +63,8 @@ export function HomeExperience() {
               <Hero
                 text={text}
                 setText={setText}
-                onSubmit={send}
+                onSubmit={() => ask(text)}
+                onAsk={ask}
                 persona={persona}
                 setPersona={setPersona}
                 inputRef={inputRef}
@@ -99,8 +86,10 @@ export function HomeExperience() {
                 messages={messages}
                 text={text}
                 setText={setText}
-                onSubmit={send}
-                onReset={reset}
+                onSubmit={() => ask(text)}
+                onReset={newChat}
+                onRetry={retry}
+                busy={busy}
                 inputRef={inputRef}
                 reduced={reduced}
               />

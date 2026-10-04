@@ -16,6 +16,8 @@ type Props = {
   text: string;
   setText: (v: string) => void;
   onSubmit: () => void;
+  /** يرسل سؤالاً مقترحاً مباشرة وينقل إلى المحادثة. */
+  onAsk: (question: string) => void;
   persona: Persona | null;
   setPersona: (p: Persona | null) => void;
   inputRef: RefObject<HTMLTextAreaElement | null>;
@@ -23,7 +25,7 @@ type Props = {
 };
 
 /** الواجهة الأولى بملء الشاشة على الأخضر العميق. */
-export function Hero({ text, setText, onSubmit, persona, setPersona, inputRef, reduced }: Props) {
+export function Hero({ text, setText, onSubmit, onAsk, persona, setPersona, inputRef, reduced }: Props) {
   const t = useTranslations();
   const { scrollY } = useScroll();
   // النقش يتحرك أبطأ من الصفحة (parallax)، ويخفت قليلاً
@@ -149,10 +151,7 @@ export function Hero({ text, setText, onSubmit, persona, setPersona, inputRef, r
                 <li key={`${group}-${q}`} className="snap-start">
                   <button
                     type="button"
-                    onClick={() => {
-                      setText(question);
-                      inputRef.current?.focus();
-                    }}
+                    onClick={() => onAsk(question)}
                     className="whitespace-nowrap rounded-full border border-ivory-50/10 bg-green-600/30 px-3.5 py-1.5 text-[13px] text-ivory-50/90 transition hover:border-gold-500/60 hover:text-ivory-50"
                   >
                     {question}

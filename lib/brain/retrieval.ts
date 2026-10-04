@@ -4,7 +4,7 @@ import { z } from "zod";
 import { cached, DAY } from "@/lib/cache";
 import { chatJson } from "@/lib/llm";
 import { callTool, toolData, toolText } from "@/lib/mcp";
-import { search, type SourceId, type SourceResult } from "@/lib/sources";
+import { search, SOURCE_DEADLINE_MS, type SourceId, type SourceResult } from "@/lib/sources";
 import { clip, htmlToText } from "@/lib/sources/html";
 import { findTool } from "@/lib/sources/mcp-search";
 import { politeFetch } from "@/lib/sources/polite-fetch";
@@ -44,7 +44,8 @@ export type RetrievalDiag = {
 };
 
 export const RETRIEVAL_SOURCES: SourceId[] = ["islamhouse", "hadeethenc", "quranenc", "byenah", "risala", "islamqa"];
-const SEARCH_DEADLINE_MS = 8_000;
+/** مهلة كل مصدر: المهلة الموحدة 6 ثوانٍ (S5، للسرعة). */
+const SEARCH_DEADLINE_MS = SOURCE_DEADLINE_MS;
 const RETRY_WAIT_MS = 2_500;
 const RERANK_POOL = 14;
 const MAX_PASSAGES = 6;
@@ -78,6 +79,23 @@ export function buildQueries(c: Classification, question: string): { q: string; 
 // ---------------------------------------------------------------------------
 // البحث
 // ---------------------------------------------------------------------------
+
+/**
+ * تسخين البحث بالتوازي مع المصنّف (S5): كلمات البحث التي لا تحتاج المصنّف (مصطلحات القاموس
+ * الواردة وكلمات السؤال نفسه، كما في buildQueries) تُطلب فور وصول السؤال، فتجدها retrieve()
+ * جاهزة أو قيد الطلب (lib/cache يضم الطلبات المتزامنة). لا يُعرض منها شيء.
+ * المتصل لا يستدعيها لحالة شخصية أو عاجلة.
+ */
+export function warmSearch(question: string, lang: string): void {
+  const queries = findTerms(question)
+    .slice(0, 2)
+    .map((t) => ({ q: t.term_ar.trim().slice(0, 120), lang: "ar" }));
+  const kw = queryWords(question).slice(0, 5).join(" ").trim().slice(0, 120);
+  if (kw) queries.push({ q: kw, lang });
+  for (const { q, lang: l } of queries) {
+    for (const source of RETRIEVAL_SOURCES) void search(source, q, l, SEARCH_DEADLINE_MS).catch(() => []);
+  }
+}
 
 function fromSource(r: SourceResult): Candidate {
   return { title: r.title, text: r.text, url: r.url, source: r.source, sourceId: r.sourceId, grade: r.grade, lang: r.lang, ref: r.ref };
@@ -114,7 +132,8 @@ export async function searchBayyinat(terms: string[], diag: SearchDiag[]): Promi
   return data.map((row) => ({
     title: `بيّنات — السؤال رقم ${row.number}${row.page ? `، ص ${row.page}` : ""}: ${String(row.question).replace(/﴿\s*﴾/g, "")}`,
     text: `${String(row.question)}\n${String(row.answer)}`.replace(/﴿\s*﴾/g, "").replace(/[ \t]+/g, " ").trim(),
-    url: row.source_url || BAYYINAT_URL,
+    // علامة # برقم السؤال: الرابط نفسه لكل الأجوبة، فلا يحذفها التنظيف مكرراً.
+    url: `${row.source_url || BAYYINAT_URL}#${row.number}`,
     source: `بيّنات — السؤال رقم ${row.number}${row.page ? `، ص ${row.page}` : ""}`,
     sourceId: "bayyinat" as const,
     lang: "ar",
