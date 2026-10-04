@@ -36,6 +36,8 @@ export const PILLARS = pillars as unknown as {
   generationRules: { ar: string[]; en: string[] };
   general: PillarQuestion[];
   chapters: Record<Exclude<Chapter, "other">, ChapterTemplate>;
+  /** الاحتياطي إن تعذّر توليد الأسئلة: 3 أسئلة عن الوقائع العامة، لا سؤال واحد عام. */
+  fallback: string[];
 };
 
 export const MAX_QUESTIONS = PILLARS.limits.maxQuestions;
@@ -60,6 +62,11 @@ export function chapterName(chapter: string | null | undefined, lang = "ar"): st
 
 const GENERAL_BY_KEY = new Map(PILLARS.general.map((q) => [q.key, q]));
 
+/** الاحتياطي: ما الذي حدث بالضبط؟ ما الظرف أو الضرورة؟ هل وقع أم تسأل قبل الفعل؟ */
+export function fallbackQuestions(): PillarQuestion[] {
+  return PILLARS.fallback.map((key) => GENERAL_BY_KEY.get(key)!);
+}
+
 /** كل أسئلة الباب مرتبة (العامة والخاصة)، قبل حذف المعروف وقبل الحد. */
 export function templateFor(chapter: Chapter, generated: PillarQuestion[] = []): PillarQuestion[] {
   if (chapter === "other") {
@@ -82,7 +89,7 @@ export function selectQuestions(
   kind: "personal" | "ruling" = "personal",
 ): PillarQuestion[] {
   // سؤال الحكم العام: الشروط المؤثرة فقط (2–4)، لا قالب ولا أركان عامة. بلا نموذج: سؤال الظروف وحده.
-  if (kind === "ruling") return generated.length ? generated.slice(0, RULING_MAX) : [GENERAL_BY_KEY.get("circumstances")!];
+  if (kind === "ruling") return generated.length ? generated.slice(0, RULING_MAX) : fallbackQuestions();
   const skip = new Set(known);
   const pool = templateFor(chapter, generated).filter((q) => !skip.has(q.key));
   const chosen = new Set<string>();
@@ -146,29 +153,56 @@ export function isSafeQuestion(text: string, allowJob = false): boolean {
 
 export type GeneratedLimits = { min: number; max: number; allowJob?: boolean };
 
+/** سبب رفض سؤال مولّد، أو null إن كان آمناً. */
+export function dropReason(q: PillarQuestion, allowJob = false): string | null {
+  const texts = [q.ar, q.en];
+  if (texts.some((t) => !t || t.trim().length < 4)) return "too_short";
+  if (texts.some((t) => t.trim().length > 240)) return "too_long";
+  if (texts.some((t) => asksPrivate(t))) return "identity_or_sexual";
+  if (texts.some((t) => RULING.some((r) => r.test(t)))) return "ruling_word";
+  if (!allowJob && texts.some((t) => JOB.some((r) => r.test(t)))) return "job";
+  if (q.why && [q.why.ar, q.why.en].some((t) => !isSafeText(t, allowJob))) return "why_unsafe";
+  if ((q.options ?? []).some((o) => !isSafeText(o.ar, allowJob) || !isSafeText(o.en, allowJob))) return "option_unsafe";
+  return null;
+}
+
+export type GeneratedReport = { kept: PillarQuestion[]; dropped: { ar: string; reason: string }[] };
+
+/** «غير ذلك» يضيفه المتصفح (بالكتابة)، فلا يُكرر في خيارات النموذج. */
+const OTHER_OPTION = /^(غير\s+ذلك|أخرى|آخر|other|others|something\s+else|diğer|başka|autre|lainnya|dll)\.?$/iu;
+
 /**
- * يتحقق من الأسئلة المولّدة: يُسقط غير الآمن (وما بلا «لماذا نسأل؟») والمكرر، ويُبقي بين min وmax،
- * وإلا لا شيء (فيُكتفى بالأركان العامة أو بسؤال الظروف).
+ * يفحص الأسئلة المولّدة ويعيد المقبول والمحذوف مع سبب كل حذف: غير الآمن، والمكرر، وما زاد على max.
+ * (min يطبّقه المستدعي: إعادة التوليد مرة، ثم الاحتياطي.)
  */
+export function checkGenerated(questions: PillarQuestion[], limits: GeneratedLimits): GeneratedReport {
+  const job = Boolean(limits.allowJob);
+  const seen = new Set<string>();
+  const kept: PillarQuestion[] = [];
+  const dropped: GeneratedReport["dropped"] = [];
+  for (const raw of questions) {
+    const q = { ...raw, options: raw.options?.filter((o) => !OTHER_OPTION.test(o.ar.trim()) && !OTHER_OPTION.test(o.en.trim())) };
+    if (q.type === "choice" && (q.options?.length ?? 0) < 2) q.type = "text";
+    const reason = dropReason(q, job);
+    const key = q.ar.replace(/[^\p{L}]/gu, "");
+    if (reason) dropped.push({ ar: q.ar, reason });
+    else if (seen.has(key)) dropped.push({ ar: q.ar, reason: "duplicate" });
+    else if (kept.length >= limits.max) dropped.push({ ar: q.ar, reason: "over_max" });
+    else {
+      seen.add(key);
+      kept.push({ ...q, key: `gen_${kept.length + 1}`, required: true, generated: true });
+    }
+  }
+  return { kept, dropped };
+}
+
+/** المقبول من الأسئلة المولّدة إن بلغ min، وإلا لا شيء. */
 export function safeGenerated(
   questions: PillarQuestion[],
   limits: GeneratedLimits = { min: GENERATED_MIN, max: GENERATED_MAX },
 ): PillarQuestion[] {
-  const job = Boolean(limits.allowJob);
-  const seen = new Set<string>();
-  const safe = questions
-    .filter((q) => isSafeQuestion(q.ar, job) && isSafeQuestion(q.en, job))
-    .filter((q) => !q.why || (isSafeText(q.why.ar, job) && isSafeText(q.why.en, job)))
-    .filter((q) => (q.options ?? []).every((o) => isSafeText(o.ar, job) && isSafeText(o.en, job)))
-    .filter((q) => {
-      const k = q.ar.replace(/[^\p{L}]/gu, "");
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    })
-    .slice(0, limits.max)
-    .map((q, i) => ({ ...q, key: `gen_${i + 1}`, required: true, generated: true }));
-  return safe.length >= limits.min ? safe : [];
+  const { kept } = checkGenerated(questions, limits);
+  return kept.length >= limits.min ? kept : [];
 }
 
 // ---------------------------------------------------------------------------

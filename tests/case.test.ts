@@ -16,10 +16,13 @@ import { looksCaseRuling, looksPersonal, referralKindOf } from "../lib/brain/heu
 import { MESSAGE_LANGS, MESSAGES, message } from "../lib/brain/messages";
 import { CHAPTERS } from "../lib/brain/prompts";
 import { isAffirmative } from "../lib/case/affirm";
+import { jsonCandidates, parseFirstJson } from "../lib/case/json";
 import { arabicValue, fallbackDraft, rowsOf, unknownsOf } from "../lib/case/draft";
 import {
   asksPrivate,
   chapterName,
+  checkGenerated,
+  fallbackQuestions,
   chooseChapter,
   isSafeText,
   keywordChapter,
@@ -37,6 +40,7 @@ import { REDACTED, redactText } from "../lib/case/redact";
 import { priorityOf, routeTo } from "../lib/case/routing";
 import { hashCaseToken, isCaseTokenShape, newCaseToken } from "../lib/case/store";
 import type { CasePlan } from "../lib/case/types";
+import { z } from "zod";
 
 const TYPES = new Set(["choice", "number", "text", "yesno"]);
 const allTemplateQuestions = (): PillarQuestion[] => [
@@ -55,7 +59,7 @@ describe("قوالب الأركان (content/pillars.json)", () => {
   it("الأركان العامة (وسؤال الظروف لسؤال الحكم العام)", () => {
     assert.deepEqual(
       PILLARS.general.map((q) => q.key),
-      ["occurred", "who", "what_exactly", "circumstances", "when", "country", "state_intent", "asked_before", "madhhab"],
+      ["occurred", "who", "what_exactly", "circumstances", "occurred_before", "when", "country", "state_intent", "asked_before", "madhhab"],
     );
     assert.equal(PILLARS.general.find((q) => q.key === "madhhab")?.required, false);
   });
@@ -384,8 +388,8 @@ describe("الخصوصية أولاً: كالطبيب لا كالمحقق", () =
     assert.equal(gen.length, 4);
     const qs = selectQuestions("other", [], gen, undefined, "ruling").map((x) => x.key);
     assert.deepEqual(qs, ["gen_1", "gen_2", "gen_3", "gen_4"]);
-    // بلا نموذج: سؤال الظروف وحده
-    assert.deepEqual(selectQuestions("other", [], [], undefined, "ruling").map((x) => x.key), ["circumstances"]);
+    // بلا نموذج: 3 أسئلة عن الوقائع العامة، لا سؤال واحد عام
+    assert.deepEqual(selectQuestions("other", [], [], undefined, "ruling").map((x) => x.key), ["what_exactly", "circumstances", "occurred_before"]);
   });
 
   it("المولّد المكرر يُحذف", () => {
@@ -425,5 +429,75 @@ describe("اختيار الباب بدرجة ثقة", () => {
     assert.equal(keywordChapter("هل يجب علي الحجاب في العمل؟"), "dress_adornment");
     assert.equal(keywordChapter("ذهبت إلى السوق"), null);
     assert.equal(keywordChapter("I will go"), null);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("توليد الأسئلة: المتانة", () => {
+  const Schema = z.object({ questions: z.array(z.object({ ar: z.string() })) });
+
+  it("أول JSON صالح من رد فيه كلام وmarkdown وأقواس داخل النصوص", () => {
+    const raw = 'Sure! Here you go:\n```json\n{"questions": [{"ar": "ما درجة {الاضطرار}؟"}]}\n```\nHope it helps {ok}';
+    const r = parseFirstJson(raw, Schema);
+    assert.ok(r.ok);
+    if (r.ok) assert.equal(r.data.questions[0].ar, "ما درجة {الاضطرار}؟");
+  });
+
+  it("يتخطى الكائن الذي لا يطابق المخطط إلى التالي، ويعيد سبب الفشل", () => {
+    assert.equal(jsonCandidates('{"a":1} {"questions":[]}').length, 2);
+    assert.ok(parseFirstJson('{"a":1} {"questions":[{"ar":"س؟"}]}', Schema).ok);
+    const bad = parseFirstJson('{"questions": [{"ar": 1}]}', Schema);
+    assert.equal(bad.ok, false);
+    assert.equal(parseFirstJson("no json here", Schema).ok, false);
+    assert.equal(parseFirstJson('{"questions": [', Schema).ok, false);
+  });
+
+  const q = (ar: string, options?: string[]): PillarQuestion => ({
+    key: "g",
+    ar,
+    en: ar,
+    why: { ar: "لأن الحكم يختلف.", en: "Because it matters." },
+    type: options ? "choice" : "text",
+    required: true,
+    options: options?.map((o, i) => ({ value: `o${i}`, ar: o, en: o })),
+  });
+
+  it("أسئلة مثال السرقة كما في التعليمات تمر على الفحص كلها", () => {
+    const r = checkGenerated(
+      [
+        q("ما درجة الاضطرار؟", ["جوع شديد يُخشى منه الهلاك", "جوع عادي", "حاجة غير الطعام"]),
+        q("هل كان هناك طريق مشروع آخر، كالسؤال أو الاقتراض أو الجهات الخيرية؟", ["نعم", "لا", "لا أعرف"]),
+        q("ما الذي أُخذ؟", ["طعام بقدر الحاجة", "طعام أكثر من الحاجة", "مال"]),
+        q("هل ما زال المأخوذ موجوداً أو يمكن ردّه؟", ["نعم", "لا"]),
+      ],
+      { min: 2, max: 4 },
+    );
+    assert.deepEqual(r.dropped, []);
+    assert.equal(r.kept.length, 4);
+  });
+
+  it("سبب كل حذف: هوية، وكلمة حكم، وعمل، وتكرار، وزيادة على الحد", () => {
+    const r = checkGenerated(
+      [q("من الذي سرق؟"), q("هل هذا حلال؟"), q("ما عمله؟"), q("ما المأخوذ؟"), q("ما المأخوذ؟"), q("هل كان بديل؟"), q("كم مرة؟")],
+      { min: 2, max: 2 },
+    );
+    assert.deepEqual(
+      r.dropped.map((d) => d.reason),
+      ["identity_or_sexual", "ruling_word", "job", "duplicate", "over_max"],
+    );
+    assert.equal(r.kept.length, 2);
+  });
+
+  it("«غير ذلك» من النموذج يُحذف (الواجهة تضيفه)، والاختيار بأقل من خيارين يصير نصاً", () => {
+    const r = checkGenerated([q("ما المأخوذ؟", ["طعام", "مال", "غير ذلك"]), q("ما السبب؟", ["Other"])], { min: 1, max: 4 });
+    assert.deepEqual(r.kept[0].options?.map((o) => o.ar), ["طعام", "مال"]);
+    assert.equal(r.kept[1].type, "text");
+  });
+
+  it("الاحتياطي 3 أسئلة، اثنان منها اختيار متعدد، ولكل منها «لماذا نسأل؟»", () => {
+    const fb = fallbackQuestions();
+    assert.equal(fb.length, 3);
+    assert.equal(fb.filter((x) => x.type === "choice").length, 2);
+    for (const x of fb) assert.ok(x.why?.ar, x.key);
   });
 });
