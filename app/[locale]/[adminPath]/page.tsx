@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { AdminCases } from "@/components/admin/AdminCases";
+import { AdminStats } from "@/components/admin/AdminStats";
 import { MfaGate } from "@/components/admin/MfaGate";
 import { CountBadge } from "@/components/AccountButton";
 import { ExpertApplications } from "@/components/admin/ExpertApplications";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
-import { ADMIN_ROLES, getAuthContext, requireRole } from "@/lib/auth/roles";
+import { tabsFor, type AdminTab } from "@/lib/admin/rules";
+import { ADMIN_ROLES, adminNeedsMfa, getAuthContext, requireRole } from "@/lib/auth/roles";
 import { pendingApplicationsCount } from "@/lib/experts/store";
 
 type Props = {
@@ -18,11 +21,13 @@ type Props = {
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 /**
- * `/[ADMIN_PATH]` — لوحة المشرف. تبويب «طلبات المختصين» (S9) لـ super_admin وreviewer، وبقية الأقسام في S10.
+ * `/[ADMIN_PATH]` — لوحة المشرف. التبويبات حسب الدور (lib/admin/rules: tabsFor):
+ *   «طلبات المختصين» (S9) لـ super_admin وreviewer، و«الملفات» (S10) لـ super_admin وmoderator،
+ *   و«الإحصاءات» (S10) للجميع. وviewer (حساب اطلاع للجنة التحكيم) يرى الكل بلا أزرار ولا وثائق ولا تواصل.
  * طبقات الحماية، كلها في الخادم ولكل طلب:
  *   1) المسار يطابق متغير ADMIN_PATH، وإلا 404.
  *   2) الحساب مسجّل وله صف في جدول admins، وإلا 404 (لا يُكشف وجود اللوحة).
- *   3) الجلسة اجتازت MFA (aal2)، وإلا شاشة التحقق بخطوتين.
+ *   3) الجلسة اجتازت MFA (aal2)، وإلا شاشة التحقق بخطوتين (إلا viewer: للاطلاع فقط، وكل فعل يرفضه الخادم).
  *   4) requireRole(ADMIN_ROLES) قبل أي محتوى.
  */
 export default async function AdminPage({ params, searchParams }: Props) {
@@ -36,7 +41,7 @@ export default async function AdminPage({ params, searchParams }: Props) {
 
   const t = await getTranslations();
 
-  if (ctx.aal !== "aal2") {
+  if (ctx.aal !== "aal2" && adminNeedsMfa(ctx.adminRole)) {
     return (
       <AuthShell title={t("admin.mfaTitle")}>
         <MfaGate />
@@ -45,26 +50,41 @@ export default async function AdminPage({ params, searchParams }: Props) {
   }
 
   const admin = await requireRole(ADMIN_ROLES, { notFound: true });
+  const role = admin.adminRole!;
+  const readOnly = role === "viewer";
   const sp = await searchParams;
   const base = `/${adminPath}`;
-  // التبويب لا يُرسم إلا لـ super_admin وreviewer (الدور من requireRole بعد MFA)، وأفعاله تفحص الدور ثانية.
-  const canReview = admin.role === "super_admin" || admin.role === "reviewer";
-  const tab = canReview && sp.tab === "experts" ? "experts" : "home";
-  const tabs = [
-    { key: "home", href: base, label: t("experts.review.tabHome"), count: 0 },
-    ...(canReview
-      ? [{ key: "experts", href: `${base}?tab=experts`, label: t("experts.review.tab"), count: await pendingApplicationsCount() }]
-      : []),
-  ];
+  // التبويب لا يُرسم إلا لأدواره (الدور من requireRole بعد MFA)، وكل فعل يفحص الدور ثانية في الخادم.
+  const allowed = tabsFor(role);
+  const tab: AdminTab = allowed.includes(sp.tab as AdminTab) ? (sp.tab as AdminTab) : "home";
+  const labels: Record<AdminTab, string> = {
+    home: t("experts.review.tabHome"),
+    experts: t("experts.review.tab"),
+    cases: t("admin.cases.tab"),
+    stats: t("admin.stats.tab"),
+  };
+  const tabs = await Promise.all(
+    allowed.map(async (key) => ({
+      key,
+      href: key === "home" ? base : `${base}?tab=${key}`,
+      label: labels[key],
+      count: key === "experts" ? await pendingApplicationsCount() : 0,
+    })),
+  );
 
   return (
     <main className="relative flex flex-1 justify-center px-4 py-10 sm:py-16">
       <div aria-hidden className="absolute inset-x-0 top-0 -z-10 h-56 bg-green-900" />
       <div className="w-full max-w-4xl rounded-[var(--radius-mf)] border border-sand-200 bg-ivory-50 p-6 shadow-[0_24px_60px_-30px_rgb(4_48_31/0.45)] sm:p-8">
+        {readOnly && (
+          <p role="status" className="mb-5 rounded-xl bg-gold-500 px-4 py-2.5 text-center text-sm font-bold text-green-900">
+            {t("admin.viewerBanner")}
+          </p>
+        )}
         <h1 className="font-display text-[28px] font-bold leading-snug text-green-900 sm:text-[32px]">{t("pages.admin.title")}</h1>
         <p className="mt-2 text-green-900">
           <span className="text-ink-600">{t("admin.roleLabel")}: </span>
-          <strong>{t(`auth.roles.${admin.role}`)}</strong>
+          <strong>{t(`auth.roles.${role}`)}</strong>
         </p>
         <nav className="mt-5 flex flex-wrap gap-2 border-b border-sand-200 pb-3">
           {tabs.map((x) => (
@@ -83,9 +103,13 @@ export default async function AdminPage({ params, searchParams }: Props) {
         </nav>
         <div className="mt-6">
           {tab === "experts" ? (
-            <ExpertApplications base={base} status={sp.status} selected={sp.app} />
+            <ExpertApplications base={base} status={sp.status} selected={sp.app} readOnly={readOnly} />
+          ) : tab === "cases" ? (
+            <AdminCases base={base} status={sp.status} canAct={!readOnly} />
+          ) : tab === "stats" ? (
+            <AdminStats />
           ) : (
-            <p className="text-ink-600">{t("admin.dashboardLead")}</p>
+            <p className="text-ink-600">{t(readOnly ? "admin.viewerLead" : "admin.dashboardLead")}</p>
           )}
         </div>
       </div>
