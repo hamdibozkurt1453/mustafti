@@ -3,7 +3,8 @@ import "server-only";
 import { after } from "next/server";
 import { cached, DAY } from "@/lib/cache";
 import { clip, embeddedJson, extractResultLinks, linksFromJson, openSearchHref, searchForms, type ExtractedLink } from "./html";
-import { collectItems, mcpLibrary, mcpQuranVerses, mcpSearch, type McpCorpus, type McpItem } from "./mcp-search";
+import { searchBayyinat } from "./bayyinat";
+import { collectItems, mcpFetchHadith, mcpLibrary, mcpQuranVerses, mcpSearch, type McpCorpus, type McpItem } from "./mcp-search";
 import { politeFetch, politeJson } from "./polite-fetch";
 import { QURANENC_TRANSLATIONS } from "./quran";
 import { SOURCE_BY_ID } from "./registry";
@@ -70,6 +71,34 @@ const libraryTitles: AccessMethod = {
   kind: "mcp",
   via: "MCP: browse_library (name)",
   search: async (query, lang) => toResults("islamhouse", await mcpLibrary(query, lang), lang),
+};
+
+/**
+ * الحديث: لا يُعرض حديث دون درجته. بعد البحث يُجلب لكل نتيجة نصها الكامل ودرجتها بأداة fetch
+ * بمعرّفها (بالتوازي، ومخزّنة 24 ساعة في lib/mcp.ts)، وكل حديث لم تأتِ درجته يُحذف.
+ */
+const hadithWithGrade: AccessMethod = {
+  kind: "mcp",
+  via: "MCP: search (sources=hadith) + fetch",
+  search: async (query, lang) => {
+    const items = (await mcpSearch(query, lang, "hadith")).slice(0, MAX_RESULTS);
+    const full = await Promise.all(
+      items.map(async (item) => {
+        const got = item.ref ? await mcpFetchHadith(item.ref).catch(() => null) : null;
+        const grade = got?.grade ?? item.grade;
+        if (!grade) return null;
+        return { ...item, grade, text: got?.text || item.text, url: got?.url ?? item.url };
+      }),
+    );
+    return toResults("hadeethenc", full.filter((x): x is McpItem & { grade: string } => x !== null), lang);
+  },
+};
+
+/** «بيّنات»: فهرس محلي في Supabase (بحث نصي)، ويُتجاهل بصمت إن كان الجدول فارغاً. */
+const bayyinatDb: AccessMethod = {
+  kind: "db",
+  via: "Supabase: bayyinat (fts)",
+  search: (query, lang) => searchBayyinat(query, lang),
 };
 
 // ---------------------------------------------------------------------------
@@ -243,7 +272,8 @@ const mp3quranApi: AccessMethod = {
 
 export const CONNECTORS: Partial<Record<SourceId, AccessMethod[]>> = {
   quranenc: [quranVerses, mcpCorpus("quranenc", "quran"), quranencApi],
-  hadeethenc: [mcpCorpus("hadeethenc", "hadith")],
+  hadeethenc: [hadithWithGrade],
+  bayyinat: [bayyinatDb],
   islamhouse: [libraryTitles, mcpCorpus("islamhouse", "library")],
   byenah: [site("byenah", (s, l) => `https://byenah.com/${l}/search?q=${q(s)}`, NUMERIC_PATH)],
   risala: [risalaApi],

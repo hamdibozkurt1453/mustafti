@@ -289,3 +289,47 @@ export async function mcpLibrary(query: string, lang: string): Promise<McpItem[]
   if (tool.inputSchema.properties?.language) args.language = lang;
   return collectItems(toolData(await callTool(tool.name, args)));
 }
+
+const GRADE_KEYS = ["grade", "hadith_grade", "grade_ar", "hukm", "degree", "attribution_grade", "authenticity", "hadeeth_grade"];
+const HADITH_TEXT_KEYS = ["hadeeth", "hadith", "hadith_text", "hadeeth_text", "text_ar", "arabic_text", "arabic", "text", "content", "body"];
+const ID_KEYS = ["id", "ref", "doc_id", "document_id", "docId", "uri"];
+
+/** درجة مكتوبة في نص Markdown: «الدرجة: صحيح» أو «Grade: Sahih». */
+const GRADE_LINE = /(?:^|\n)\s*[*_#>\-\s]*(?:الدرجة|درجة الحديث|درجته|الحكم|Grade|Degree|Authenticity)\s*[*_]*\s*[:：]\s*[*_]*\s*([^\n]+)/i;
+
+/**
+ * النص الكامل لحديث ودرجته بأداة fetch من خادم MCP بمعرّفه (ref من نتيجة البحث).
+ * يعيد grade فارغاً إن لم يذكرها الخادم؛ والمتصل يحذف الحديث حينها (لا حديث بلا درجة).
+ */
+export async function mcpFetchHadith(ref: string): Promise<{ text?: string; grade?: string; url?: string }> {
+  const tool = await findTool("fetch");
+  if (!tool) throw new Error("MCP tool `fetch` not found");
+  const props = Object.keys(tool.inputSchema.properties ?? {});
+  const key = ID_KEYS.find((k) => props.includes(k)) ?? tool.inputSchema.required?.[0] ?? props[0] ?? "id";
+  const result = await callTool(tool.name, { [key]: ref });
+  const data = toolData(result);
+
+  let grade: string | undefined;
+  let text: string | undefined;
+  let url: string | undefined;
+  const visit = (node: unknown, depth: number) => {
+    if (depth > 6 || node === null || typeof node !== "object") return;
+    if (Array.isArray(node)) return node.forEach((n) => visit(n, depth + 1));
+    const o = node as Record<string, unknown>;
+    grade ??= pick(o, GRADE_KEYS);
+    text ??= pick(o, HADITH_TEXT_KEYS);
+    url ??= pick(o, ["url", "link", "source_url", "permalink"]);
+    for (const value of Object.values(o)) if (value && typeof value === "object") visit(value, depth + 1);
+  };
+  visit(data, 0);
+
+  // رد نصي بلا JSON: الدرجة من سطرها، والنص كما هو.
+  const raw = toolText(result);
+  if (!grade) grade = raw.match(GRADE_LINE)?.[1]?.replace(/[*_]+/g, "").trim();
+  if (!text && raw.trim()) text = raw;
+  return {
+    text: text ? clip(htmlToText(text.replace(/[#*_`>]/g, "")), 1500) : undefined,
+    grade: grade ? clip(htmlToText(grade), 120) : undefined,
+    url: url && /^https?:\/\//.test(url) ? url : undefined,
+  };
+}

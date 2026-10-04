@@ -1,7 +1,7 @@
 import "server-only";
 
 import { chat, type ChatMessage } from "@/lib/llm";
-import { search, type SourceId, type SourceResult } from "@/lib/sources";
+import { search, SOURCE_DEADLINE_MS, type SourceId, type SourceResult } from "@/lib/sources";
 import { classify, type Classification } from "./classify";
 import { checkOutput, guardAndLog, matchKey, type GuardResult } from "./guard";
 import { findTerms } from "./glossary";
@@ -21,13 +21,14 @@ import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } f
 
 /**
  * مصادر الاسترجاع: منصات الجمعية عبر MCP (القرآن، والحديث، وIslamHouse)، وبيان الإسلام،
- * ورسالة الحرمين، والإسلام سؤال وجواب (للشرح العام فقط؛ الحالة الشخصية لا تُسترجع لها نصوص).
+ * ورسالة الحرمين، والإسلام سؤال وجواب (للشرح العام فقط؛ الحالة الشخصية لا تُسترجع لها نصوص)،
+ * و«بيّنات» من فهرسها المحلي (يُتجاهل بصمت ما دام الجدول فارغاً).
  */
-export const CORE_SOURCES: SourceId[] = ["islamhouse", "hadeethenc", "quranenc", "byenah", "risala", "islamqa"];
+export const CORE_SOURCES: SourceId[] = ["islamhouse", "hadeethenc", "quranenc", "byenah", "risala", "islamqa", "bayyinat"];
 const MAX_PASSAGES = 6;
 const PASSAGE_CHARS = 900;
-/** مهلة كل مصدر في المحادثة (أطول قليلاً من مهلة /api/health). */
-const SEARCH_DEADLINE_MS = 8_000;
+/** مهلة كل مصدر في المحادثة: المهلة الموحدة 6 ثوانٍ (S5، طلب حمدي للسرعة). */
+const SEARCH_DEADLINE_MS = SOURCE_DEADLINE_MS;
 /** إن لم يصل شيء: انتظار قصير ثم إعادة البحث نفسه، فتجد الطلبات التي اكتملت في الخلفية في الذاكرة. */
 const RETRY_WAIT_MS = 2_500;
 
@@ -236,8 +237,42 @@ async function generate(question: string, c: Classification, mode: AnswerMode, p
   return { text: guard.text, raw, guard, ok: !reason, reason, ms, cost, attempts };
 }
 
-export async function respond(question: string, options: { history?: ChatMessage[] } = {}): Promise<BrainReply> {
+/** مراحل الرد (لمؤشر «يبحث في المصادر…» في المحادثة). */
+export type BrainStage = "understanding" | "searching" | "writing";
+
+export type RespondOptions = {
+  history?: ChatMessage[];
+  /** يُستدعى عند بدء كل مرحلة (للبث فقط؛ لا يغيّر شيئاً في الرد). */
+  onStage?: (stage: BrainStage) => void;
+};
+
+/**
+ * تسخين البحث بالتوازي مع المصنّف: كلمات البحث التي لا تحتاج المصنّف (مصطلحات القاموس الواردة
+ * وكلمات السؤال نفسه، كما في buildQueries) تُطلب الآن، فتجدها retrieve() جاهزة أو قيد الطلب
+ * (lib/cache يضم الطلبات المتزامنة). لا يُعرض منها شيء؛ ولا تسخين لحالة شخصية أو عاجلة.
+ */
+function warmSearch(question: string): void {
+  if (looksPersonal(question) || looksUrgent(question)) return;
+  const lang = guessLang(question);
+  const queries: { q: string; lang: string }[] = findTerms(question)
+    .slice(0, 2)
+    .map((t) => ({ q: t.term_ar.trim().slice(0, 120), lang: "ar" }));
+  const kw = queryWords(question).slice(0, 6).join(" ").trim().slice(0, 120);
+  if (kw) queries.push({ q: kw, lang });
+  for (const { q, lang: l } of queries) {
+    for (const source of CORE_SOURCES) void search(source, q, l, SEARCH_DEADLINE_MS).catch(() => []);
+  }
+}
+
+export async function respond(question: string, options: RespondOptions = {}): Promise<BrainReply> {
   const started = Date.now();
+  const stage = (s: BrainStage) => {
+    try {
+      options.onStage?.(s);
+    } catch {
+      /* المؤشر لا يوقف الرد */
+    }
+  };
   const overrides: string[] = [];
   const probe = detectIdentityProbe(question);
   const diag: BrainReply["diag"] = { queries: [], searches: [], retried: false, attempts: [] };
@@ -257,7 +292,9 @@ export async function respond(question: string, options: { history?: ChatMessage
   const prefix = probe === "manipulation" ? identityReply("manipulation", guessLang(question)) : "";
   const withPrefix = (text: string) => (prefix ? `${prefix}\n\n${text}` : text);
 
-  // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض).
+  // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض)، والبحث يُسخَّن بالتوازي.
+  stage("understanding");
+  warmSearch(question);
   const cls = await classify(question, { history: options.history });
   const c = { ...cls.classification };
   base.costUsd += cls.costUsd ?? 0;
@@ -285,6 +322,7 @@ export async function respond(question: string, options: { history?: ChatMessage
   }
 
   // 4) A / B / C: الاسترجاع.
+  stage("searching");
   const t0 = Date.now();
   const found = await retrieve(c, question);
   timings.searchMs = Date.now() - t0;
@@ -298,6 +336,7 @@ export async function respond(question: string, options: { history?: ChatMessage
   }
 
   // 5) الصياغة من النصوص فقط، ثم الحارس.
+  stage("writing");
   const gen = await generate(question, c, c.level === "C" ? "khilaf" : "general", passages);
   timings.generateMs = gen.ms;
   base.costUsd += gen.cost;

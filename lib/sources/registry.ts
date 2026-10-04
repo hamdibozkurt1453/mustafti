@@ -138,6 +138,17 @@ export const SOURCES: SourceDef[] = [
     blocked: "robots.txt يمنع صفحة البحث للزواحف؛ نحترمه ولا نبحث فيه آلياً.",
   },
   {
+    id: "bayyinat",
+    name: "بيّنات: أسئلة وأجوبة عن الإسلام",
+    nameEn: "Bayyinat: Questions and Answers about Islam",
+    url: "https://dawa.center/file/7937",
+    domain: "الشبهات والأسئلة المتكررة عن الإسلام",
+    rule: "مصدر أساسي للحلول الحوارية في الشبهات (المرجعية، ص 4). يُعرض كل جواب برقمه ورابط الملف.",
+    access: ["db"],
+    group: "core",
+    note: "فهرس محلي في جدول bayyinat (بحث نصي على العمود fts). إن كان الجدول فارغاً يُتجاهل بصمت.",
+  },
+  {
     id: "jamhara",
     name: "الجمهرة — موسوعة مفردات المحتوى الإسلامي",
     nameEn: "Al-Jamhara (Islamic Content Vocabulary)",

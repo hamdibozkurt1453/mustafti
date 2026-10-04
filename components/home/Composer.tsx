@@ -12,6 +12,8 @@ type Props = {
   onSubmit: () => void;
   variant: "hero" | "dock";
   reduced: boolean;
+  /** يمنع الإرسال (لا الكتابة) أثناء جواب جارٍ. */
+  disabled?: boolean;
 };
 
 /**
@@ -19,7 +21,7 @@ type Props = {
  * فتنتقل الخانة بنعومة من وسط الشاشة إلى أسفلها عند أول سؤال.
  */
 export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer(
-  { value, onChange, onSubmit, variant, reduced },
+  { value, onChange, onSubmit, variant, reduced, disabled = false },
   ref,
 ) {
   const t = useTranslations("composer");
@@ -36,7 +38,7 @@ export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer
 
   function submit(e?: FormEvent) {
     e?.preventDefault();
-    if (value.trim()) onSubmit();
+    if (value.trim() && !disabled) onSubmit();
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -86,7 +88,7 @@ export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer
       </div>
       <button
         type="submit"
-        disabled={!value.trim()}
+        disabled={!value.trim() || disabled}
         aria-label={t("send")}
         className={`flex flex-none items-center justify-center rounded-full bg-gold-500 text-green-900 transition hover:brightness-105 active:scale-95 disabled:bg-sand-200 disabled:text-ink-600 ${
           hero ? "h-12 w-12" : "h-11 w-11"

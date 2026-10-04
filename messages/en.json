@@ -235,7 +235,38 @@
     "bot": "Mustafti",
     "thinking": "Typing…",
     "newChat": "New chat",
-    "label": "Conversation"
+    "label": "Conversation",
+    "stage": {
+      "understanding": "Reading your question…",
+      "searching": "Searching the sources…",
+      "writing": "Writing the answer from the texts…"
+    },
+    "badgeOwn": "Mustafti's wording",
+    "badgeQuoted": "Quoted text",
+    "badgeKhilaf": "Scholars differ on this",
+    "sourcesTitle": "Sources",
+    "grade": "Grade",
+    "viewSource": "View source",
+    "sourceRef": "Source {n}",
+    "showMore": "Show full text",
+    "showLess": "Hide",
+    "askExpert": "Send your question to a specialist",
+    "expertSoon": "Thank you. Sending your question to a specialist will be available within days, God willing: we will help you clarify it, then it reaches qualified scholars without asking for your name. Meanwhile you can ask another general question.",
+    "urgentTitle": "Immediate guidance",
+    "retry": "Try again",
+    "errors": {
+      "rateLimited": "You have reached this hour's question limit (30 questions). Please try again a little later.",
+      "network": "Could not reach Mustafti. Check your connection and try again.",
+      "busy": "Mustafti is busy right now. Please try again in a moment.",
+      "interrupted": "The answer was interrupted before it finished."
+    },
+    "term": {
+      "hint": "Tap to see the term",
+      "equivalent": "Approved equivalent",
+      "usage": "Usage rule",
+      "source": "From the glossary of the challenge's official reference (p. 7).",
+      "close": "Close"
+    }
   },
   "auth": {
     "loginTitle": "Sign in",

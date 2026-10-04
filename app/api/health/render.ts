@@ -27,7 +27,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   link_only: { label: "رابط فقط", cls: "link" },
 };
 
-const KIND: Record<string, string> = { mcp: "MCP", api: "API عام", site: "بحث في الموقع" };
+const KIND: Record<string, string> = { mcp: "MCP", api: "API عام", site: "بحث في الموقع", db: "فهرس محلي" };
 
 function badge(status: string, extra = "") {
   const s = STATUS[status] ?? STATUS.down;
