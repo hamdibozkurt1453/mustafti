@@ -24,6 +24,10 @@ export type ChatSource = {
   /** درجة الحديث كما ذكرها المصدر. */
   grade?: string;
   lang?: string;
+  /** للآيات: نص الآية، ثم التفسير الميسر (tafsir) أو ترجمة المعنى (translation). */
+  verse?: string;
+  note?: string;
+  noteKind?: "tafsir" | "translation";
 };
 
 export type ChatEvent =

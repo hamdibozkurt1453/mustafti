@@ -38,16 +38,29 @@ globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
 /** رد get_quran_verses كما يرسله الخادم: رأس وتعليمات وذيل CITE حول النص. */
 const VERSE_2_127 = [
   "──────── RETRIEVED FROM QURANENC — published text ────────",
-  "البقرة 2:127",
+  '[Surah 2, translation "arabic_moyassar"]',
   "[EXACT] the verse itself — reproduce these words exactly",
+  "[2:127]",
   "وَإِذۡ يَرۡفَعُ إِبۡرَٰهِـۧمُ ٱلۡقَوَاعِدَ مِنَ ٱلۡبَيۡتِ وَإِسۡمَٰعِيلُ",
+  "واذكر -أيها النبي- حين رفع إبراهيم وإسماعيل عليهما السلام أسس الكعبة",
   "[/EXACT]",
-  "التفسير الميسر: واذكر -أيها النبي- حين رفع إبراهيم وإسماعيل عليهما السلام أسس الكعبة",
+  "Source: https://islamenc.com/ar/quran/2/127",
   "──────── CITE ────────",
   "Every result you carry into your reply must bring the URL",
 ].join("\n");
 
-const SURAH_3 = ["──────── RETRIEVED FROM QURANENC ────────", "سورة آل عمران — 200 آية", "3:1 الٓمٓ", "──────── CITE ────────"].join("\n");
+/** رد الخادم الفعلي لآل عمران 1: التفسير يذكر «سورة البقرة»، والرد لا يذكر اسم السورة. */
+const VERSE_3_1 = [
+  "──────── RETRIEVED FROM QURANENC ────────",
+  '[Surah 3, translation "arabic_moyassar"]',
+  "[EXACT] the verse itself — reproduce these words exactly",
+  "[3:1]",
+  "الٓمٓ",
+  "سبق الكلام عليها في أول سورة البقرة.",
+  "[/EXACT]",
+  "Source: https://islamenc.com/ar/quran/3/1",
+  "──────── CITE ────────",
+].join("\n");
 
 function deps(overrides: Partial<PinDeps> = {}): PinDeps {
   return {
@@ -55,7 +68,7 @@ function deps(overrides: Partial<PinDeps> = {}): PinDeps {
       surah === 2 && ayah === 127
         ? [{ title: "البقرة 2:127", text: VERSE_2_127, url: "https://quranenc.com/ar/browse/arabic_moyassar/2#127" }]
         : surah === 3 && ayah === 1
-          ? [{ title: "آل عمران 3:1", text: SURAH_3, url: "https://quranenc.com/ar/browse/arabic_moyassar/3#1" }]
+          ? [{ title: '[Surah 3, translation "arabic_moyassar"]', text: VERSE_3_1, url: "https://quranenc.com/ar/browse/arabic_moyassar/3#1" }]
           : [],
     searchCorpus: async () => [],
     searchAny: async () => [],
@@ -78,7 +91,7 @@ const C: Classification = {
 };
 
 const PLAN = (p: Partial<CitationPlan>): Promise<CitationPlan> =>
-  Promise.resolve({ quran: [], surahInfo: [], hadithQueries: [], bayyinatQueries: [], libraryQueries: [], ...p });
+  Promise.resolve({ quran: [], surahInfo: [], quranIndex: false, quranQueries: [], hadithQueries: [], bayyinatQueries: [], ...p });
 
 const emptyDiag = (): RetrievalDiag => ({
   queries: [],
@@ -102,9 +115,13 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
     assert.equal(pinned.length, 1);
     const v = pinned[0] as Candidate;
     assert.match(v.text, /يَرۡفَعُ إِبۡرَٰهِـۧمُ ٱلۡقَوَاعِدَ/);
-    assert.match(v.text, /التفسير الميسر/);
-    assert.doesNotMatch(v.text, /RETRIEVED|EXACT|reproduce|CITE|Every result/);
+    assert.match(v.text, /التفسير الميسر: واذكر/);
+    assert.doesNotMatch(v.text, /RETRIEVED|EXACT|reproduce|CITE|Every result|\[Surah|\[2:127\]|Source:/);
+    assert.equal(v.title, "سورة البقرة — الآية 127");
     assert.match(v.source, /البقرة/);
+    assert.equal(v.url, "https://islamenc.com/ar/quran/2/127");
+    assert.match(v.verse ?? "", /^وَإِذۡ يَرۡفَعُ/);
+    assert.equal(v.noteKind, "tafsir");
     assert.equal(v.pinned, true);
     assert.deepEqual(diag.pinLog?.map((x) => x.status), ["ok"]);
   });
@@ -117,15 +134,65 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
     assert.ok(passages.some((p) => /يَرۡفَعُ إِبۡرَٰهِـۧمُ/.test(p.text)));
   });
 
-  it("surah_info ← «سورة آل عمران — رقم 3 في ترتيب المصحف — عدد آياتها 200» من الرد وحده", async () => {
-    const pinned = await mod.pinnedCandidates(C, "ما السورة الثالثة", emptyDiag(), PLAN({ surahInfo: [3] }), deps());
+  it("surah_info ← «سورة آل عمران — رقم 3 … 200» من فهرس المصحف، ولو تعطل MCP", async () => {
+    const pinned = await mod.pinnedCandidates(
+      C,
+      "ما السورة الثالثة",
+      emptyDiag(),
+      PLAN({ surahInfo: [3] }),
+      deps({ quranRange: async () => { throw new Error("429"); } }),
+    );
     assert.equal(pinned.length, 1);
-    assert.match(pinned[0].text, /^سورة آل عمران — رقم 3 في ترتيب المصحف — عدد آياتها 200/);
+    assert.equal(pinned[0].text, "سورة آل عمران — رقم 3 في ترتيب المصحف — عدد آياتها 200 — مدنية");
+    assert.equal(pinned[0].source, "فهرس سور المصحف");
+    assert.equal(pinned[0].url, "https://islamenc.com/ar/quran/3");
   });
 
-  it("آية غير موجودة تسقط وتُسجَّل «فارغ»", async () => {
+  it("آية آل عمران 1: الاسم من الفهرس لا من التفسير («سورة البقرة» في نصه)", async () => {
+    const pinned = await mod.pinnedCandidates(C, "ما أول آية في آل عمران", emptyDiag(), PLAN({ quran: [{ surah: 3, ayah: 1 }] }), deps());
+    assert.equal(pinned.length, 1);
+    assert.equal(pinned[0].title, "سورة آل عمران — الآية 1");
+    assert.match(pinned[0].source, /آل عمران/);
+    assert.doesNotMatch(pinned[0].source, /البقرة/);
+    assert.equal(pinned[0].verse, "الٓمٓ");
+    assert.equal(pinned[0].note, "سبق الكلام عليها في أول سورة البقرة.");
+  });
+
+  it("quran_index ← «عدد سور القرآن الكريم في المصحف 114 سورة»", async () => {
+    const pinned = await mod.pinnedCandidates(C, "كم عدد سور القرآن", emptyDiag(), PLAN({ quranIndex: true }), deps());
+    assert.equal(pinned.length, 1);
+    assert.match(pinned[0].text, /114 سورة/);
+    assert.match(pinned[0].text, /6236 آية/);
+  });
+
+  it("quran_queries ← البحث في نص القرآن ثم get_quran_verses للموضع", async () => {
+    const asked: string[] = [];
+    const pinned = await mod.pinnedCandidates(
+      C,
+      "من قام ببناء الكعبة",
+      emptyDiag(),
+      PLAN({ quranQueries: ["يرفع إبراهيم القواعد"] }),
+      deps({
+        searchCorpus: async (q, lang, corpus) => {
+          asked.push(`${corpus}:${lang}:${q}`);
+          return corpus === "quran" ? [{ title: "البقرة 2:127", text: "…", url: "https://quranenc.com/ar/browse/arabic_moyassar/2#127" }] : [];
+        },
+      }),
+    );
+    assert.deepEqual(asked, ["quran:ar:يرفع إبراهيم القواعد"]);
+    assert.equal(pinned.length, 1);
+    assert.equal(pinned[0].title, "سورة البقرة — الآية 127");
+  });
+
+  it("آية خارج عدد آيات سورتها تسقط بلا طلب للخادم وتُسجَّل «فارغ»", async () => {
     const diag = emptyDiag();
-    const pinned = await mod.pinnedCandidates(C, "سؤال", diag, PLAN({ quran: [{ surah: 2, ayah: 999 }] }), deps());
+    const pinned = await mod.pinnedCandidates(
+      C,
+      "سؤال",
+      diag,
+      PLAN({ quran: [{ surah: 2, ayah: 287 }] }),
+      deps({ quranRange: async () => { throw new Error("لا طلب لآية غير موجودة"); } }),
+    );
     assert.equal(pinned.length, 0);
     assert.deepEqual(diag.pinLog?.map((x) => x.status), ["empty"]);
   });
@@ -178,5 +245,50 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
     );
     assert.deepEqual(asked, ["عبادة الكعبة"]);
     assert.equal(pinned.length, 1);
+  });
+
+  it("إعادة التخطيط مرة واحدة إن لم يبلغ أي موضع درجة 2، مع ذكر المواضع الفاشلة", async () => {
+    scoringInputs.length = 0;
+    const failedSeen: string[][] = [];
+    const prev = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).includes("openrouter.ai")) {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        const user = (body.messages as { role: string; content: string }[]).find((m) => m.role === "user")?.content ?? "";
+        // كل نص يُقيَّم وحده بمعرّفه: آية البقرة 127 ذات صلة، وآية العلق 12 لا.
+        const blocks = user.split(/\n\n(?=\[S\d+\])/);
+        const scores = blocks.flatMap((b) => {
+          const id = b.match(/\[(S\d+)\]/)?.[1];
+          return id ? [{ id, score: /يَرۡفَعُ/.test(b) ? 3 : 0 }] : [];
+        });
+        return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ scores }) } }], usage: {} }), { status: 200 });
+      }
+      return prev(url, init);
+    }) as typeof fetch;
+    try {
+      const { passages, diag } = await mod.retrieve(
+        C,
+        "من قام ببناء الكعبة",
+        PLAN({ quran: [{ surah: 96, ayah: 12 }] }),
+        deps({
+          quranRange: async (surah, ayah) =>
+            surah === 96
+              ? [{ title: "x", text: "[96:12]\nأَوۡ أَمَرَ بِٱلتَّقۡوَىٰٓ\nأو أمر غيره بالتقوى", url: "https://quranenc.com/ar/browse/arabic_moyassar/96#12" }]
+              : surah === 2 && ayah === 127
+                ? [{ title: "x", text: VERSE_2_127, url: "u" }]
+                : [],
+        }),
+        async (failed) => {
+          failedSeen.push(failed);
+          return { quran: [{ surah: 2, ayah: 127 }], surahInfo: [], quranIndex: false, quranQueries: [], hadithQueries: [], bayyinatQueries: [] };
+        },
+      );
+      assert.deepEqual(failedSeen, [["quran 96:12"]]);
+      assert.deepEqual(diag.replan?.quran, [{ surah: 2, ayah: 127 }]);
+      assert.ok(passages.some((p) => p.title === "سورة البقرة — الآية 127"));
+      assert.ok(diag.pinLog?.some((x) => x.ref.startsWith("↻")));
+    } finally {
+      globalThis.fetch = prev;
+    }
   });
 });

@@ -7,6 +7,7 @@ import { dirForLang, MAX_HISTORY, MAX_QUESTION_CHARS, type ChatEvent, type ChatS
 import { llmUserMessage } from "@/lib/llm";
 import { checkChatRateLimit, CHAT_LIMIT_PER_HOUR } from "@/lib/rate-limit";
 import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin";
+import { cleanForDisplay } from "@/lib/brain/quran-index";
 
 /**
  * POST /api/chat — المحادثة الحية (بث NDJSON، البروتوكول في lib/chat/protocol.ts).
@@ -35,14 +36,16 @@ function wordDelay(words: number): number {
 /** بطاقات المصادر للجواب فقط: المشار إليها بـ [n] إن وُجدت، وإلا كل النصوص المسترجعة. */
 function sourcesOf(reply: BrainReply): ChatSource[] {
   if (reply.kind !== "answer") return [];
+  // النص للعرض بلا علامات الخادم («[Surah 3, …]»، «[3:1]»، «[EXACT]»، «Source: …»).
   const cards = reply.passages.map((p, i) => ({
     n: i + 1,
     title: p.title,
-    text: p.text,
+    text: cleanForDisplay(p.text),
     url: p.url,
     source: p.source,
     ...(p.grade ? { grade: p.grade } : {}),
     ...(p.lang ? { lang: p.lang } : {}),
+    ...(p.verse ? { verse: cleanForDisplay(p.verse), note: p.note ? cleanForDisplay(p.note) : undefined, noteKind: p.noteKind } : {}),
   }));
   const cited = new Set([...reply.text.matchAll(/[\[(（]\s*(\d{1,2})\s*[\])）]/g)].map((m) => Number(m[1])));
   const picked = cards.filter((c) => cited.has(c.n));
@@ -121,7 +124,9 @@ export async function POST(request: Request) {
           level: reply.classification?.level,
           sources: sourcesOf(reply),
         });
-        const pieces = reply.text.split(/(\s+)/).filter(Boolean);
+        // احتياط للعرض: لا تصل علامات الخادم («[Surah …]»، «[EXACT]»، «Source: …») إلى السائل.
+        const shown = reply.kind === "answer" ? cleanForDisplay(reply.text) : reply.text;
+        const pieces = shown.split(/(\s+)/).filter(Boolean);
         const delay = wordDelay(pieces.length / 2);
         // كلمتان في كل حدث تقريباً: بث سلس بلا آلاف الأحداث.
         for (let i = 0; i < pieces.length && open; i += 4) {

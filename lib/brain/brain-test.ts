@@ -49,6 +49,7 @@ export type CaseReport = {
     basics?: string[];
     verses?: string[];
     plan?: unknown;
+    replan?: unknown;
     pinned?: number;
     pinLog?: { ref: string; status: string; count: number; detail?: string }[];
     errors?: string[];
@@ -148,6 +149,7 @@ export async function runBrainCase(id: string): Promise<CaseReport> {
         basics: reply.diag.retrieval?.basics,
         verses: reply.diag.retrieval?.verses,
         plan: reply.diag.retrieval?.plan,
+        replan: reply.diag.retrieval?.replan,
         pinned: reply.diag.retrieval?.pinned,
         pinLog: reply.diag.retrieval?.pinLog,
         // أخطاء الوصول إلى المصادر (انقطاع MCP، أو خطأ Supabase) لكل بحث.
@@ -187,7 +189,7 @@ export async function mcpSamples(): Promise<unknown> {
   });
   const run = async (name: string, args: Record<string, unknown>) => {
     try {
-      return { tool: name, args, ...short(await callTool(name, args)) };
+      return { tool: name, args, ...short(await callTool(name, args, { timeoutMs: 15_000 })) };
     } catch (error) {
       return { tool: name, args, error: String((error as Error).message).slice(0, 300) };
     }
@@ -208,7 +210,7 @@ export async function mcpSamples(): Promise<unknown> {
   ]);
   let firstId: string | undefined;
   try {
-    const r = await callTool("search", had);
+    const r = await callTool("search", had, { timeoutMs: 15_000 });
     const s = JSON.stringify(toolData(r)) + toolText(r);
     firstId = s.match(/"(?:id|doc_id|document_id)"\s*:\s*"?([\w:-]+)"?/)?.[1];
   } catch {

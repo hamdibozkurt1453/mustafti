@@ -113,11 +113,48 @@ export function prerank<T extends Candidate>(cands: T[], terms: string[], pool =
 export const rerankId = (i: number) => `S${i + 1}`;
 
 /** قائمة المرشحين كما تُرسل للمقيّم، كل نص بمعرّفه. */
-export function rerankList(cands: Candidate[]): string {
+export function rerankList(cands: Candidate[], terms: string[] = []): string {
   return cands
-    // المرجع المحدد يُرسل بنص أطول (الآية واسم السورة والتفسير، أو الحديث بدرجته وشرحه).
-    .map((c, i) => `[${rerankId(i)}] ${c.source} — ${clip(c.title, 140)}\n${clip(c.text, c.pinned ? 900 : 420)}`)
+    // المرجع المحدد يُرسل بنص أطول (الآية واسم السورة والتفسير، أو الحديث بدرجته وشرحه)،
+    // والنص الطويل بمطلعه ونافذة حول أقوى موضع لكلمات السؤال (لا بأوله وحده).
+    .map((c, i) => `[${rerankId(i)}] ${c.source} — ${clip(c.title, 140)}\n${focusExcerpt(c.text, terms, c.pinned ? 900 : 420)}`)
     .join("\n\n");
+}
+
+/**
+ * مقتطف مركّز من نص طويل: مطلعه (سطره الأول، حتى 160 حرفاً) ثم نافذة حول الجملة الأكثر
+ * احتواءً لكلمات السؤال، موصولين بـ « … ». كل جزء منقول من النص بحروفه (لا صياغة).
+ * فالحديث الطويل الذي يأتي موضع الشاهد في آخره لا يُقصّ قبل الشاهد.
+ */
+export function focusExcerpt(text: string, terms: string[], max: number): string {
+  if (text.length <= max) return text;
+  const segs = text.split(/(?<=[.!؟?:\n])\s+/u).filter((x) => x.trim());
+  const want = new Set(terms);
+  const hits = segs.map((x) => keywords(x).filter((w) => want.has(w)).length);
+  const best = hits.indexOf(Math.max(0, ...hits));
+  if (best <= 0 || hits[best] === 0) return clip(text, max);
+  const head = clip(segs[0], 160);
+  const budget = max - head.length - 3;
+  let from = best;
+  let to = best;
+  let size = segs[best].length;
+  // توسيع النافذة حول الجملة الأقوى: التالية ثم السابقة، ما دام في الحد.
+  let grow = true;
+  while (grow) {
+    grow = false;
+    if (to + 1 < segs.length && size + segs[to + 1].length + 1 <= budget) {
+      to += 1;
+      size += segs[to].length + 1;
+      grow = true;
+    }
+    if (from - 1 > 0 && size + segs[from - 1].length + 1 <= budget) {
+      from -= 1;
+      size += segs[from].length + 1;
+      grow = true;
+    }
+  }
+  const window = clip(segs.slice(from, to + 1).join(" "), Math.max(budget, 80));
+  return from === 1 ? clip(`${segs[0]} ${window}`, max) : `${head} … ${window}`;
 }
 
 /**
@@ -161,29 +198,4 @@ export function cleanToolText(raw: string): string {
       .replace(/[ \t]+/g, " ")
       .trim()
   );
-}
-
-const AR = "\\u0600-\\u06FF\\u0750-\\u077F";
-
-/**
- * اسم السورة ورقمها وعدد آياتها كما يذكرها رد get_quran_verses (لا شيء من خارج الرد):
- * الاسم من «سورة X» أو «X 3:1» أو «(X)»، والرقم إن ورد «3:1»، والعدد إن ذكر الرد «200 آية/verses».
- */
-export function surahInfoFromText(text: string, surah: number): { name?: string; number?: number; count?: number } {
-  const t = text.replace(/[\u064B-\u065F\u0670\u0640]/g, "");
-  const name =
-    t.match(new RegExp(`سورة\\s+([${AR}]+(?:\\s[${AR}]+)?)`, "u"))?.[1] ??
-    t.match(new RegExp(`([${AR}]+(?:\\s[${AR}]+)?)\\s*\\(?\\s*${surah}\\s*[:：]\\s*\\d`, "u"))?.[1] ??
-    t.match(new RegExp(`\\(\\s*([${AR}]+(?:\\s[${AR}]+)?)\\s*\\)`, "u"))?.[1];
-  const number = new RegExp(`(?<!\\d)${surah}\\s*[:：]\\s*\\d`).test(t) ? surah : undefined;
-  const count = Number(
-    t.match(/(\d{1,3})\s*(?:آية|آيات|verses|ayahs|ayat|āyāt)/i)?.[1] ??
-      t.match(/(?:عدد\s+(?:ال)?آيات(?:ها)?|verses|ayahs|verse count)\s*[:：]?\s*(\d{1,3})/i)?.[1],
-  );
-  const clean = name?.trim().replace(/^سورة\s+/, "");
-  return {
-    name: clean && !/^(قال|الله|تعالى|بسم)$/.test(clean) ? clean : undefined,
-    number,
-    count: Number.isInteger(count) && count > 0 && count <= 286 ? count : undefined,
-  };
 }

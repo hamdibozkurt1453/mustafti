@@ -91,6 +91,10 @@ export type Passage = {
   source: string;
   grade?: string;
   lang?: string;
+  /** للآيات: نص الآية، والتفسير الميسر أو ترجمة المعنى (للعرض المنظم في بطاقة المصدر). */
+  verse?: string;
+  note?: string;
+  noteKind?: "tafsir" | "translation";
 };
 
 /** النصوص المسترجعة مرقّمة كما يراها النموذج. */
@@ -119,6 +123,8 @@ export function ANSWER_FORMAT(lang: string): string {
 2. THEN the evidence, copied exactly from a passage: a Qur'an verse in Arabic inside ﴿…﴾ with its surah name and number:verse, or a hadith inside «…» with its grade as written; then [n]. If the asker is not Arabic-speaking, give the meaning after the Arabic text, OUTSIDE quotation marks, labelled ${message("translationOfMeaning", lang)}.
 3. OPTIONALLY 1–2 short sentences of explanation taken from the tafsir/sharh in the passages, each with its [n].
 Never start the answer with a quotation, ﴿, «, a verse or a bare reference (never reply with only «البقرة 127: ﴿…﴾»).
+Quotation marks «…» and ﴿…﴾ are ONLY for text copied word for word from a passage. Never put your own sentence (including the first answer sentence) inside «…». If no passage has a verse or hadith worth quoting word for word, skip step 2 entirely.
+Never copy source markers such as "[Surah 3, translation …]", "[3:1]", "[EXACT]", "Source:" or URLs into the answer; name a verse by the surah name and number given in its passage title.
 The direct sentence states ONLY what a cited passage states or directly says: no dates, places, names, numbers or details that are not in the passages. Use honorifics where fitting (عليه السلام، ﷺ، رضي الله عنه). Keep your own wording short (normally under 90 words).`;
 }
 

@@ -22,7 +22,9 @@ import { checkOutput, guard, isVerbatim, separateQuoted } from "../lib/brain/gua
 import { looksPersonal, looksUrgent } from "../lib/brain/heuristics";
 import { detectIdentityProbe, identityReply, IDENTITY_PROMPT } from "../lib/brain/identity";
 import { MESSAGE_LANGS, MESSAGES, message } from "../lib/brain/messages";
-import { applyScores, clean, cleanToolText, keywords, prerank, rerankList, type Candidate, type Dropped } from "../lib/brain/rank";
+import { applyScores, clean, cleanToolText, focusExcerpt, keywords, prerank, rerankList, type Candidate, type Dropped } from "../lib/brain/rank";
+import { cleanForDisplay, indexSummaryLine, isValidVerse, parseVerseText, SURAH_COUNT, SURAHS, surahInfoLine, surahMeta, verseTitle } from "../lib/brain/quran-index";
+import { createLimiter, retryDelayMs, retryingFetch, withRetry } from "../lib/limiter";
 import { ABSTAIN_AR, answerSystem, CLASSIFY_SYSTEM, NON_NEGOTIABLE_RULES } from "../lib/brain/prompts";
 import { BRAIN_CASES } from "../lib/brain/test-cases";
 
@@ -601,16 +603,173 @@ describe("خطة الإحالات: مواضع فقط، مطبَّعة", () => {
         surah_info: [3, 3, 0, 200],
         hadith_queries: ["«بني الإسلام على خمس»", "ب", "بناء الكعبة إبراهيم"],
         bayyinat_queries: ["عبادة الكعبة", "ب"],
-        library_queries: [],
+        quran_index: false,
+        quran_queries: ["«يرفع إبراهيم القواعد»", "ب", "إن أول بيت", "ثالثة"],
       }),
     );
-    assert.deepEqual(plan.quran.slice(0, 2), [{ surah: 2, ayah: 127 }, { surah: 1, ayah: 1, through: 10 }]);
+    // الفاتحة 7 آيات: النطاق يقف عند آخرها.
+    assert.deepEqual(plan.quran.slice(0, 2), [{ surah: 2, ayah: 127 }, { surah: 1, ayah: 1, through: 7 }]);
+    assert.deepEqual(plan.quranQueries, ["يرفع إبراهيم القواعد", "إن أول بيت"]);
     assert.equal(plan.quran.length, 6);
     assert.deepEqual(plan.surahInfo, [3]);
     assert.deepEqual(plan.hadithQueries, ["بني الإسلام على خمس", "بناء الكعبة إبراهيم"]);
     assert.deepEqual(plan.bayyinatQueries, ["عبادة الكعبة"]);
     assert.equal(isEmptyPlan(plan), false);
     assert.equal(isEmptyPlan(null), true);
+  });
+
+  it("آية خارج عدد آيات سورتها (من الفهرس) تسقط: البقرة 287، الكوثر 4", () => {
+    const plan = normalizePlan(
+      PlanSchema.parse({
+        quran: [
+          { surah: 2, ayah: 287, through: null },
+          { surah: 108, ayah: 4, through: null },
+          { surah: 108, ayah: 1, through: 9 },
+        ],
+        surah_info: [],
+        quran_index: true,
+        quran_queries: [],
+        hadith_queries: [],
+        bayyinat_queries: [],
+      }),
+    );
+    assert.deepEqual(plan.quran, [{ surah: 108, ayah: 1, through: 3 }]);
+    assert.equal(plan.quranIndex, true);
+    assert.equal(isEmptyPlan({ ...plan, quran: [] }), false, "quran_index وحده خطة غير فارغة");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("فهرس سور المصحف (data/quran-index.json)", () => {
+  it("114 سورة، ومجموع الآيات 6236، و28 مدنية، والأرقام متتالية", () => {
+    assert.equal(SURAH_COUNT, 114);
+    assert.equal(SURAHS.reduce((a, s) => a + s.verses, 0), 6236);
+    assert.equal(SURAHS.filter((s) => s.type === "madani").length, 28);
+    SURAHS.forEach((s, i) => assert.equal(s.n, i + 1));
+  });
+  it("السورة 3 ← آل عمران، 200 آية؛ والسورة 2 ← البقرة، 286 آية", () => {
+    assert.equal(surahMeta(3)?.ar, "آل عمران");
+    assert.equal(surahMeta(3)?.verses, 200);
+    assert.equal(surahMeta(2)?.ar, "البقرة");
+    assert.equal(surahMeta(2)?.verses, 286);
+    assert.equal(surahMeta(1)?.ar, "الفاتحة");
+    assert.equal(surahMeta(114)?.ar, "الناس");
+    assert.equal(surahMeta(0), undefined);
+    assert.equal(surahMeta(115), undefined);
+  });
+  it("نصوص الفهرس: تعريف السورة، وعنوان الآية، والفهرس جملةً", () => {
+    assert.equal(surahInfoLine(3), "سورة آل عمران — رقم 3 في ترتيب المصحف — عدد آياتها 200 — مدنية");
+    assert.equal(verseTitle(3, 1), "سورة آل عمران — الآية 1");
+    assert.equal(verseTitle(2, 127, 129), "سورة البقرة — الآيات 127-129");
+    assert.match(indexSummaryLine(), /114 سورة، أولها سورة الفاتحة وآخرها سورة الناس، ومجموع آياتها 6236 آية/);
+    assert.equal(isValidVerse(3, 200), true);
+    assert.equal(isValidVerse(3, 201), false);
+  });
+  it("رد get_quran_verses الفعلي لـ 3:1: الآية والتفسير، ولا اسم سورة يؤخذ من النص", () => {
+    const raw = [
+      "──────── RETRIEVED FROM QURANENC ────────",
+      '[Surah 3, translation "arabic_moyassar"]',
+      "[EXACT] the verse itself — reproduce these words exactly",
+      "[3:1]",
+      "الٓمٓ",
+      "سبق الكلام عليها في أول سورة البقرة.",
+      "[/EXACT]",
+      "Source: https://islamenc.com/ar/quran/3/1",
+      "──────── CITE ────────",
+      "Every result you carry into your reply must bring the URL",
+    ].join("\n");
+    const parsed = parseVerseText(raw);
+    assert.deepEqual(parsed.verses, [{ surah: 3, ayah: 1, arabic: "الٓمٓ", note: "سبق الكلام عليها في أول سورة البقرة." }]);
+    assert.equal(parsed.sourceUrl, "https://islamenc.com/ar/quran/3/1");
+    assert.equal(verseTitle(parsed.verses[0].surah, parsed.verses[0].ayah), "سورة آل عمران — الآية 1");
+  });
+  it("عدة آيات، والحواشي ليست آيات", () => {
+    const raw = ["[1:1]", "بِسۡمِ ٱللَّهِ", "1. باسم الله أبتدئ[1]", "Footnotes:", "[1:1] حاشية", "[1:2]", "ٱلۡحَمۡدُ لِلَّهِ", "الثناء على الله"].join("\n");
+    const v = parseVerseText(raw).verses;
+    assert.deepEqual(v.map((x) => `${x.surah}:${x.ayah}`), ["1:1", "1:2"]);
+    assert.equal(v[0].note, "باسم الله أبتدئ");
+  });
+  it("cleanForDisplay: بلا «[Surah …]» ولا «[3:1]» ولا «[EXACT]» ولا «Source:»", () => {
+    const t = cleanForDisplay('[Surah 3, translation "arabic_moyassar"] [3:1] الٓمٓ سبق الكلام عليها. [EXACT] Source: https://islamenc.com/ar/quran/3/1');
+    assert.equal(t, "الٓمٓ سبق الكلام عليها.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("حماية خادم MCP: حد التزامن وإعادة المحاولة عند 429", () => {
+  it("لا يتجاوز 3 طلبات متزامنة، والباقي ينتظر دوره ثم يكتمل", async () => {
+    const limit = createLimiter(3);
+    let now = 0;
+    let peak = 0;
+    const jobs = Array.from({ length: 8 }, (_, i) =>
+      limit(async () => {
+        now += 1;
+        peak = Math.max(peak, now);
+        await new Promise((r) => setTimeout(r, 5));
+        now -= 1;
+        return i;
+      }),
+    );
+    assert.deepEqual(await Promise.all(jobs), [0, 1, 2, 3, 4, 5, 6, 7]);
+    assert.equal(peak, 3);
+    assert.equal(limit.active(), 0);
+  });
+  it("خطأ في مهمة لا يعطّل الطابور", async () => {
+    const limit = createLimiter(1);
+    await assert.rejects(limit(async () => { throw new Error("x"); }));
+    assert.equal(await limit(async () => 1), 1);
+  });
+  it("مهلة الانتظار: Retry-After بالثواني، وإلا 1s ثم 2s", () => {
+    assert.equal(retryDelayMs(1), 1000);
+    assert.equal(retryDelayMs(2), 2000);
+    assert.equal(retryDelayMs(1, "3"), 3000);
+    assert.equal(retryDelayMs(1, "60"), 5000, "حد أعلى 5 ثوانٍ");
+  });
+  it("withRetry: يعيد مرتين عند 429 فقط", async () => {
+    const waits: number[] = [];
+    let n = 0;
+    const ok = await withRetry(async () => {
+      n += 1;
+      if (n < 3) throw new Error("mcp tool search error: 429 Too Many Requests");
+      return "ok";
+    }, { sleep: async (ms) => void waits.push(ms) });
+    assert.equal(ok, "ok");
+    assert.deepEqual(waits, [1000, 2000]);
+    let m = 0;
+    await assert.rejects(withRetry(async () => { m += 1; throw new Error("timeout"); }, { sleep: async () => {} }));
+    assert.equal(m, 1, "غير 429 لا يعاد");
+    let k = 0;
+    await assert.rejects(withRetry(async () => { k += 1; throw new Error("429"); }, { sleep: async () => {} }));
+    assert.equal(k, 3, "محاولة + إعادتان");
+  });
+  it("retryingFetch: رد HTTP 429 يعاد باحترام Retry-After", async () => {
+    const waits: number[] = [];
+    let calls = 0;
+    const base = (async () => {
+      calls += 1;
+      return calls === 1 ? new Response("slow down", { status: 429, headers: { "Retry-After": "2" } }) : new Response("ok", { status: 200 });
+    }) as unknown as typeof fetch;
+    const res = await retryingFetch(base, 2, async (ms) => void waits.push(ms))("http://x");
+    assert.equal(res.status, 200);
+    assert.deepEqual(waits, [2000]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("المقتطف المركّز للنص الطويل", () => {
+  it("الشاهد في آخر الحديث الطويل يصل إلى المقيّم مع مطلعه", () => {
+    const filler = Array.from({ length: 30 }, (_, i) => `جملة تمهيدية رقم ${i} لا صلة لها بالسؤال.`).join(" ");
+    const text = `عن أبي هريرة رضي الله عنه قال: ${filler} قال رسول الله ﷺ: بني الإسلام على خمس شهادة أن لا إله إلا الله.`;
+    const out = focusExcerpt(text, keywords("بني الإسلام على خمس"), 420);
+    assert.ok(out.length <= 425, String(out.length));
+    assert.match(out, /^عن أبي هريرة/);
+    assert.match(out, /بني الإسلام على خمس/);
+    assert.match(out, / … /);
+  });
+  it("النص القصير كما هو، وبلا تطابق فأوله", () => {
+    assert.equal(focusExcerpt("نص قصير", ["x"], 100), "نص قصير");
+    const long = "أ ".repeat(300);
+    assert.equal(focusExcerpt(long, ["غير"], 50).length, 51);
   });
 });
 

@@ -34,15 +34,43 @@ export function SourceCard({ source, messageId }: { source: ChatSource; messageI
       <p dir="auto" className="mt-2 text-sm font-semibold leading-snug">
         {source.title}
       </p>
-      <blockquote
-        dir={dir}
-        className={`mt-2 whitespace-pre-wrap border-s-2 border-gold-500 ps-3 text-[14px] leading-relaxed text-green-900/90 ${
-          long && !open ? "line-clamp-5" : ""
-        }`}
-      >
-        {source.text}
-      </blockquote>
-      {long && (
+      {source.verse ? (
+        <>
+          {/* الآية بنصها كما في المصحف، ثم التفسير الميسر أو ترجمة المعنى بعنوانهما. */}
+          <blockquote
+            dir="rtl"
+            lang="ar"
+            className="mt-2 rounded-2xl bg-ivory-50 px-4 py-3 text-center text-[19px] leading-[2.1] text-green-900"
+          >
+            ﴿{source.verse}﴾
+          </blockquote>
+          {source.note && (
+            <div className="mt-2">
+              <p className="text-[11px] font-semibold text-green-600">
+                {source.noteKind === "translation" ? t("noteTranslation") : t("noteTafsir")}
+              </p>
+              <p
+                dir={dirForText(source.note)}
+                className={`mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-green-900/90 ${
+                  source.note.length > LONG && !open ? "line-clamp-5" : ""
+                }`}
+              >
+                {source.note}
+              </p>
+            </div>
+          )}
+        </>
+      ) : (
+        <blockquote
+          dir={dir}
+          className={`mt-2 whitespace-pre-wrap border-s-2 border-gold-500 ps-3 text-[14px] leading-relaxed text-green-900/90 ${
+            long && !open ? "line-clamp-5" : ""
+          }`}
+        >
+          {source.text}
+        </blockquote>
+      )}
+      {(source.verse ? (source.note?.length ?? 0) > LONG : long) && (
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}

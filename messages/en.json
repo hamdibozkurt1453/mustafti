@@ -266,7 +266,9 @@
       "usage": "Usage rule",
       "source": "From the glossary of the challenge's official reference (p. 7).",
       "close": "Close"
-    }
+    },
+    "noteTafsir": "Al-Muyassar Tafsir",
+    "noteTranslation": "Translation of the meaning"
   },
   "auth": {
     "loginTitle": "Sign in",

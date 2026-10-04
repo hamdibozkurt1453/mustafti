@@ -13,23 +13,30 @@ import { matchBasics, parseVerseRef, quotedVerses, verseRefsInText, type VerseRe
 import type { Classification } from "./classify";
 import { isEmptyPlan, type CitationPlan } from "./plan";
 import { findTerms } from "./glossary";
-import { applyScores, clean, cleanToolText, surahInfoFromText, keywords, prerank, rerankList, STOP, type Candidate as RankCandidate } from "./rank";
+import { applyScores, clean, cleanToolText, focusExcerpt, keywords, prerank, rerankList, STOP, type Candidate as RankCandidate } from "./rank";
+import { INDEX_SOURCE, indexSummaryLine, isValidVerse, parseVerseText, surahInfoLine, surahUrl, verseTitle } from "./quran-index";
 import { matchKey } from "./guard";
 import type { Passage } from "./prompts";
 
 /**
  * الاسترجاع لمُستفتي: من البحث إلى النصوص التي تُرسل للصياغة.
  *
- *  1) البحث: MCP (IslamHouse، والحديث، والقرآن) + بيان الإسلام + رسالة الحرمين + الإسلام سؤال وجواب
- *     + «بيّنات» (Supabase) + قاموس المرجعية، بكلمات عربية وبلغة السائل.
+ *  1) البحث: MCP (الحديث، والقرآن) + «بيّنات» (Supabase) + قاموس المرجعية، بكلمتي بحث على
+ *     الأكثر لكل مصدر. IslamHouse رابط فقط (بطيء ويتجاوز المهلة، فلا يدخل المسار الحي).
  *  2) التنظيف: حذف أوصاف الكتب (لا محتوى فيها)، وعناصر واجهة المواقع، والمكرر.
  *  3) ترتيب أولي بتداخل الكلمات (بعد إزالة التشكيل)، مع حصة لكل مصدر حتى لا يطغى مصدر.
- *  4) الإثراء: المحتوى لا العنوان — شرح الحديث ودرجته بأداة get_hadith/fetch، ومقتطف صفحة
- *     بيان الإسلام الفعلي، ونص مادة IslamHouse.
+ *  4) الإثراء: المحتوى لا العنوان — شرح الحديث ودرجته بأداة get_hadith/fetch.
  *  5) إعادة ترتيب بالصلة بطلب واحد مجمّع للنموذج (0–3)، ولا يُرسل للصياغة إلا ما درجته ≥ 2.
  */
 
-export type Candidate = RankCandidate & { sourceId: SourceId | "bayyinat" | "glossary"; pinned?: boolean };
+export type Candidate = RankCandidate & {
+  sourceId: SourceId | "bayyinat" | "glossary" | "quran-index";
+  pinned?: boolean;
+  /** للآيات: نص الآية العربي، وما بعده (التفسير الميسر أو ترجمة المعنى)، للعرض المنظم. */
+  verse?: string;
+  note?: string;
+  noteKind?: "tafsir" | "translation";
+};
 
 export type SearchDiag = { query: string; lang: string; source: string; results: number; ms: number; error?: string };
 
@@ -48,6 +55,8 @@ export type RetrievalDiag = {
   verses?: string[];
   /** خطة الإحالات المقترحة، وعدد ما وُجد منها فعلاً في المصادر. */
   plan?: CitationPlan;
+  /** خطة إعادة التخطيط (مرة واحدة) إن لم يبلغ أي موضع من الأولى درجة 2. */
+  replan?: CitationPlan;
   /** عدد المراجع المحددة التي بلغت تقييم الصلة فعلاً، وسجل كل مرجع (وُجد / فارغ / خطأ / مهلة). */
   pinned?: number;
   pinLog?: PinLog[];
@@ -55,18 +64,20 @@ export type RetrievalDiag = {
 
 /**
  * مصادر البحث الآلي: منصات الجمعية عبر MCP. بيان الإسلام ورسالة الحرمين والإسلام سؤال وجواب
- * صارت «رابط فقط» لأن بحثها يعيد النتائج نفسها مهما كان السؤال (registry.ts).
+ * صارت «رابط فقط» لأن بحثها يعيد النتائج نفسها مهما كان السؤال، وIslamHouse لأن بحث
+ * المكتبة وbrowse_library يتجاوزان المهلة ويضاعفان زمن الرد (registry.ts).
  */
-export const RETRIEVAL_SOURCES: SourceId[] = ["islamhouse", "hadeethenc", "quranenc"];
+export const RETRIEVAL_SOURCES: SourceId[] = ["hadeethenc", "quranenc"];
+/** حد كلمات البحث لكل مصدر (تخفيف الضغط على خادم MCP، ورد 429). */
+export const MAX_QUERIES_PER_SOURCE = 2;
 /** مهلة كل مصدر: المهلة الموحدة 6 ثوانٍ (S5، للسرعة). */
 const SEARCH_DEADLINE_MS = SOURCE_DEADLINE_MS;
-const RETRY_WAIT_MS = 2_500;
 const RERANK_POOL = 14;
 const MAX_PASSAGES = 6;
 const MIN_SCORE = 2;
 const PASSAGE_CHARS = 1400;
 /** مهلة إثراء كل نص بشرحه (مستقلة عن البحث). */
-const ENRICH_MS = 7_000;
+const ENRICH_MS = 4_000;
 const BAYYINAT_URL = "https://dawa.center/file/7937";
 
 // ---------------------------------------------------------------------------
@@ -84,34 +95,19 @@ export function buildQueries(c: Classification, question: string): { q: string; 
     const t = q.trim().slice(0, 120);
     if (t && !out.some((x) => x.q === t && x.lang === lang)) out.push({ q: t, lang });
   };
-  c.searchQueries.ar.slice(0, 3).forEach((q) => add(q, "ar"));
-  if (c.lang !== "ar") c.searchQueries.userLang.slice(0, 2).forEach((q) => add(q, c.lang));
+  // الأولى عربية، والثانية بلغة السائل إن لم يكن عربياً، ثم الاحتياط إن نقص العدد.
+  c.searchQueries.ar.slice(0, 1).forEach((q) => add(q, "ar"));
+  if (c.lang !== "ar") c.searchQueries.userLang.slice(0, 1).forEach((q) => add(q, c.lang));
+  c.searchQueries.ar.slice(1, 3).forEach((q) => add(q, "ar"));
   for (const t of findTerms(question).slice(0, 2)) add(t.term_ar, "ar");
   const kw = queryWords(question).slice(0, 5).join(" ");
-  if (kw && out.length < 5) add(kw, c.lang);
-  return out.slice(0, 5);
+  if (kw) add(kw, c.lang);
+  return out.slice(0, MAX_QUERIES_PER_SOURCE);
 }
 
 // ---------------------------------------------------------------------------
 // البحث
 // ---------------------------------------------------------------------------
-
-/**
- * تسخين البحث بالتوازي مع المصنّف (S5): كلمات البحث التي لا تحتاج المصنّف (مصطلحات القاموس
- * الواردة وكلمات السؤال نفسه، كما في buildQueries) تُطلب فور وصول السؤال، فتجدها retrieve()
- * جاهزة أو قيد الطلب (lib/cache يضم الطلبات المتزامنة). لا يُعرض منها شيء.
- * المتصل لا يستدعيها لحالة شخصية أو عاجلة.
- */
-export function warmSearch(question: string, lang: string): void {
-  const queries = findTerms(question)
-    .slice(0, 2)
-    .map((t) => ({ q: t.term_ar.trim().slice(0, 120), lang: "ar" }));
-  const kw = queryWords(question).slice(0, 5).join(" ").trim().slice(0, 120);
-  if (kw) queries.push({ q: kw, lang });
-  for (const { q, lang: l } of queries) {
-    for (const source of RETRIEVAL_SOURCES) void search(source, q, l, SEARCH_DEADLINE_MS).catch(() => []);
-  }
-}
 
 function fromSource(r: SourceResult): Candidate {
   return { title: r.title, text: r.text, url: r.url, source: r.source, sourceId: r.sourceId, grade: r.grade, lang: r.lang, ref: r.ref };
@@ -128,18 +124,8 @@ async function searchSources(queries: { q: string; lang: string }[], diag: Searc
     diag.push({ query: q, lang, source, results: results.length, ms: Date.now() - t0, ...(errors.length ? { error: errors.join(" | ").slice(0, 300) } : {}) });
     return results.map(fromSource);
   };
-  const jobs = RETRIEVAL_SOURCES.map(async (source) => {
-    const run = () => Promise.all(queries.map(({ q, lang }) => one(source, q, lang))).then((r) => r.flat());
-    let found = await run();
-    // مصدر عاد فارغاً لأن بحثه تجاوز المهلة: البحث يكمل في الخلفية ويُخزَّن، فنعيده مرة بعد قليل
-    // (حالة الحديث التي كانت تعيد 0). المصدر الفارغ فعلاً لا يُعاد.
-    const slow = diag.filter((d) => d.source === source).some((d) => d.ms >= SEARCH_DEADLINE_MS - 50);
-    if (!found.length && slow) {
-      await new Promise((r) => setTimeout(r, RETRY_WAIT_MS));
-      found = await run();
-    }
-    return found;
-  });
+  // كل استدعاء MCP محدود بـ 4 ثوانٍ و3 طلبات متزامنة (lib/mcp.ts)، فلا إعادة هنا تضاعف الضغط.
+  const jobs = RETRIEVAL_SOURCES.map((source) => Promise.all(queries.map(({ q, lang }) => one(source, q, lang))).then((r) => r.flat()));
   return (await Promise.all(jobs)).flat();
 }
 
@@ -283,21 +269,21 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
 }
 
 /**
- * يثري أعلى المرشحين بمحتواهم بالتوازي: 3 أحاديث (نص + شرح + درجة)، ومادتان من IslamHouse.
+ * يثري أعلى المرشحين بمحتواهم بالتوازي: 3 أحاديث (نص + شرح + درجة).
  * لكل نص مهلته المستقلة؛ إن تأخر بقي المرشح بعنوانه ونصه المختصر ولا يضيع.
  */
 async function enrich(cands: Candidate[], lang: string): Promise<Candidate[]> {
-  const quota: Partial<Record<Candidate["sourceId"], number>> = { hadeethenc: 3, islamhouse: 2 };
+  const quota: Partial<Record<Candidate["sourceId"], number>> = { hadeethenc: 3 };
   const used: Partial<Record<Candidate["sourceId"], number>> = {};
   return Promise.all(
     cands.map(async (c) => {
       const n = used[c.sourceId] ?? 0;
       if (n >= (quota[c.sourceId] ?? 0)) return c;
       used[c.sourceId] = n + 1;
-      if ((c.sourceId === "hadeethenc" || c.sourceId === "islamhouse") && (c.ref || c.url)) {
+      if (c.sourceId === "hadeethenc" && (c.ref || c.url)) {
         const ref = c.ref ?? c.url.match(/\/(\d{3,})/)?.[1];
         if (!ref) return c;
-        const d = await withTimeout(mcpDetail(ref, c.lang ?? lang, c.sourceId === "hadeethenc" ? "hadith" : "library"), ENRICH_MS, null);
+        const d = await withTimeout(mcpDetail(ref, c.lang ?? lang, "hadith"), ENRICH_MS, null);
         return d ? { ...c, text: d.text, grade: c.grade ?? d.grade, enriched: true } : c;
       }
       return c;
@@ -312,7 +298,7 @@ async function enrich(cands: Candidate[], lang: string): Promise<Candidate[]> {
 
 /** مهلة كل مرجع محدد، فلا يتجاوز مجموعها نحو 6 ثوانٍ (الطلبات متوازية). */
 const PIN_MS = 4_500;
-const PIN_HADITH_MS = 5_500;
+const PIN_HADITH_MS = 5_000;
 
 /**
  * مصادر المراجع المحددة. قابلة للاستبدال في الاختبار المحلي (tests/retrieval.test.ts) بلا شبكة.
@@ -365,52 +351,92 @@ async function track<T extends Candidate | Candidate[] | null>(
   }
 }
 
-/** نص آية أو آيات من get_quran_verses وحدها: العربي + التفسير الميسر أو ترجمة لغة السائل. */
+/**
+ * نص آية أو آيات من get_quran_verses وحدها: العربي + التفسير الميسر أو ترجمة لغة السائل.
+ * اسم السورة من «فهرس سور المصحف» (quran-index) لا من نص الرد: التفسير قد يذكر سورة أخرى
+ * («سبق الكلام عليها في أول سورة البقرة» في تفسير آل عمران 1).
+ */
 async function verseCandidate(ref: VerseRef, lang: string, deps: PinDeps): Promise<Candidate | null> {
+  if (!isValidVerse(ref.surah, ref.ayah)) return null;
   const item = (await deps.quranRange(ref.surah, ref.ayah, ref.through, lang))[0];
-  const text = item ? cleanToolText(item.text) : "";
-  if (!item || text.length < 10) return null;
-  const label = `${ref.surah}:${ref.ayah}${ref.through ? `-${ref.through}` : ""}`;
-  const info = surahInfoFromText(`${item.title}\n${text}`, ref.surah);
-  const name = info.name ? `سورة ${info.name} ` : "";
+  if (!item) return null;
+  const parsed = parseVerseText(item.text);
+  const title = verseTitle(ref.surah, ref.ayah, ref.through);
+  const noteKind = lang === "ar" ? "tafsir" : "translation";
+  const noteLabel = noteKind === "tafsir" ? "التفسير الميسر" : "ترجمة المعنى";
+  let verse: string;
+  let note: string;
+  if (parsed.verses.length) {
+    const many = parsed.verses.length > 1;
+    verse = parsed.verses.map((v) => `${v.arabic}${many ? ` (${v.ayah})` : ""}`).join(" ");
+    note = parsed.verses.map((v) => (many && v.note ? `(${v.ayah}) ${v.note}` : v.note)).filter(Boolean).join(" ");
+  } else {
+    // صيغة غير متوقعة: النص بعد تنظيف علامات الخادم، بلا تقسيم.
+    verse = cleanToolText(item.text);
+    note = "";
+  }
+  if (verse.length < 2) return null;
+  const text = `﴿${verse}﴾ [${title}]${note ? `\n${noteLabel}: ${note}` : ""}`;
   return {
-    title: `${name}(${label})`,
+    title,
     text: clip(text, PASSAGE_CHARS),
-    url: item.url,
-    source: `${SOURCE_BY_ID.quranenc.name} — ${name}${label}`,
+    url: parsed.sourceUrl ?? item.url ?? surahUrl(ref.surah, ref.ayah),
+    source: `${SOURCE_BY_ID.quranenc.name} — ${title}`,
     sourceId: "quranenc",
     lang,
+    kw: 0,
+    enriched: true,
+    verse,
+    note: note || undefined,
+    noteKind: note ? noteKind : undefined,
+  };
+}
+
+/**
+ * تعريف سورة من «فهرس سور المصحف» وحده: «سورة آل عمران — رقم 3 في ترتيب المصحف — عدد آياتها
+ * 200 — مدنية». لا يحتاج الشبكة؛ أول آياتها تُطلب مرجعاً مستقلاً (verseCandidate).
+ */
+export function surahInfoCandidate(surah: number): Candidate | null {
+  const line = surahInfoLine(surah);
+  if (!line) return null;
+  return {
+    title: line.split(" — ")[0],
+    text: line,
+    url: surahUrl(surah),
+    source: INDEX_SOURCE,
+    sourceId: "quran-index",
+    lang: "ar",
     kw: 0,
     enriched: true,
   };
 }
 
-/**
- * تعريف سورة: «سورة آل عمران — رقم 3 في ترتيب المصحف — عدد آياتها 200» من قيم رد
- * get_quran_verses وحده (الاسم، والرقم، وعدد الآيات إن ذكرها الرد)، ثم آيتها الأولى.
- */
-async function surahInfoCandidate(surah: number, lang: string, deps: PinDeps): Promise<Candidate | null> {
-  const item = (await deps.quranRange(surah, 1, undefined, lang))[0];
-  const text = item ? cleanToolText(item.text) : "";
-  if (!item || text.length < 10) return null;
-  const info = surahInfoFromText(`${item.title}\n${text}`, surah);
-  const head = [
-    info.name ? `سورة ${info.name}` : null,
-    info.number ? `رقم ${info.number} في ترتيب المصحف` : null,
-    info.count ? `عدد آياتها ${info.count}` : null,
-  ]
-    .filter(Boolean)
-    .join(" — ");
+/** الفهرس جملةً: عدد السور وأولها وآخرها ومجموع الآيات («كم عدد سور القرآن»). */
+export function quranIndexCandidate(): Candidate {
   return {
-    title: head || `${surah}:1`,
-    text: clip(`${head ? `${head}\n` : ""}${text}`, 900),
-    url: item.url,
-    source: `${SOURCE_BY_ID.quranenc.name} — ${info.name ? `سورة ${info.name}` : `${surah}:1`}`,
-    sourceId: "quranenc",
-    lang,
+    title: INDEX_SOURCE,
+    text: indexSummaryLine(),
+    url: surahUrl(1).replace(/\/1$/, ""),
+    source: INDEX_SOURCE,
+    sourceId: "quran-index",
+    lang: "ar",
     kw: 0,
     enriched: true,
   };
+}
+
+/** مواضع آيات من البحث في نص القرآن بعبارة قصيرة (quran_queries)، أعلى نتيجتين. */
+async function quranQueryRefs(q: string, deps: PinDeps): Promise<VerseRef[]> {
+  const items = await deps.searchCorpus(q, "ar", "quran");
+  const refs: VerseRef[] = [];
+  for (const it of items) {
+    const m = `${it.title} ${it.url} ${it.ref ?? ""}`.match(/(\d{1,3}):(\d{1,3})|\/(\d{1,3})[#/](\d{1,3})/);
+    const surah = Number(m?.[1] ?? m?.[3]);
+    const ayah = Number(m?.[2] ?? m?.[4]);
+    if (isValidVerse(surah, ayah) && !refs.some((r) => r.surah === surah && r.ayah === ayah)) refs.push({ surah, ayah });
+    if (refs.length >= 2) break;
+  }
+  return refs;
 }
 
 /**
@@ -440,24 +466,6 @@ async function hadithCandidates(q: string, lang: string, deps: PinDeps, max = 2)
       };
     }),
   );
-}
-
-/** أعلى مادة من IslamHouse لعنوان، بنصها (get_library_item/fetch). */
-async function libraryCandidate(q: string, lang: string, deps: PinDeps): Promise<Candidate | null> {
-  const it = (await deps.searchCorpus(q, lang, "library").catch(() => [] as McpItem[]))[0];
-  if (!it) return null;
-  const detail = it.ref ? await withTimeout(deps.detail(it.ref, lang, "library"), ENRICH_MS, null) : null;
-  return {
-    title: it.title,
-    text: detail?.text ?? it.text,
-    url: it.url,
-    source: SOURCE_BY_ID.islamhouse.name,
-    sourceId: "islamhouse",
-    lang,
-    ref: it.ref,
-    kw: 0,
-    enriched: Boolean(detail),
-  };
 }
 
 /** أسئلة «بيّنات» بأرقامها (لاحتياط «الأساسيات» فقط؛ خطة النموذج تبحث بعبارات). */
@@ -535,9 +543,21 @@ export async function pinnedCandidates(
     ...unique.map((r) =>
       track(log, `آية ${r.surah}:${r.ayah}${r.through ? `-${r.through}` : ""}`, () => verseCandidate(r, c.lang, deps), PIN_MS),
     ),
-    ...(plan?.surahInfo ?? []).map((n) => track(log, `سورة ${n}`, () => surahInfoCandidate(n, c.lang, deps), PIN_MS)),
+    // تعريف السورة وفهرس المصحف من data/quran-index.json (بلا شبكة).
+    ...(plan?.surahInfo ?? []).map((n) => track(log, `سورة ${n}`, async () => surahInfoCandidate(n), PIN_MS)),
+    ...(plan?.quranIndex ? [track(log, INDEX_SOURCE, async () => quranIndexCandidate(), PIN_MS)] : []),
+    ...(plan?.quranQueries ?? []).map((q) =>
+      track(
+        log,
+        `قرآن «${q}»`,
+        async () => {
+          const found = (await quranQueryRefs(q, deps)).filter((r) => !unique.some((u) => u.surah === r.surah && u.ayah === r.ayah));
+          return (await Promise.all(found.map((r) => verseCandidate(r, c.lang, deps)))).filter((x): x is Candidate => x !== null);
+        },
+        PIN_HADITH_MS,
+      ),
+    ),
     ...hadithQs.map((q) => track(log, `حديث «${q}»`, () => hadithCandidates(q, c.lang, deps), PIN_HADITH_MS)),
-    ...(plan?.libraryQueries ?? []).map((q) => track(log, `مكتبة «${q}»`, () => libraryCandidate(q, c.lang, deps), PIN_HADITH_MS)),
     ...bayyinatQs.map((q) => track(log, `بيّنات «${q}»`, () => deps.bayyinatSearch(q), PIN_MS)),
     ...(bayyinatNs.length ? [track(log, `بيّنات ${bayyinatNs.join("، ")}`, () => deps.bayyinatNumbers(bayyinatNs), PIN_MS)] : []),
   ];
@@ -563,14 +583,14 @@ Each passage has an id like S1, S2… For each passage give a relevance score:
 A book or article description without actual content is at most 1. A passage in another language is judged by its meaning.
 Return JSON {"scores":[{"id":"S1","score":<0-3>}, …]} with one entry per passage, using the exact ids given.`;
 
-async function rerank(question: string, cands: Candidate[]): Promise<{ cands: Candidate[]; mode: "llm" | "keywords" }> {
+async function rerank(question: string, cands: Candidate[], terms: string[]): Promise<{ cands: Candidate[]; mode: "llm" | "keywords" }> {
   const toRate = cands.filter((c) => c.score === undefined);
   if (!toRate.length) return { cands, mode: "llm" };
   try {
     const res = await chatJson(
       [
         { role: "system", content: RERANK_SYSTEM },
-        { role: "user", content: `QUESTION: """${question}"""\n\nPASSAGES:\n${rerankList(toRate)}` },
+        { role: "user", content: `QUESTION: """${question}"""\n\nPASSAGES:\n${rerankList(toRate, terms)}` },
       ],
       RerankSchema,
       { temperature: 0, schemaName: "relevance", maxTokens: 1000, timeoutMs: 20_000, retries: 1 },
@@ -588,8 +608,27 @@ async function rerank(question: string, cands: Candidate[]): Promise<{ cands: Ca
 // الواجهة
 // ---------------------------------------------------------------------------
 
-export function toPassage(c: Candidate): Passage {
-  return { title: c.title, text: clip(c.text, PASSAGE_CHARS), url: c.url, source: c.source, grade: c.grade, lang: c.lang };
+/** النص المرسل للصياغة: النص الطويل بمطلعه ونافذة حول أقوى موضع لكلمات السؤال. */
+export function toPassage(c: Candidate, terms: string[] = []): Passage {
+  return {
+    title: c.title,
+    text: focusExcerpt(c.text, terms, PASSAGE_CHARS),
+    url: c.url,
+    source: c.source,
+    grade: c.grade,
+    lang: c.lang,
+    ...(c.verse ? { verse: c.verse, note: c.note, noteKind: c.noteKind } : {}),
+  };
+}
+
+/** وصف مواضع الخطة لإعادة التخطيط («quran 96:12»، «hadith query "…"»). */
+function planRefs(p: CitationPlan): string[] {
+  return [
+    ...p.quran.map((v) => `quran ${v.surah}:${v.ayah}${v.through ? `-${v.through}` : ""}`),
+    ...p.quranQueries.map((q) => `quran query "${q}"`),
+    ...p.hadithQueries.map((q) => `hadith query "${q}"`),
+    ...p.bayyinatQueries.map((q) => `bayyinat query "${q}"`),
+  ];
 }
 
 export async function retrieve(
@@ -598,6 +637,8 @@ export async function retrieve(
   plan?: Promise<CitationPlan | null>,
   /** للاختبار المحلي فقط: مصادر المراجع المحددة. */
   deps?: PinDeps,
+  /** إعادة التخطيط مرة واحدة بالمواضع التي فشلت (planCitations(question, failed)). */
+  replan?: (failed: string[]) => Promise<CitationPlan | null>,
 ): Promise<{ passages: Passage[]; diag: RetrievalDiag }> {
   const queries = buildQueries(c, question);
   const diag: RetrievalDiag = {
@@ -618,12 +659,7 @@ export async function retrieve(
   const pinnedJob = pinnedCandidates(c, question, diag, plan, deps).catch(() => [] as Candidate[]);
   const run = () =>
     Promise.all([searchSources(queries, diag.searches), searchBayyinat(bayyinatQuery, diag.searches).catch(() => [])]);
-  let [found, bayyinat] = await run();
-  if (!found.length && !bayyinat.length) {
-    diag.retried = true;
-    await new Promise((r) => setTimeout(r, RETRY_WAIT_MS));
-    [found, bayyinat] = await run();
-  }
+  const [found, bayyinat] = await run();
   const pinned = await pinnedJob;
   const pinnedUrls = new Set(pinned.map((x) => x.url));
   // «بيّنات» أولاً لأسئلة الشبهات وغير المسلمين (مصدر أساسي للحلول الحوارية في الشبهات).
@@ -638,13 +674,27 @@ export async function retrieve(
 
   const enriched = await enrich(pool, c.lang);
   // المراجع المحددة تدخل التقييم مع نتائج البحث (لا درجة مسبقة).
-  const reranked = await rerank(question, [...pinned, ...enriched]);
+  const reranked = await rerank(question, [...pinned, ...enriched], terms);
+  let all = reranked.cands;
+
+  // إعادة التخطيط مرة واحدة: خطة غير فارغة لم يبلغ أي موضع منها درجة 2.
+  const firstPlan = diag.plan;
+  if (replan && firstPlan && !isEmptyPlan(firstPlan) && !all.some((x) => x.pinned && (x.score ?? 0) >= MIN_SCORE)) {
+    const failed = planRefs(firstPlan);
+    const sub: RetrievalDiag = { ...diag, pinLog: [] };
+    const second = await pinnedCandidates(c, question, sub, replan(failed), deps).catch(() => [] as Candidate[]);
+    diag.replan = sub.plan;
+    diag.pinLog = [...(diag.pinLog ?? []), ...(sub.pinLog ?? []).map((x) => ({ ...x, ref: `↻ ${x.ref}` }))];
+    const seen = new Set(all.map((x) => x.url));
+    const fresh = second.filter((x) => !seen.has(x.url));
+    if (fresh.length) all = [...all, ...(await rerank(question, fresh, terms)).cands];
+  }
+
   // «وُجد»: ما بلغ تقييم الصلة فعلاً من المراجع المحددة.
-  diag.pinned = reranked.cands.filter((x) => x.pinned).length;
-  const mode = reranked.mode;
+  diag.pinned = all.filter((x) => x.pinned).length;
   // القاموس نص المرجعية نفسها: يُقبل دائماً للمصطلح الوارد في السؤال.
-  const cands = [...glossary.map((g) => ({ ...g, kw: 0 })), ...reranked.cands];
-  diag.rerank = mode;
+  const cands = [...glossary.map((g) => ({ ...g, kw: 0 })), ...all];
+  diag.rerank = reranked.mode;
   diag.scored = cands.map((x) => ({ source: x.source, title: clip(x.title, 100), kw: x.kw ?? 0, score: x.score, enriched: Boolean(x.enriched) }));
 
   const kept = cands
@@ -652,5 +702,5 @@ export async function retrieve(
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (b.kw ?? 0) - (a.kw ?? 0))
     .slice(0, MAX_PASSAGES);
   diag.counts.kept = kept.length;
-  return { passages: kept.map(toPassage), diag };
+  return { passages: kept.map((x) => toPassage(x, terms)), diag };
 }

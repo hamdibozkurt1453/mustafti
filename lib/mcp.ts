@@ -3,17 +3,24 @@ import "server-only";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { cached, DAY, HOUR } from "@/lib/cache";
+import { createLimiter, RATE_LIMITED, retryingFetch, withRetry } from "@/lib/limiter";
 
 /**
  * عميل خادم MCP الرسمي للجمعية (MCP_URL، بلا مفتاح) عبر Streamable HTTP.
  * - اتصال واحد يُعاد استعماله داخل نسخة الخادم، ويُعاد إنشاؤه تلقائياً عند انقطاعه.
  * - مهلة لكل طلب، وذاكرة مؤقتة: قائمة الأدوات ساعة، ونتائج الأدوات 24 ساعة.
+ * - حماية الخادم من الضغط: 3 طلبات متزامنة على الأكثر في كل نسخة (والباقي ينتظر دوره)، وإعادة
+ *   المحاولة مرتين عند 429 (Retry-After، وإلا 1 ثم 2 ثانية).
  */
 
 const DEFAULT_URL = "https://mcp.islamiccontent.org/mcp";
 const CONNECT_TIMEOUT_MS = 8_000;
-/** بحث الخادم قد يستغرق أكثر من 10 ثوانٍ؛ المهلة القصوى لكل مصدر (6 ثوانٍ) تُطبَّق في lib/sources. */
-const CALL_TIMEOUT_MS = 20_000;
+/** حد أعلى لكل استدعاء في المسار الحي (بعد الحصول على دور في الطابور). */
+export const CALL_TIMEOUT_MS = 4_000;
+const LIST_TIMEOUT_MS = 10_000;
+/** أقصى عدد للطلبات المتزامنة إلى الخادم في كل نسخة. */
+export const MAX_CONCURRENT = 3;
+const limit = createLimiter(MAX_CONCURRENT);
 
 export type McpTool = {
   name: string;
@@ -44,6 +51,8 @@ async function connect(): Promise<Client> {
   const client = new Client({ name: "mustafti", version: "1.0.0" });
   const transport = new StreamableHTTPClientTransport(new URL(mcpUrl()), {
     requestInit: { headers: { "User-Agent": "MustaftiBot/1.0 (+https://mustafti.com)" } },
+    // رد HTTP 429: إعادة المحاولة مرتين باحترام Retry-After.
+    fetch: retryingFetch(),
   });
   // يُلغى الاتصال المشترك فقط إن كان هو هذا العميل نفسه: إغلاق عميل قديم (بعد إعادة الاتصال)
   // كان يطلق onclose فيُغلق العميل الجديد، فتفشل الاستدعاءات التالية بـ «Not connected».
@@ -94,7 +103,8 @@ async function withClient<T>(run: (client: Client) => Promise<T>): Promise<T> {
   try {
     return await run(await getClient());
   } catch (error) {
-    if (/timed? ?out|timeout/i.test(String((error as Error)?.message ?? error))) throw error;
+    // المهلة و429 لا يعادان هنا (إعادة الاتصال تضاعف الانتظار والضغط؛ 429 يعاد في callTool).
+    if (/timed? ?out|timeout/i.test(String((error as Error)?.message ?? error)) || RATE_LIMITED.test(String((error as Error)?.message ?? error))) throw error;
     reset();
     try {
       return await run(await getClient());
@@ -113,7 +123,7 @@ async function withClient<T>(run: (client: Client) => Promise<T>): Promise<T> {
 /** قائمة أدوات الخادم (ساعة في الذاكرة). */
 export function listTools(): Promise<McpTool[]> {
   return cached(`mcp:tools:${mcpUrl()}`, HOUR, async () => {
-    const res = await withClient((c) => c.listTools(undefined, { timeout: CALL_TIMEOUT_MS }));
+    const res = await limit(() => withClient((c) => c.listTools(undefined, { timeout: LIST_TIMEOUT_MS })));
     return res.tools as McpTool[];
   });
 }
@@ -127,13 +137,15 @@ export async function callTool(
   args: Record<string, unknown> = {},
   options: { timeoutMs?: number; cacheTtlMs?: number } = {},
 ): Promise<McpToolResult> {
-  const run = async () => {
-    const res = (await withClient((c) =>
-      c.callTool({ name, arguments: args }, undefined, { timeout: options.timeoutMs ?? CALL_TIMEOUT_MS }),
+  const once = async () => {
+    const res = (await limit(() =>
+      withClient((c) => c.callTool({ name, arguments: args }, undefined, { timeout: options.timeoutMs ?? CALL_TIMEOUT_MS })),
     )) as McpToolResult;
     if (res.isError) throw new Error(`mcp tool ${name} error: ${toolText(res).slice(0, 200)}`);
     return res;
   };
+  // 429 داخل رد الأداة (لا في HTTP): إعادة المحاولة مرتين خارج الطابور (1s ثم 2s).
+  const run = () => withRetry(once);
   const ttl = options.cacheTtlMs ?? DAY;
   if (ttl <= 0) return run();
   return cached(`mcp:call:${name}:${JSON.stringify(args)}`, ttl, run);
