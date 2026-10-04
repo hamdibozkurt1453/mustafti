@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "model-test": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/model-test.ts",
-    "index-bayyinat": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/index-bayyinat.ts"
+    "index-bayyinat": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/index-bayyinat.ts",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
