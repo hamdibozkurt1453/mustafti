@@ -6,7 +6,9 @@
     "generatedMin": 2,
     "generatedMax": 6,
     "rulingMin": 2,
-    "rulingMax": 4
+    "rulingMax": 4,
+    "extraMin": 1,
+    "extraMax": 2
   },
   "generationRules": {
     "ar": [
@@ -416,6 +418,8 @@
         "salah_issue",
         "salah_which",
         "occurred",
+        "missed_madeup",
+        "missed_reason",
         "salah_sahw",
         "salah_count",
         "salah_travel",
@@ -531,7 +535,15 @@
               "en": "No"
             }
           ],
-          "required": false
+          "required": false,
+          "showIf": {
+            "key": "salah_issue",
+            "in": [
+              "missed_part",
+              "added",
+              "doubt_count"
+            ]
+          }
         },
         {
           "key": "salah_count",
@@ -553,7 +565,86 @@
             "en": "Because a traveller has rules of shortening and combining."
           },
           "type": "yesno",
-          "required": false
+          "required": false,
+          "showIf": {
+            "key": "salah_issue",
+            "in": [
+              "combine_shorten"
+            ]
+          }
+        },
+        {
+          "key": "missed_madeup",
+          "ar": "هل قضيت الصلوات الفائتة؟",
+          "en": "Have you made up the missed prayers?",
+          "why": {
+            "ar": "لأن ما قُضي يختلف عما بقي في الذمة.",
+            "en": "Because prayers already made up differ from those still owed."
+          },
+          "type": "choice",
+          "options": [
+            {
+              "value": "yes",
+              "ar": "نعم",
+              "en": "Yes"
+            },
+            {
+              "value": "no",
+              "ar": "لا",
+              "en": "No"
+            },
+            {
+              "value": "partly",
+              "ar": "بعضها",
+              "en": "Some of them"
+            }
+          ],
+          "required": true,
+          "showIf": {
+            "key": "salah_issue",
+            "in": [
+              "missed_prayer"
+            ]
+          }
+        },
+        {
+          "key": "missed_reason",
+          "ar": "ما سبب الفوات؟",
+          "en": "Why were they missed?",
+          "why": {
+            "ar": "لأن النوم والنسيان يختلف حكمهما عن التكاسل.",
+            "en": "Because sleep and forgetfulness are treated differently from neglect."
+          },
+          "type": "choice",
+          "options": [
+            {
+              "value": "sleep",
+              "ar": "نوم",
+              "en": "Sleep"
+            },
+            {
+              "value": "forgot",
+              "ar": "نسيان",
+              "en": "Forgetfulness"
+            },
+            {
+              "value": "neglect",
+              "ar": "تكاسل",
+              "en": "Neglect"
+            },
+            {
+              "value": "other_excuse",
+              "ar": "عذر آخر",
+              "en": "Another excuse"
+            }
+          ],
+          "required": true,
+          "showIf": {
+            "key": "salah_issue",
+            "in": [
+              "missed_prayer"
+            ]
+          }
         }
       ]
     },
@@ -1063,6 +1154,9 @@
         "occurred",
         "finance_party",
         "finance_return",
+        "work_tasks",
+        "work_riba_share",
+        "work_alternative",
         "country",
         "finance_alternative",
         "finance_need",
@@ -1186,7 +1280,15 @@
               "en": "I don't know"
             }
           ],
-          "required": false
+          "required": false,
+          "showIf": {
+            "key": "finance_type",
+            "in": [
+              "loan_mortgage",
+              "sale_installments",
+              "investment"
+            ]
+          }
         },
         {
           "key": "finance_alternative",
@@ -1214,7 +1316,13 @@
               "en": "I don't know"
             }
           ],
-          "required": false
+          "required": false,
+          "showIf": {
+            "key": "finance_type",
+            "notIn": [
+              "work_income"
+            ]
+          }
         },
         {
           "key": "finance_need",
@@ -1243,6 +1351,108 @@
             }
           ],
           "required": false
+        },
+        {
+          "key": "work_tasks",
+          "ar": "ما طبيعة مهامك؟",
+          "en": "What is the nature of your tasks?",
+          "why": {
+            "ar": "لأن الحكم يختلف بين المباشرة للمعاملة والإعانة العامة.",
+            "en": "Because the ruling differs between handling the transaction directly and general support."
+          },
+          "type": "choice",
+          "options": [
+            {
+              "value": "contracts",
+              "ar": "كتابة عقود الربا أو توثيقها مباشرة",
+              "en": "Writing or documenting interest contracts directly"
+            },
+            {
+              "value": "support",
+              "ar": "خدمات دعم تقنية أو إدارية عامة",
+              "en": "General technical or administrative support"
+            },
+            {
+              "value": "unrelated",
+              "ar": "عمل لا صلة له بالمعاملات",
+              "en": "Work unrelated to the transactions"
+            }
+          ],
+          "required": true,
+          "showIf": {
+            "key": "finance_type",
+            "in": [
+              "work_income"
+            ]
+          }
+        },
+        {
+          "key": "work_riba_share",
+          "ar": "هل نشاط الجهة كله أو أغلبه ربوي؟",
+          "en": "Is all or most of the employer's activity interest-based?",
+          "why": {
+            "ar": "لأن نسبة النشاط المحرّم في الجهة تؤثر في الحكم.",
+            "en": "Because the share of prohibited activity in the employer affects the ruling."
+          },
+          "type": "choice",
+          "options": [
+            {
+              "value": "most",
+              "ar": "كله أو أغلبه",
+              "en": "All or most of it"
+            },
+            {
+              "value": "some",
+              "ar": "بعضه",
+              "en": "Some of it"
+            },
+            {
+              "value": "unknown",
+              "ar": "لا أعلم",
+              "en": "I don't know"
+            }
+          ],
+          "required": true,
+          "showIf": {
+            "key": "finance_type",
+            "in": [
+              "work_income"
+            ]
+          }
+        },
+        {
+          "key": "work_alternative",
+          "ar": "هل يتوفر لك عمل بديل مناسب؟",
+          "en": "Is a suitable alternative job available to you?",
+          "why": {
+            "ar": "لأن وجود البديل يؤثر في تقدير الحاجة.",
+            "en": "Because an available alternative affects the assessment of need."
+          },
+          "type": "choice",
+          "options": [
+            {
+              "value": "yes",
+              "ar": "نعم",
+              "en": "Yes"
+            },
+            {
+              "value": "no",
+              "ar": "لا",
+              "en": "No"
+            },
+            {
+              "value": "searching",
+              "ar": "أبحث",
+              "en": "I'm looking"
+            }
+          ],
+          "required": false,
+          "showIf": {
+            "key": "finance_type",
+            "in": [
+              "work_income"
+            ]
+          }
         }
       ]
     },

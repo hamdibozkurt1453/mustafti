@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isAffirmative } from "@/lib/case/affirm";
+import { nextQuestion } from "@/lib/case/flow";
 import type { CaseAnswer, CaseDraft, CasePlan, PlanQuestion, ReferralKind } from "@/lib/case/types";
 import {
   dirForText,
@@ -286,10 +287,15 @@ export function useChat() {
     return id;
   }, []);
 
-  /** يعرض سؤال الاستيضاح رقم index في فقاعة botId. */
+  /**
+   * يعرض السؤال التالي في فقاعة botId، محسوباً من الأجوبة حتى الآن (الشروط والحد في lib/case/flow.ts).
+   * يعيد false إن لم يبق سؤال.
+   */
   const showQuestion = useCallback(
-    (f: CaseFlow, index: number, botId: string) => {
+    (f: CaseFlow, botId: string): boolean => {
       const plan = f.plan!;
+      const next = nextQuestion(plan, f.answers);
+      if (!next) return false;
       patchBot(botId, () => ({
         status: "done",
         kind: "clarify",
@@ -297,9 +303,10 @@ export function useChat() {
         flowId: f.id,
         lang: plan.lang,
         dir: f.dir,
-        text: plan.questions[index].text,
-        clarify: { index, total: plan.questions.length, question: plan.questions[index] },
+        text: next.question.text,
+        clarify: { index: f.index, total: next.total, question: next.question },
       }));
+      return true;
     },
     [patchBot],
   );
@@ -341,12 +348,12 @@ export function useChat() {
       }
       const plan = res.data.plan;
       const next: CaseFlow = { ...f, plan, lang: plan.lang, index: 0, answers: [], step: "asking", failed: false };
-      if (!plan.questions.length) {
+      if (!nextQuestion(plan, [])) {
         await draftStep(next);
         return;
       }
       setFlow(next);
-      showQuestion(next, 0, f.botId);
+      showQuestion(next, f.botId);
     },
     [draftStep, patchBot, setFlow, showQuestion],
   );
@@ -385,19 +392,21 @@ export function useChat() {
     (value: string | null, label?: string) => {
       const f = flowRef.current;
       if (!f || f.step !== "asking" || !f.plan) return;
-      const q = f.plan.questions[f.index];
+      const current = nextQuestion(f.plan, f.answers);
+      if (!current) return;
+      const q = current.question;
       const shown = (label ?? value ?? "").trim().slice(0, 600);
       setMessages((prev) => [
         ...prev,
         { id: newId(), role: "user", text: value === null ? "" : shown, dir: dirForText(shown || f.question), case: true, skipped: value === null },
       ]);
       const answers = [...f.answers.filter((a) => a.key !== q.key), { key: q.key, value: value === null ? null : value.trim().slice(0, 600) }];
-      const index = f.index + 1;
       const botId = pushBot({ status: "pending", kind: "clarify", text: "", dir: f.dir, flowId: f.id });
-      const next: CaseFlow = { ...f, answers, index, botId };
-      if (index < f.plan.questions.length) {
+      // index: عدد الأسئلة المجاب عنها (رقم السؤال الحالي في الشريط).
+      const next: CaseFlow = { ...f, answers, index: answers.length, botId };
+      if (nextQuestion(f.plan, answers)) {
         setFlow(next);
-        showQuestion(next, index, botId);
+        showQuestion(next, botId);
       } else {
         void draftStep(next);
       }

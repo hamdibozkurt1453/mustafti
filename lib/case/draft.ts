@@ -1,3 +1,4 @@
+import { askedQuestions } from "./flow";
 import { allQuestionsByKey } from "./pillars";
 import { redactText } from "./redact";
 import { CASE_LIMITS, type CaseAnswer, type CaseDraft, type CasePlan, type CaseRow, type CaseUnknown } from "./types";
@@ -50,7 +51,8 @@ export function rowsOf(plan: CasePlan, answers: CaseAnswer[]): CaseRow[] {
 
 /** «ما لم يُعرف»: كل سؤال تخطّاه السائل أو لم يُجب عنه. */
 export function unknownsOf(plan: CasePlan, answers: CaseAnswer[]): CaseUnknown[] {
-  return plan.questions
+  // الأسئلة الفعلية فقط (بعد الشروط والحد)، لا كل المرشح في الخطة.
+  return askedQuestions(plan, answers)
     .filter((q) => {
       const a = answers.find((x) => x.key === q.key);
       return !a || a.value === null || !a.value.trim();
