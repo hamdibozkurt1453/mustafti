@@ -15,7 +15,7 @@ import { chatJson, chatStream, LlmError, type ChatMessage } from "@/lib/llm";
  */
 
 export const CANDIDATE_MODELS = [
-  { id: "google/gemma-4-31b-it", role: "الأساسي (المرشح الأول)" },
+  { id: "google/gemma-4-31b-it", role: "المعتمد" },
   { id: "qwen/qwen3.8-omni-flash", role: "للمقارنة" },
   { id: "google/gemini-3.8-flash", role: "الأقوى (للمقارنة)" },
   { id: "xiaomi/mimo-v2.6-flash", role: "بديل رخيص (للمقارنة)" },
