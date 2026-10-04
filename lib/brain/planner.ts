@@ -19,7 +19,7 @@ import { normalizePlan, PlanSchema, PLANNER_SYSTEM, type CitationPlan } from "./
 export type { CitationPlan } from "./plan";
 
 export function planCitations(question: string): Promise<CitationPlan | null> {
-  const key = `brain:plan:${matchKey(question).slice(0, 300)}`;
+  const key = `brain:plan:v2:${matchKey(question).slice(0, 300)}`;
   return cached(key, DAY, async () => {
     const res = await chatJson(
       [

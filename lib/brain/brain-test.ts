@@ -50,6 +50,8 @@ export type CaseReport = {
     verses?: string[];
     plan?: unknown;
     pinned?: number;
+    pinLog?: { ref: string; status: string; count: number; detail?: string }[];
+    errors?: string[];
     abstainReason?: string;
     attempts: { raw: string; guardOk: boolean; findings: string[] }[];
   };
@@ -147,6 +149,15 @@ export async function runBrainCase(id: string): Promise<CaseReport> {
         verses: reply.diag.retrieval?.verses,
         plan: reply.diag.retrieval?.plan,
         pinned: reply.diag.retrieval?.pinned,
+        pinLog: reply.diag.retrieval?.pinLog,
+        // أخطاء الوصول إلى المصادر (انقطاع MCP، أو خطأ Supabase) لكل بحث.
+        errors: [
+          ...new Set(
+            (reply.diag.retrieval?.searches ?? [])
+              .filter((x) => x.error)
+              .map((x) => `${x.source}: ${x.error}`),
+          ),
+        ].slice(0, 8),
         abstainReason: reply.diag.abstainReason,
         attempts: reply.diag.attempts,
       },
@@ -189,7 +200,12 @@ export async function mcpSamples(): Promise<unknown> {
   };
   const lib = searchTool ? { ...buildArgs(searchTool, "أركان الإيمان", "ar"), sources: [enumOf("library|house")] } : {};
   const had = searchTool ? { ...buildArgs(searchTool, "أركان الإيمان", "ar"), sources: [enumOf("hadith|hadeeth")] } : {};
-  const [libSearch, hadSearch, browse] = await Promise.all([run("search", lib), run("search", had), run("browse_library", { name: "الإيمان", language: "ar" })]);
+  const [libSearch, hadSearch, browse, verses] = await Promise.all([
+    run("search", lib),
+    run("search", had),
+    run("browse_library", { name: "الإيمان", language: "ar" }),
+    run("get_quran_verses", { surah: 3, ayah: 1, language: "ar", translation_key: "arabic_moyassar" }),
+  ]);
   let firstId: string | undefined;
   try {
     const r = await callTool("search", had);
@@ -203,7 +219,7 @@ export async function mcpSamples(): Promise<unknown> {
     : [];
   return {
     tools: tools.map((t) => ({ name: t.name, inputSchema: t.inputSchema })),
-    samples: [libSearch, hadSearch, browse, ...detail],
+    samples: [libSearch, hadSearch, browse, verses, ...detail],
     firstHadithId: firstId ?? null,
   };
 }

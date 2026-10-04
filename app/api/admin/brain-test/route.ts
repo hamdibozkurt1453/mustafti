@@ -83,7 +83,8 @@ a{color:var(--mid)}
 <script>
 const CASES=${casesJson};
 const REASON={no_passages:"البحث لم يُرجع نصوصاً",no_relevant:"نصوص لكن لا شيء منها ذو صلة (درجة ≥2)",model_abstained:"النصوص موجودة لكن النموذج امتنع",no_citation:"جواب بلا إحالة [n] ولا اقتباس موثّق",guard:"اعترض الحارس"};
-const planText=p=>[p.quran&&p.quran.length?"آيات "+p.quran.map(v=>v.surah+":"+v.ayah+(v.through?"-"+v.through:"")).join("، "):"",p.surahInfo&&p.surahInfo.length?"سور "+p.surahInfo.join("، "):"",p.hadithQueries&&p.hadithQueries.length?"حديث «"+p.hadithQueries.join("»، «")+"»":"",p.bayyinat&&p.bayyinat.length?"بيّنات "+p.bayyinat.join("، "):"",p.libraryQueries&&p.libraryQueries.length?"مكتبة «"+p.libraryQueries.join("»، «")+"»":""].filter(Boolean).join(" · ")||"فارغة";
+const planText=p=>[p.quran&&p.quran.length?"آيات "+p.quran.map(v=>v.surah+":"+v.ayah+(v.through?"-"+v.through:"")).join("، "):"",p.surahInfo&&p.surahInfo.length?"سور "+p.surahInfo.join("، "):"",p.hadithQueries&&p.hadithQueries.length?"حديث «"+p.hadithQueries.join("»، «")+"»":"",p.bayyinatQueries&&p.bayyinatQueries.length?"بيّنات «"+p.bayyinatQueries.join("»، «")+"»":"",p.libraryQueries&&p.libraryQueries.length?"مكتبة «"+p.libraryQueries.join("»، «")+"»":""].filter(Boolean).join(" · ")||"فارغة";
+const PIN={ok:"وُجد",empty:"فارغ",error:"خطأ",timeout:"تجاوز المهلة"};
 const CAT={reference:"المرجعية",insistence:"إلحاح",urgent:"عاجل",out_of_scope:"خارج النطاق",identity:"هوية وتلاعب",general:"عام"};
 const results={};
 const list=document.getElementById("list"),run=document.getElementById("run"),copy=document.getElementById("copy"),summary=document.getElementById("summary");
@@ -99,7 +100,9 @@ function render(c,r){
   const d=r.diag;
   const diag=d?'<div class="diag">'
    +(d.abstainReason?'<div class="no">سبب الامتناع: '+esc(REASON[d.abstainReason]||d.abstainReason)+"</div>":"")
-   +(d.plan?"<div>خطة الإحالات: "+esc(planText(d.plan))+" · وُجد منها في المصادر: "+(d.pinned??0)+"</div>":"")
+   +(d.plan?"<div>خطة الإحالات: "+esc(planText(d.plan))+" · بلغ التقييم منها: "+(d.pinned??0)+"</div>":"")
+   +(d.pinLog&&d.pinLog.length?"<div>المراجع: "+d.pinLog.map(x=>'<span class="'+(x.status==="ok"?"pass":"no")+'">'+esc(x.ref+" ← "+PIN[x.status]+(x.count>1?" ("+x.count+")":"")+(x.detail?" ["+x.detail+"]":""))+"</span>").join(" · ")+"</div>":"")
+   +(d.errors&&d.errors.length?'<div class="no">أخطاء المصادر: '+esc(d.errors.join(" | "))+"</div>":"")
    +((d.basics&&d.basics.length)||(d.verses&&d.verses.length)?"<div>الأساسيات: "+esc((d.basics||[]).join("، ")||"—")+" · الآيات: "+esc((d.verses||[]).join("، ")||"—")+"</div>":"")
    +(d.queries.length?"<div>كلمات البحث: "+d.queries.map(q=>"«"+esc(q.q)+"» ("+q.lang+")").join("، ")+"</div>":"")
    +(d.counts?"<div>المراحل: خام "+d.counts.raw+" ← بعد التنظيف "+d.counts.cleaned+" ← للتقييم "+d.counts.ranked+" ← مقبول (≥2) "+d.counts.kept+" · الترتيب: "+(d.rerank==="llm"?"النموذج":"الكلمات")+"</div>":"")
@@ -143,7 +146,9 @@ function markdown(){
     const d=r.diag;
     if(d&&d.queries.length){
       lines.push("- كلمات البحث: "+d.queries.map(q=>"«"+q.q+"» ("+q.lang+")").join("، "));
-      if(d.plan)lines.push("- خطة الإحالات: "+planText(d.plan)+" · وُجد: "+(d.pinned??0));
+      if(d.plan)lines.push("- خطة الإحالات: "+planText(d.plan)+" · بلغ التقييم: "+(d.pinned??0));
+      if(d.pinLog&&d.pinLog.length)lines.push("- المراجع: "+d.pinLog.map(x=>x.ref+" ← "+PIN[x.status]+(x.count>1?" ("+x.count+")":"")+(x.detail?" ["+x.detail+"]":"")).join(" · "));
+      if(d.errors&&d.errors.length)lines.push("- أخطاء المصادر: "+d.errors.join(" | "));
       if((d.basics&&d.basics.length)||(d.verses&&d.verses.length))lines.push("- الأساسيات: "+((d.basics||[]).join("، ")||"—")+" · الآيات: "+((d.verses||[]).join("، ")||"—"));
       if(d.counts)lines.push("- المراحل: خام "+d.counts.raw+" ← تنظيف "+d.counts.cleaned+" ← تقييم "+d.counts.ranked+" ← مقبول "+d.counts.kept+" ("+d.rerank+")");
       if(d.scored)lines.push("- الدرجات: "+d.scored.map(x=>(x.score??"—")+"/"+x.kw+(x.enriched?"+":"")+" "+x.source+" — "+x.title.slice(0,50)).join(" ؛ "));

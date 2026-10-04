@@ -18,6 +18,8 @@ export type Candidate = {
   /** درجة الصلة من النموذج (0–3). */
   score?: number;
   enriched?: boolean;
+  /** مرجع محدد (خطة الإحالات أو آية في السؤال): لا يمر بالتنظيف ولا بالترتيب بالكلمات. */
+  pinned?: boolean;
 };
 
 export type Dropped = { reason: string; source: string; title: string };
@@ -113,7 +115,8 @@ export const rerankId = (i: number) => `S${i + 1}`;
 /** قائمة المرشحين كما تُرسل للمقيّم، كل نص بمعرّفه. */
 export function rerankList(cands: Candidate[]): string {
   return cands
-    .map((c, i) => `[${rerankId(i)}] ${c.source} — ${clip(c.title, 140)}\n${clip(c.text, 420)}`)
+    // المرجع المحدد يُرسل بنص أطول (الآية واسم السورة والتفسير، أو الحديث بدرجته وشرحه).
+    .map((c, i) => `[${rerankId(i)}] ${c.source} — ${clip(c.title, 140)}\n${clip(c.text, c.pinned ? 900 : 420)}`)
     .join("\n\n");
 }
 
@@ -139,14 +142,48 @@ function clip(text: string, max: number): string {
  * (مثل «[EXACT] the narration itself — reproduce these words exactly…»).
  */
 export function cleanToolText(raw: string): string {
-  return raw
-    .split("\n")
-    .filter((line) => !/─{3,}|^\s*(CITE|Every (result|item) you carry)/i.test(line))
-    .join("\n")
-    .replace(/\s*\[[A-Z][A-Z _-]{2,}\][^\n]*/g, (m) =>
-      /reproduce|exactly|verbatim|do not|don't|must|cite|paraphras|instruction/i.test(m) ? "" : m,
-    )
-    .replace(/[#*_`>]/g, "")
-    .replace(/[ \t]+/g, " ")
-    .trim();
+  return (
+    raw
+      // ذيل الرد (CITE، أو «END OF RETRIEVED TEXT» وما بعده) ليس من النص المنشور.
+      .replace(/─{3,}\s*(?:CITE|END OF RETRIEVED TEXT)[\s\S]*$/i, "")
+      // رأس «──── RETRIEVED FROM … ────» في أي موضع، ولو كان النص سطراً واحداً.
+      .replace(/─{3,}[^─]*?─{3,}/g, "\n")
+      .replace(/─{3,}/g, " ")
+      .split("\n")
+      .filter((line) => !/^\s*(CITE|Every (result|item) you carry)/i.test(line))
+      .join("\n")
+      // تعليمات الخادم للنموذج بعد الوسم حتى آخر السطر (النص المنشور في السطر التالي).
+      .replace(/\s*\[[A-Z][A-Z _-]{2,}\][^\n]*/g, (m) =>
+        /reproduce|exactly|verbatim|do not|don't|must|cite|paraphras|instruction|attributed to them|say so/i.test(m) ? "" : m,
+      )
+      .replace(/\[\/?[A-Z][A-Z _-]{2,}\]/g, " ")
+      .replace(/[#*_`>]/g, "")
+      .replace(/[ \t]+/g, " ")
+      .trim()
+  );
+}
+
+const AR = "\\u0600-\\u06FF\\u0750-\\u077F";
+
+/**
+ * اسم السورة ورقمها وعدد آياتها كما يذكرها رد get_quran_verses (لا شيء من خارج الرد):
+ * الاسم من «سورة X» أو «X 3:1» أو «(X)»، والرقم إن ورد «3:1»، والعدد إن ذكر الرد «200 آية/verses».
+ */
+export function surahInfoFromText(text: string, surah: number): { name?: string; number?: number; count?: number } {
+  const t = text.replace(/[\u064B-\u065F\u0670\u0640]/g, "");
+  const name =
+    t.match(new RegExp(`سورة\\s+([${AR}]+(?:\\s[${AR}]+)?)`, "u"))?.[1] ??
+    t.match(new RegExp(`([${AR}]+(?:\\s[${AR}]+)?)\\s*\\(?\\s*${surah}\\s*[:：]\\s*\\d`, "u"))?.[1] ??
+    t.match(new RegExp(`\\(\\s*([${AR}]+(?:\\s[${AR}]+)?)\\s*\\)`, "u"))?.[1];
+  const number = new RegExp(`(?<!\\d)${surah}\\s*[:：]\\s*\\d`).test(t) ? surah : undefined;
+  const count = Number(
+    t.match(/(\d{1,3})\s*(?:آية|آيات|verses|ayahs|ayat|āyāt)/i)?.[1] ??
+      t.match(/(?:عدد\s+(?:ال)?آيات(?:ها)?|verses|ayahs|verse count)\s*[:：]?\s*(\d{1,3})/i)?.[1],
+  );
+  const clean = name?.trim().replace(/^سورة\s+/, "");
+  return {
+    name: clean && !/^(قال|الله|تعالى|بسم)$/.test(clean) ? clean : undefined,
+    number,
+    count: Number.isInteger(count) && count > 0 && count <= 286 ? count : undefined,
+  };
 }

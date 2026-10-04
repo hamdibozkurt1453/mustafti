@@ -17,7 +17,7 @@ export const PlanSchema = z.object({
   // بلا حد أعلى في المخطط (فلا يُرفض رد طويل ويكلّف طلب تصحيح)؛ الحدود في normalizePlan.
   surah_info: z.array(z.number().int()),
   hadith_queries: z.array(z.string()),
-  bayyinat: z.array(z.number().int()),
+  bayyinat_queries: z.array(z.string()),
   library_queries: z.array(z.string()),
 });
 
@@ -27,22 +27,22 @@ export type CitationPlan = {
   quran: VersePlan[];
   surahInfo: number[];
   hadithQueries: string[];
-  bayyinat: number[];
+  bayyinatQueries: string[];
   libraryQueries: string[];
 };
 
-export const PLAN_LIMITS = { quran: 6, surahInfo: 3, hadith: 3, bayyinat: 3, library: 2, range: 10 } as const;
+export const PLAN_LIMITS = { quran: 6, surahInfo: 3, hadith: 3, bayyinat: 2, library: 2, range: 10 } as const;
 
 export const PLANNER_SYSTEM = `You locate evidence for an Islamic Q&A tool. You NEVER answer the question and NEVER write any Qur'an, hadith or religious text.
 Output ONLY locations where the answer is explicitly stated in approved sources:
 - quran: exact verses {surah, ayah, through} (through = last verse of a short range, or null). Only verses that directly state the answer.
 - surah_info: surah numbers whose identity is asked about (e.g. "the third surah" → [3], "the first surah" → [1]).
-- hadith_queries: 1-3 short Arabic search phrases (3-6 words) taken from the wording of the specific authentic hadith that states the answer (e.g. "بني الإسلام على خمس").
-- bayyinat: numbers of questions in the book «بيّنات: أسئلة وأجوبة عن الإسلام» (1-263) ONLY if you are certain; otherwise [].
+- hadith_queries: 2-3 SHORT keyword queries (2-3 distinctive Arabic words each, no full sentences) for the specific authentic hadith that states the answer. The hadith search is exact full-text, so use rare words that appear in that hadith. Examples: "جبريل الإيمان الإحسان", "بني الإسلام خمس", "خاتم النبيين".
+- bayyinat_queries: 0-2 short Arabic phrases (2-4 words) describing the doubt or topic, to search the book «بيّنات: أسئلة وأجوبة عن الإسلام» (e.g. "عبادة الكعبة", "انتشار الإسلام بالسيف"). Never give question numbers.
 - library_queries: 0-2 short Arabic phrases for an IslamHouse book or article title on the topic.
 Give exact references where the answer is stated. If unsure, return fewer. Do not write the answer.
 If the question asks for a personal ruling, or is not about Islam, return empty arrays.
-Reply with JSON only: {"quran":[...],"surah_info":[...],"hadith_queries":[...],"bayyinat":[...],"library_queries":[...]}`;
+Reply with JSON only: {"quran":[...],"surah_info":[...],"hadith_queries":[...],"bayyinat_queries":[...],"library_queries":[...]}`;
 
 /** يطبّع الخطة: حدود السور والآيات، ونطاق قصير، وإزالة المكرر، وحدود العدد. */
 export function normalizePlan(raw: z.infer<typeof PlanSchema>): CitationPlan {
@@ -64,11 +64,11 @@ export function normalizePlan(raw: z.infer<typeof PlanSchema>): CitationPlan {
     quran,
     surahInfo: uniq(raw.surah_info.filter((n) => n >= 1 && n <= 114)).slice(0, PLAN_LIMITS.surahInfo),
     hadithQueries: uniq(raw.hadith_queries.map(phrase).filter((q) => q.length >= 3)).slice(0, PLAN_LIMITS.hadith),
-    bayyinat: uniq(raw.bayyinat.filter((n) => n >= 1 && n <= 263)).slice(0, PLAN_LIMITS.bayyinat),
+    bayyinatQueries: uniq(raw.bayyinat_queries.map(phrase).filter((q) => q.length >= 3)).slice(0, PLAN_LIMITS.bayyinat),
     libraryQueries: uniq(raw.library_queries.map(phrase).filter((q) => q.length >= 3)).slice(0, PLAN_LIMITS.library),
   };
 }
 
 export function isEmptyPlan(p: CitationPlan | null): boolean {
-  return !p || (!p.quran.length && !p.surahInfo.length && !p.hadithQueries.length && !p.bayyinat.length && !p.libraryQueries.length);
+  return !p || (!p.quran.length && !p.surahInfo.length && !p.hadithQueries.length && !p.bayyinatQueries.length && !p.libraryQueries.length);
 }
