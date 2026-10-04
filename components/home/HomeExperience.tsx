@@ -8,6 +8,7 @@ import { ChatView } from "./ChatView";
 import { Hero, type Persona } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
 import { PathCards } from "./PathCards";
+import { FEATURE_EXTRAS } from "@/lib/config";
 import { PrayerCard } from "./PrayerCard";
 import { Stats } from "./Stats";
 
@@ -73,7 +74,7 @@ export function HomeExperience() {
               <Stats reduced={reduced} />
               <HowItWorks reduced={reduced} />
               <PathCards onAsk={askAs} reduced={reduced} />
-              <PrayerCard />
+              {FEATURE_EXTRAS && <PrayerCard />}
             </m.div>
           ) : (
             <m.div

@@ -22,7 +22,8 @@
       "expertDashboard": "Specialist dashboard",
       "expertProfile": "My profile",
       "applicationStatus": "My application",
-      "expertApplications": "Specialist applications"
+      "expertApplications": "Specialist applications",
+      "adminPanel": "Admin panel"
     }
   },
   "disclosure": {
@@ -319,7 +320,8 @@
       "super_admin": "Super admin",
       "reviewer": "Reviewer",
       "moderator": "Moderator",
-      "visitor": "Visitor"
+      "visitor": "Visitor",
+      "viewer": "Read-only viewer"
     },
     "signOut": "Sign out"
   },
@@ -332,8 +334,58 @@
     "mfaVerify": "Verify",
     "mfaError": "Incorrect code. Try again.",
     "mfaLoading": "Loading…",
-    "dashboardLead": "You are signed in with two-step verification. The dashboard sections arrive in a later stage.",
-    "roleLabel": "Your role"
+    "dashboardLead": "You are signed in with two-step verification. Choose a tab.",
+    "roleLabel": "Your role",
+    "viewerBanner": "Read-only account for the judging committee",
+    "viewerLead": "This is a read-only account: you see the tabs as they are, with no actions, and without uploaded documents or contact details.",
+    "cases": {
+      "tab": "Cases",
+      "all": "All",
+      "empty": "No cases.",
+      "status": {
+        "clarifying": "Clarifying",
+        "submitted": "Awaiting an expert",
+        "assigned": "Assigned",
+        "answered": "Answered",
+        "closed": "Closed"
+      },
+      "priority": "Priority",
+      "priorities": {
+        "high": "High",
+        "normal": "Normal"
+      },
+      "priorityHigh": "High priority",
+      "country": "Asker's country",
+      "expert": "Expert",
+      "unassigned": "Unassigned",
+      "reassign": "Re-route",
+      "close": "Close",
+      "confirmReassign": "Unassign this case and return it to “Awaiting an expert”?",
+      "confirmClose": "Close this case?",
+      "errors": {
+        "forbidden": "Not allowed for your role.",
+        "unauthorized": "Please sign in.",
+        "invalid": "Invalid request.",
+        "stale": "The case status changed. Refresh the page.",
+        "generic": "Something went wrong. Try again."
+      }
+    },
+    "stats": {
+      "tab": "Statistics",
+      "queries": "General questions",
+      "today": "Today",
+      "week": "Last 7 days",
+      "abstainRate": "Abstention rate (7 days)",
+      "cases": "Cases by status",
+      "avgAnswer": "Average answer time",
+      "experts": "Experts by status",
+      "units": {
+        "d": "d",
+        "h": "h",
+        "m": "min"
+      },
+      "note": "Today is in Riyadh time. Answer time runs from case creation to the first expert answer."
+    }
   },
   "case": {
     "start": "Start",

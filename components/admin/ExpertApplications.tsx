@@ -12,6 +12,8 @@ import { ExpertDecision } from "./ExpertDecision";
 /**
  * تبويب «طلبات المختصين» في لوحة المشرف (S9). لا يُرسم إلا بعد requireRole(super_admin | reviewer)
  * في الصفحة، والقراءة بمفتاح service role. الوثائق بروابط موقّعة مدتها 5 دقائق تُنشأ لكل عرض.
+ * readOnly (حساب الاطلاع viewer، S10): بلا قبول ورفض، ولا وثائق (لا تُنشأ روابطها أصلاً)،
+ * ولا أي وسيلة تواصل (البريد، والهاتف، وبريد التواصل، وتواصل المزكّين).
  */
 
 const SIGNED_URL_SECONDS = 300;
@@ -46,10 +48,12 @@ export async function ExpertApplications({
   base,
   status,
   selected,
+  readOnly = false,
 }: {
   base: string;
   status: string | undefined;
   selected: string | undefined;
+  readOnly?: boolean;
 }) {
   const t = await getTranslations("experts.review");
   const tj = await getTranslations("experts.join");
@@ -66,12 +70,12 @@ export async function ExpertApplications({
       .eq("id", selected)
       .maybeSingle<ExpertRow>();
     if (e) {
-      const { data: signed } = e.doc_paths.length
+      const { data: signed } = e.doc_paths.length && !readOnly
         ? await db.storage.from(EXPERT_BUCKET).createSignedUrls(e.doc_paths, SIGNED_URL_SECONDS)
         : { data: [] };
       const rows: [string, string][] = [
         [t("name"), e.profiles?.display_name ?? "—"],
-        [t("email"), e.profiles?.email ?? "—"],
+        ...(readOnly ? [] : [[t("email"), e.profiles?.email ?? "—"] as [string, string]]),
         [t("role"), tj(`roles.${e.role}` as "roles.mufti")],
         [t("specialty"), e.specialty ?? "—"],
         [t("country"), e.country ?? "—"],
@@ -82,9 +86,8 @@ export async function ExpertApplications({
         [t("gradYear"), e.grad_year ? String(e.grad_year) : "—"],
         [t("submittedAt"), date(e.created_at)],
         [t("pledgeAt"), date(e.pledge_at)],
-        [t("phone"), e.contact?.phone || "—"],
-        [t("contactEmail"), e.contact?.email || "—"],
       ];
+      if (!readOnly) rows.push([t("phone"), e.contact?.phone || "—"], [t("contactEmail"), e.contact?.email || "—"]);
       if (e.status !== "pending") rows.push([t("decidedAt"), date(e.decided_at)]);
       if (e.reject_reason) rows.push([t("rejectReason"), e.reject_reason]);
 
@@ -148,7 +151,7 @@ export async function ExpertApplications({
               <ul className="list-inside list-disc text-sm text-green-900">
                 {e.tazkiyat.map((z, i) => (
                   <li key={i} dir="auto">
-                    {z.scholar} — {z.contact}
+                    {readOnly ? z.scholar : `${z.scholar} — ${z.contact}`}
                   </li>
                 ))}
               </ul>
@@ -157,6 +160,7 @@ export async function ExpertApplications({
             )}
           </section>
 
+          {!readOnly && (
           <section>
             <h3 className="mb-1 font-semibold text-green-900">{t("docs")}</h3>
             <p className="mb-2 text-xs text-ink-600">{t("docsHint")}</p>
@@ -176,8 +180,9 @@ export async function ExpertApplications({
               <p className="text-sm text-ink-600">{t("noDocs")}</p>
             )}
           </section>
+          )}
 
-          {e.status === "pending" && <ExpertDecision expertId={e.id} />}
+          {e.status === "pending" && !readOnly && <ExpertDecision expertId={e.id} />}
         </div>
       );
     }

@@ -12,7 +12,7 @@ import type { ExpertRole } from "./types";
  */
 
 export type AccountMenuItem = {
-  key: "expertDashboard" | "expertProfile" | "applicationStatus" | "expertApplications";
+  key: "expertDashboard" | "expertProfile" | "applicationStatus" | "expertApplications" | "adminPanel";
   href: string;
   count?: number;
 };
@@ -42,6 +42,9 @@ export async function getAccountMenu(): Promise<AccountMenu> {
         href: `/${encodeURIComponent(adminPath)}?tab=experts`,
         count: await pendingApplicationsCount(),
       });
+    } else if (adminPath && (ctx.adminRole === "moderator" || ctx.adminRole === "viewer")) {
+      // المتابع وحساب الاطلاع: رابط اللوحة بلا عدّ.
+      items.push({ key: "adminPanel", href: `/${encodeURIComponent(adminPath)}` });
     }
   } catch (error) {
     console.error("account menu:", error instanceof Error ? error.message : error);

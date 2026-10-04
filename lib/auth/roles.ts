@@ -5,19 +5,10 @@ import { connection } from "next/server";
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { adminNeedsMfa, isAdminRole, roleSatisfies, type AdminRole, type Role } from "./role-rules";
 
-/** أدوار المشرفين (الخطة، القسم 0.2). */
-export const ADMIN_ROLES = ["super_admin", "reviewer", "moderator"] as const;
-export type AdminRole = (typeof ADMIN_ROLES)[number];
-
-/**
- * الدور الفعلي للطلب الحالي:
- * - visitor: زائر بلا حساب.
- * - user: مستخدم مسجّل.
- * - expert: مختص **مقبول** (المعلّق يبقى user حتى يقبله مشرف).
- * - super_admin / reviewer / moderator: مشرف **اجتاز MFA** في هذه الجلسة.
- */
-export type Role = "visitor" | "user" | "expert" | AdminRole;
+// الأدوار وقواعدها النقية في role-rules.ts (تُختبر محلياً)، وتُصدَّر من هنا كما كانت.
+export { ADMIN_ROLES, adminNeedsMfa, isAdminRole, roleSatisfies, type AdminRole, type Role } from "./role-rules";
 
 export type AuthContext = {
   userId: string | null;
@@ -39,10 +30,6 @@ const VISITOR: AuthContext = {
   expertStatus: null,
   aal: null,
 };
-
-export function isAdminRole(role: string | null | undefined): role is AdminRole {
-  return (ADMIN_ROLES as readonly string[]).includes(role ?? "");
-}
 
 /**
  * يقرأ هوية الطلب الحالي مرة واحدة لكل طلب (cache).
@@ -71,7 +58,7 @@ export const getAuthContext = cache(async (): Promise<AuthContext> => {
   const expertStatus = (expert?.status as AuthContext["expertStatus"]) ?? null;
 
   let role: Role = "user";
-  if (adminRole && aal === "aal2") role = adminRole;
+  if (adminRole && (aal === "aal2" || !adminNeedsMfa(adminRole))) role = adminRole;
   else if (expertStatus === "approved") role = "expert";
 
   return {
@@ -95,17 +82,6 @@ export class AuthzError extends Error {
     super(status === 401 ? "Unauthorized" : "Forbidden");
     this.name = "AuthzError";
   }
-}
-
-/**
- * هل يحقق الدور أحد الأدوار المطلوبة؟
- * - "visitor" يعني الجميع.
- * - "user" يعني أي حساب مسجّل (المختص والمشرف مستخدمون أيضاً).
- */
-export function roleSatisfies(role: Role, allowed: readonly Role[]): boolean {
-  if (allowed.includes("visitor")) return true;
-  if (role === "visitor") return false;
-  return allowed.includes("user") || allowed.includes(role);
 }
 
 /**

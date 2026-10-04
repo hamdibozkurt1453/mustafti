@@ -97,3 +97,17 @@ export function nextQuestion(plan: CasePlan, answers: CaseAnswer[]): { question:
 export function askedQuestions(plan: CasePlan, answers: CaseAnswer[]): PlanQuestion[] {
   return activeQuestions(plan.questions, conditionValues(plan, answers));
 }
+
+/**
+ * سؤال البلد: يضيف بلد السائل (من ترويسة x-vercel-ip-country في الخادم) زراً جاهزاً باسمه العربي،
+ * وتبقى الكتابة الحرة كما هي. بلا اسم (محلياً بلا Vercel، أو رمز غير صالح) تبقى الخطة كما هي.
+ */
+export function withAskerCountry(plan: CasePlan, countryAr: string | null): CasePlan {
+  if (!countryAr) return plan;
+  return {
+    ...plan,
+    questions: plan.questions.map((q) =>
+      q.key === "country" && q.options.length === 0 ? { ...q, options: [{ value: countryAr, label: countryAr }] } : q,
+    ),
+  };
+}

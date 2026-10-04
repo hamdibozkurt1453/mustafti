@@ -22,7 +22,8 @@
       "expertDashboard": "لوحة المختص",
       "expertProfile": "ملفي الشخصي",
       "applicationStatus": "حالة طلبي",
-      "expertApplications": "طلبات المختصين"
+      "expertApplications": "طلبات المختصين",
+      "adminPanel": "لوحة المشرف"
     }
   },
   "disclosure": {
@@ -319,7 +320,8 @@
       "super_admin": "مشرف أعلى",
       "reviewer": "مراجع",
       "moderator": "متابع",
-      "visitor": "زائر"
+      "visitor": "زائر",
+      "viewer": "حساب اطلاع"
     },
     "signOut": "تسجيل الخروج"
   },
@@ -332,8 +334,58 @@
     "mfaVerify": "تحقّق",
     "mfaError": "الرمز غير صحيح. أعد المحاولة.",
     "mfaLoading": "جارٍ التحميل…",
-    "dashboardLead": "دخلت بالتحقق بخطوتين. أقسام اللوحة تُضاف في مرحلة لاحقة.",
-    "roleLabel": "دورك"
+    "dashboardLead": "دخلت بالتحقق بخطوتين. اختر تبويباً.",
+    "roleLabel": "دورك",
+    "viewerBanner": "حساب اطلاع للجنة التحكيم",
+    "viewerLead": "هذا حساب اطلاع: ترى التبويبات كما هي، بلا أي إجراء، وبلا الوثائق المرفوعة ووسائل التواصل.",
+    "cases": {
+      "tab": "الملفات",
+      "all": "الكل",
+      "empty": "لا ملفات.",
+      "status": {
+        "clarifying": "قيد الاستيضاح",
+        "submitted": "بانتظار مختص",
+        "assigned": "مسند",
+        "answered": "مجاب",
+        "closed": "مغلق"
+      },
+      "priority": "الأولوية",
+      "priorities": {
+        "high": "عالية",
+        "normal": "عادية"
+      },
+      "priorityHigh": "أولوية عالية",
+      "country": "بلد السائل",
+      "expert": "المختص",
+      "unassigned": "غير مسند",
+      "reassign": "إعادة التوجيه",
+      "close": "إغلاق",
+      "confirmReassign": "فك إسناد الملف وإعادته إلى «بانتظار مختص»؟",
+      "confirmClose": "إغلاق الملف؟",
+      "errors": {
+        "forbidden": "غير مسموح لدورك.",
+        "unauthorized": "سجّل الدخول.",
+        "invalid": "طلب غير صالح.",
+        "stale": "تغيّرت حالة الملف. حدّث الصفحة.",
+        "generic": "حدث خطأ. أعد المحاولة."
+      }
+    },
+    "stats": {
+      "tab": "الإحصاءات",
+      "queries": "الأسئلة العامة",
+      "today": "اليوم",
+      "week": "آخر 7 أيام",
+      "abstainRate": "نسبة الامتناع (7 أيام)",
+      "cases": "الملفات حسب الحالة",
+      "avgAnswer": "متوسط زمن الجواب",
+      "experts": "المختصون حسب الحالة",
+      "units": {
+        "d": "ي",
+        "h": "س",
+        "m": "د"
+      },
+      "note": "اليوم بتوقيت الرياض. زمن الجواب من إنشاء الملف إلى أول جواب مختص."
+    }
   },
   "case": {
     "start": "ابدأ",
