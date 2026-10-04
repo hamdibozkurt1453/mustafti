@@ -18,7 +18,7 @@
 6. الواجهة RTL، بهوية مستفتي (لا أزرق): أخضر عميق #04301F، ذهبي #FFB800، عاجي #F5F3EA، أخضر متوسط #0A6B45، والخط Readex Pro. المتغيرات في brand/brand-tokens.css، والشعارات والأيقونة في brand/، والدليل الكامل brand/دليل-الهوية-البصرية-مستفتي.html. (العرض التقديمي وحده يبقى على قالب المسابقة.)
 
 ## التقنية
-Next.js (أحدث نسخة مستقرة، App Router) + TypeScript + Tailwind · Supabase (Auth, Postgres, pgvector, RLS) · OpenRouter عبر lib/llm.ts (النموذج من LLM_MODEL، والمرشح الأول google/gemma-4-31b-it، ويُحسم باختبار النماذج في S3) · adhan للمواقيت · Vercel.
+Next.js (أحدث نسخة مستقرة، App Router) + TypeScript + Tailwind · Supabase (Auth, Postgres, pgvector, RLS) · OpenRouter عبر lib/llm.ts (النموذج من LLM_MODEL، والمعتمد google/gemma-4-31b-it بعد اختبار النماذج في S3) · adhan للمواقيت · Vercel.
 
 ## أسلوب العمل
 - اكتب الملفات مباشرة، ولا تعرض كوداً طويلاً في المحادثة.
