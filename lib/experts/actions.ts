@@ -6,6 +6,7 @@ import { z } from "zod";
 import { AuthzError, requireRole } from "@/lib/auth/roles";
 import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin";
 import { audit, requireApprovedExpert } from "./store";
+import { countryName } from "./countries";
 import { translateAnswer } from "./translate";
 import {
   ANSWER_LIMITS,
@@ -135,7 +136,8 @@ export async function submitApplication(input: unknown): Promise<ActionResult> {
       socials: a.socials,
       role: a.role,
       specialty: a.specialty,
-      country: a.country,
+      country_code: a.countryCode,
+      country: countryName(a.countryCode, "ar"),
       languages: [...new Set(a.languages)],
       degree: a.traditional ? a.degree || null : a.degree,
       institution: a.traditional ? a.institution || null : a.institution,
@@ -324,7 +326,14 @@ export async function updateOwnProfile(input: unknown): Promise<ActionResult> {
     if (p.avatarPath && !(await avatarExists(p.avatarPath, self.id))) return fail("invalid");
     const { error } = await createAdminClient()
       .from("experts")
-      .update({ bio: p.bio, avatar_path: p.avatarPath, contact: cleanContact(p.contact), socials: p.socials })
+      .update({
+        country_code: p.countryCode,
+        country: countryName(p.countryCode, "ar"),
+        bio: p.bio,
+        avatar_path: p.avatarPath,
+        contact: cleanContact(p.contact),
+        socials: p.socials,
+      })
       .eq("id", self.id)
       .eq("status", "approved");
     if (error) return fail("generic");

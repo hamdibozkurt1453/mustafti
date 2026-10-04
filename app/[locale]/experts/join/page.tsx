@@ -7,6 +7,7 @@ import { placeholderMetadata } from "@/components/PagePlaceholder";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { getAuthContext } from "@/lib/auth/roles";
+import { countryName, countryOptions } from "@/lib/experts/countries";
 import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -35,14 +36,22 @@ export default async function Page({ params }: Props) {
 
   const db = createAdminClient();
   const [{ data: existing }, { data: profile }] = await Promise.all([
-    db.from("experts").select("status, reject_reason").eq("id", ctx.userId).maybeSingle(),
+    db.from("experts").select("status, reject_reason, country, country_code").eq("id", ctx.userId).maybeSingle(),
     db.from("profiles").select("display_name").eq("id", ctx.userId).maybeSingle(),
   ]);
 
   if (existing) {
+    const name = countryName(existing.country_code, locale) ?? existing.country;
+    const countryLine = name ? (
+      <p className="mb-4 text-green-900">
+        <span className="text-ink-600">{t("country")}: </span>
+        <bdi className="font-semibold">{name}</bdi>
+      </p>
+    ) : null;
     if (existing.status === "approved") {
       return (
         <AuthShell title={t("acceptedTitle")} lead={t("acceptedLead")}>
+          {countryLine}
           <Link href="/expert" className="inline-block rounded-full bg-gold-500 px-5 py-3 font-semibold text-green-900">
             {t("enterDashboard")}
           </Link>
@@ -52,6 +61,7 @@ export default async function Page({ params }: Props) {
     if (existing.status === "rejected") {
       return (
         <AuthShell title={t("rejectedTitle")}>
+          {countryLine}
           {existing.reject_reason && (
             <p className="text-green-900">
               <span className="text-ink-600">{t("rejectReason")}: </span>
@@ -61,7 +71,11 @@ export default async function Page({ params }: Props) {
         </AuthShell>
       );
     }
-    return <AuthShell title={t("doneTitle")} lead={t("doneLead")}>{null}</AuthShell>;
+    return (
+      <AuthShell title={t("doneTitle")} lead={t("doneLead")}>
+        {countryLine}
+      </AuthShell>
+    );
   }
 
   return (
@@ -71,7 +85,7 @@ export default async function Page({ params }: Props) {
         <h1 className="font-display text-[28px] font-bold leading-snug text-green-900 sm:text-[32px]">{pages("expertsJoin.title")}</h1>
         <p className="mt-2 text-ink-600">{pages("expertsJoin.description")}</p>
         <div className="mt-6">
-          <ExpertJoinWizard userId={ctx.userId} initialName={profile?.display_name ?? ""} />
+          <ExpertJoinWizard userId={ctx.userId} initialName={profile?.display_name ?? ""} countries={countryOptions(locale)} />
         </div>
       </div>
     </main>

@@ -33,6 +33,8 @@ export type NewCase = {
   kind: ReferralKind;
   email?: string | null;
   ownerId?: string | null;
+  /** رمز بلد السائل (ISO، من ترويسة x-vercel-ip-country) لتوجيه الملف إلى مختص من بلده. لا عنوان IP. */
+  askerCountry?: string | null;
 };
 
 export async function saveCase(input: NewCase): Promise<{ token: string; routeTo: RouteTo; priority: Priority }> {
@@ -56,6 +58,7 @@ export async function saveCase(input: NewCase): Promise<{ token: string; routeTo
       status: "submitted",
       route_to: route,
       contact_email: input.email || null,
+      asker_country: input.askerCountry ?? null,
     })
     .select("id")
     .single();

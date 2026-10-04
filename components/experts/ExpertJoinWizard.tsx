@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { localeNames, type Locale } from "@/i18n/locales";
 import { createDocUpload, removeDocUpload, submitApplication } from "@/lib/experts/actions";
+import type { CountryOption } from "@/lib/experts/countries";
 import { AvatarPicker } from "./AvatarPicker";
+import { CountrySelect } from "./CountrySelect";
 import { ContactSocialFields, contactSocialErrors, type ContactValue, type SocialsValue } from "./ContactSocialFields";
 import {
   ApplicationSchema,
@@ -31,7 +33,7 @@ type Form = {
   socials: SocialsValue;
   role: ExpertRole;
   specialty: string;
-  country: string;
+  countryCode: string;
   languages: string[];
   traditional: boolean;
   degree: string;
@@ -50,7 +52,7 @@ const EMPTY: Form = {
   socials: {},
   role: "mufti",
   specialty: "",
-  country: "",
+  countryCode: "",
   languages: ["ar"],
   traditional: false,
   degree: "",
@@ -79,7 +81,15 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
  * الوثائق تُرفع فور اختيارها برابط موقّع من الخادم، فيُحفظ مسارها مع المسودة.
  * التحقق هنا للراحة فقط؛ الخادم يعيده كاملاً (lib/experts/actions.ts).
  */
-export function ExpertJoinWizard({ userId, initialName }: { userId: string; initialName: string }) {
+export function ExpertJoinWizard({
+  userId,
+  initialName,
+  countries,
+}: {
+  userId: string;
+  initialName: string;
+  countries: CountryOption[];
+}) {
   const t = useTranslations("experts.join");
   const tp = useTranslations("experts.profile");
   const router = useRouter();
@@ -122,7 +132,7 @@ export function ExpertJoinWizard({ userId, initialName }: { userId: string; init
   function stepValid(i: number): boolean {
     if (i === 0) {
       const bio = form.bio.trim().length;
-      return form.displayName.trim().length >= 2 && bio >= BIO_MIN && bio <= BIO_MAX && form.specialty.trim().length >= 2 && form.country.trim().length >= 2 && form.languages.length > 0;
+      return form.displayName.trim().length >= 2 && bio >= BIO_MIN && bio <= BIO_MAX && form.specialty.trim().length >= 2 && Boolean(form.countryCode) && form.languages.length > 0;
     }
     if (i === 1) {
       const year = Number(form.gradYear);
@@ -187,7 +197,7 @@ export function ExpertJoinWizard({ userId, initialName }: { userId: string; init
       socials: Object.fromEntries(Object.entries(form.socials).filter(([, v]) => v?.trim())),
       role: form.role,
       specialty: form.specialty,
-      country: form.country,
+      countryCode: form.countryCode,
       languages: form.languages,
       traditional: form.traditional,
       degree: form.degree,
@@ -271,7 +281,13 @@ export function ExpertJoinWizard({ userId, initialName }: { userId: string; init
             <input className={input} value={form.specialty} maxLength={160} onChange={(e) => set("specialty", e.target.value)} />
           </Field>
           <Field label={t("country")}>
-            <input className={input} value={form.country} maxLength={80} onChange={(e) => set("country", e.target.value)} />
+            <CountrySelect
+              value={form.countryCode}
+              options={countries}
+              onChange={(v) => set("countryCode", v)}
+              placeholder={t("countryPick")}
+              invalid={showErrors && !form.countryCode}
+            />
           </Field>
           <fieldset className="space-y-1.5">
             <legend className="text-sm font-semibold text-green-900">{t("languages")}</legend>
