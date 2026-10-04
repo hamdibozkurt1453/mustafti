@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CaseStatusBadge } from "@/components/case/CaseFileView";
 import { AnswerForm, ClaimButton, MissingForm } from "@/components/experts/ExpertCaseActions";
+import { CaseMeta } from "@/components/experts/CaseMeta";
 import { ExpertGate } from "@/components/experts/ExpertGate";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { AuthzError, getAuthContext } from "@/lib/auth/roles";
-import { chapterName } from "@/lib/case/pillars";
 import { dirForText } from "@/lib/chat/protocol";
 import { expertCase, requireApprovedExpert, type ExpertSelf } from "@/lib/experts/store";
 import { isAdminClientConfigured } from "@/lib/supabase/admin";
@@ -44,7 +44,6 @@ export default async function ExpertCasePage({ params }: Props) {
   if (!c) notFound();
 
   const t = await getTranslations("experts.dashboard");
-  const format = await getFormatter();
   const canAnswer = c.mine && c.status === "assigned";
 
   return (
@@ -57,9 +56,8 @@ export default async function ExpertCasePage({ params }: Props) {
         <div className="flex flex-wrap items-center gap-2">
           <CaseStatusBadge status={c.status} />
           {c.priority === "high" && <span className="rounded-full bg-alert-600 px-3 py-1 text-xs font-semibold text-ivory-50">{t("high")}</span>}
-          <span className="ms-auto text-xs text-ink-600">
-            {chapterName(c.chapter, "ar")} · {t("langLabel")}: {c.lang ?? "ar"} ·{" "}
-            {format.dateTime(new Date(c.createdAt), { dateStyle: "medium", timeStyle: "short" })}
+          <span className="ms-auto">
+            <CaseMeta chapter={c.chapter} lang={c.lang} createdAt={c.createdAt} />
           </span>
         </div>
 

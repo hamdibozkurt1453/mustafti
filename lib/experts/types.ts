@@ -40,8 +40,117 @@ export const TazkiyaSchema = z.object({
 });
 export type Tazkiya = z.infer<typeof TazkiyaSchema>;
 
+// ---------------------------------------------------------------------------
+// الملف الشخصي: الصورة، والنبذة، والتواصل (للمشرفين فقط)، والحسابات (عامة).
+// ---------------------------------------------------------------------------
+
+/** المخزن العام للصور الشخصية وحدوده (تطابق supabase/migrations/20261004_expert_profiles.sql). */
+export const AVATAR_BUCKET = "expert-avatars";
+export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+export const AVATAR_SIZE = 512;
+export const BIO_MAX = 500;
+export const BIO_MIN = 20;
+
+/** مسار الصورة: {user_id}/avatar-{رمز}.{jpg|png|webp}، في مجلد صاحبها فقط. */
+export function isOwnAvatarPath(path: string, userId: string): boolean {
+  return new RegExp(`^${userId}/avatar-[a-z0-9]{6,32}\\.(jpg|png|webp)$`).test(path);
+}
+
+/** الرابط العام للصورة (المخزن عام، فلا مفتاح). */
+export function avatarUrl(path: string | null | undefined, supabaseUrl: string): string | null {
+  if (!path || !supabaseUrl) return null;
+  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${AVATAR_BUCKET}/${path.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+export const SOCIAL_KEYS = ["x", "facebook", "instagram", "youtube", "telegram", "linkedin", "website"] as const;
+export type SocialKey = (typeof SOCIAL_KEYS)[number];
+
+/** النطاقات المقبولة لكل حساب (website: أي نطاق). */
+const SOCIAL_HOSTS: Record<Exclude<SocialKey, "website">, string[]> = {
+  x: ["x.com", "twitter.com"],
+  facebook: ["facebook.com", "fb.com"],
+  instagram: ["instagram.com"],
+  youtube: ["youtube.com", "youtu.be"],
+  telegram: ["t.me", "telegram.me"],
+  linkedin: ["linkedin.com"],
+};
+
+/** يتحقق من صيغة الرابط: http(s)، ونطاق المنصة نفسها، ولا شيء غيره. يعيد الرابط الموحّد أو null. */
+export function normalizeSocial(key: SocialKey, value: string): string | null {
+  const raw = value.trim();
+  if (!raw || raw.length > 300) return null;
+  let url: URL;
+  try {
+    url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  if (url.username || url.password) return null;
+  const host = url.hostname.toLowerCase().replace(/^(www|m|mobile)\./, "");
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)) return null;
+  if (key !== "website") {
+    if (!SOCIAL_HOSTS[key].some((h) => host === h || host.endsWith(`.${h}`))) return null;
+    if (url.pathname.replace(/\/+$/, "") === "") return null; // رابط الحساب لا الصفحة الرئيسية للمنصة
+  }
+  return url.toString();
+}
+
+export const SocialsSchema = z
+  .partialRecord(z.enum(SOCIAL_KEYS), z.string().trim().max(300))
+  .transform((obj, ctx) => {
+    const out: Partial<Record<SocialKey, string>> = {};
+    for (const key of SOCIAL_KEYS) {
+      const value = obj[key];
+      if (!value) continue;
+      const url = normalizeSocial(key, value);
+      if (!url) ctx.addIssue({ code: "custom", path: [key], message: "url" });
+      else out[key] = url;
+    }
+    return out;
+  });
+export type Socials = Partial<Record<SocialKey, string>>;
+
+export const PHONE_RE = /^\+?[0-9][0-9 ()-]{5,22}$/;
+
+export const ContactSchema = z.object({
+  phone: z.union([z.literal(""), z.string().trim().regex(PHONE_RE)]).default(""),
+  email: z.union([z.literal(""), z.email().max(200)]).default(""),
+});
+export type Contact = z.infer<typeof ContactSchema>;
+
+/** ما يعدّله المختص المقبول في ملفه (الاسم والدور والتخصص تبقى كما راجعها المشرف). */
+export const ProfileEditSchema = z.object({
+  bio: s(BIO_MAX).min(BIO_MIN),
+  avatarPath: s(200).nullable(),
+  contact: ContactSchema,
+  socials: SocialsSchema,
+});
+
+/**
+ * رابط الملف العام: الاسم بحروف لاتينية إن وُجدت، ثم لاحقة عشوائية (لا يتكرر، ولا يكون «join»).
+ * random: 6 أحرف [a-z0-9] تُعطى من الخادم.
+ */
+export function makeSlug(name: string, random: string): string {
+  const latin = name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/ß/g, "ss")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/, "");
+  return `${latin.length >= 3 ? latin : "expert"}-${random}`;
+}
+
 export const ApplicationSchema = z
   .object({
+    bio: s(BIO_MAX).min(BIO_MIN),
+    avatarPath: s(200).nullable().default(null),
+    contact: ContactSchema.default({ phone: "", email: "" }),
+    socials: SocialsSchema.default({}),
     displayName: s(80).min(2),
     role: z.enum(EXPERT_ROLES),
     specialty: s(160).min(2),

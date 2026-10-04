@@ -42,9 +42,9 @@ export default async function Page({ params }: Props) {
   if (existing) {
     if (existing.status === "approved") {
       return (
-        <AuthShell title={pages("expertsJoin.title")} lead={t("approvedLead")}>
+        <AuthShell title={t("acceptedTitle")} lead={t("acceptedLead")}>
           <Link href="/expert" className="inline-block rounded-full bg-gold-500 px-5 py-3 font-semibold text-green-900">
-            {t("toDashboard")}
+            {t("enterDashboard")}
           </Link>
         </AuthShell>
       );

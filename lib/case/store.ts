@@ -87,7 +87,8 @@ export type CaseView = {
   summaryUser: string;
   rows: CaseRow[];
   unknowns: CaseUnknown[];
-  answers: { answerAr: string; answerTranslated: string | null; createdAt: string }[];
+  /** expertId للخادم فقط (لبطاقة «أجاب عن مسألتك»)، ولا يُرسل إلى المتصفح. */
+  answers: { answerAr: string; answerTranslated: string | null; createdAt: string; expertId: string }[];
 };
 
 type CaseFileRow = {
@@ -115,7 +116,7 @@ export async function getCaseByToken(token: string): Promise<CaseView | null> {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle<CaseFileRow>(),
-    db.from("expert_answers").select("answer_ar, answer_translated, created_at").eq("case_id", c.id).order("created_at"),
+    db.from("expert_answers").select("answer_ar, answer_translated, created_at, expert_id").eq("case_id", c.id).order("created_at"),
   ]);
   return {
     status: c.status,
@@ -128,6 +129,11 @@ export async function getCaseByToken(token: string): Promise<CaseView | null> {
     summaryUser: file?.summary_user_lang ?? "",
     rows: file?.pillars?.rows ?? [],
     unknowns: file?.unknowns ?? [],
-    answers: (answers ?? []).map((a) => ({ answerAr: a.answer_ar, answerTranslated: a.answer_translated, createdAt: a.created_at })),
+    answers: (answers ?? []).map((a) => ({
+      answerAr: a.answer_ar,
+      answerTranslated: a.answer_translated,
+      createdAt: a.created_at,
+      expertId: a.expert_id,
+    })),
   };
 }
