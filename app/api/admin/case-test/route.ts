@@ -104,7 +104,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"
 function render(box, r) {
   const t = r.trace || {};
   const ch = t.chapter || {};
-  const gens = t.generation || [];
+  const gens = [...(t.generation || []).map((g) => ({ ...g, label: "جولة التوليد" })), ...(t.extras || []).map((g) => ({ ...g, label: "أسئلة خاصة بعد القالب" }))];
   const fb = Boolean(t.fallback) || Boolean(r.error);
   box.className = "case " + (fb ? "fb" : "ok");
   let h = '<div class="q">' + esc(r.question) + '</div>';
@@ -115,7 +115,7 @@ function render(box, r) {
   if (r.error) h += '<div class="bad">خطأ: ' + esc(r.error) + '</div>';
   if (t.template) h += '<div class="meta">طلب القالب: ' + (t.template.ms/1000).toFixed(1) + ' ث' + (t.template.error ? ' · <span class="bad">' + esc(t.template.error) + '</span>' : '') + '</div>';
   gens.forEach((g, i) => {
-    h += '<details open><summary>جولة التوليد ' + (i+1) + ': ' + (g.ms/1000).toFixed(1) + ' ث · قبل الفحص ' + g.before.length + ' · بعده ' + g.kept + (g.error ? ' · <span class="bad">' + esc(g.error) + '</span>' : '') + '</summary>';
+    h += '<details open><summary>' + g.label + ' ' + (i+1) + ': ' + (g.ms/1000).toFixed(1) + ' ث · قبل الفحص ' + g.before.length + ' · بعده ' + g.kept + (g.error ? ' · <span class="bad">' + esc(g.error) + '</span>' : '') + '</summary>';
     if (g.before.length) h += '<div>قبل الفحص:</div><ol>' + g.before.map((q) => '<li>' + esc(q.ar) + ' <span class="meta">[' + esc(q.type) + (q.options.length ? ': ' + esc(q.options.join(" / ")) : '') + ']</span><div class="why">' + esc(q.why) + '</div></li>').join("") + '</ol>';
     if (g.dropped.length) h += '<div class="bad">المحذوف:</div><ol>' + g.dropped.map((d) => '<li>' + esc(d.ar) + ' ← <b>' + esc(d.reason) + '</b></li>').join("") + '</ol>';
     g.attempts.forEach((a, j) => { h += '<details><summary>الرد الخام ' + (j+1) + ' (' + (a.ms/1000).toFixed(1) + ' ث)' + (a.error ? ' · ' + esc(a.error) : '') + '</summary><pre>' + esc(a.raw || "(فارغ)") + '</pre></details>'; });
@@ -123,8 +123,9 @@ function render(box, r) {
   });
   const raws = [...(ch.attempts||[]), ...((t.template||{}).attempts||[])];
   if (raws.length) h += '<details><summary>ردود الباب والقالب الخام</summary>' + raws.map((a) => '<pre>' + esc(a.raw || a.error || "") + '</pre>').join("") + '</details>';
+  if (t.known) h += '<div class="meta">المعلوم من النموذج: ' + esc(JSON.stringify(t.known.model)) + ' · من صيغة الفعل (الكود): ' + esc(JSON.stringify(t.known.code)) + '</div>';
   const qs = (r.plan && r.plan.questions) || [];
-  h += '<div><b>الأسئلة النهائية (' + qs.length + '):</b></div><ol>' + qs.map((q) => '<li>' + esc(q.text) + (q.generated ? ' <span class="meta">(مولّد)</span>' : '') + (q.options.length ? ' <span class="meta">[' + esc(q.options.map((o) => o.label).join(" / ")) + ']</span>' : '') + '<div class="why">' + esc(q.why) + '</div></li>').join("") + '</ol>';
+  h += '<div><b>الأسئلة المرشحة (' + qs.length + '؛ يُسأل منها 8 على الأكثر، والمشروط يظهر بحسب الأجوبة):</b></div><ol>' + qs.map((q) => '<li>' + esc(q.text) + (q.generated ? ' <span class="meta">(مولّد)</span>' : '') + (q.showIf ? ' <span class="meta">(مشروط: ' + esc(q.showIf.key) + (q.showIf.in ? ' ∈ ' + esc(q.showIf.in.join("/")) : '') + (q.showIf.notIn ? ' ∉ ' + esc(q.showIf.notIn.join("/")) : '') + ')</span>' : '') + (q.options.length ? ' <span class="meta">[' + esc(q.options.map((o) => o.label).join(" / ")) + ']</span>' : '') + '<div class="why">' + esc(q.why) + '</div></li>').join("") + '</ol>';
   if (r.plan && r.plan.known && r.plan.known.length) h += '<div class="meta">ما ذكره السائل: ' + esc(r.plan.known.map((k) => k.key + "=" + k.value).join("، ")) + '</div>';
   box.innerHTML = h;
 }

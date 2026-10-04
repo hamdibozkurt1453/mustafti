@@ -1,6 +1,7 @@
 import pillars from "@/content/pillars.json";
 import { CHAPTERS } from "@/lib/brain/prompts";
-import type { AnswerType, Chapter } from "./types";
+import { activeQuestions } from "./flow";
+import type { AnswerType, Chapter, ShowIf } from "./types";
 
 /**
  * قوالب الأركان (content/pillars.json) واختيار أسئلة الاستيضاح.
@@ -22,6 +23,8 @@ export type PillarQuestion = {
   en: string;
   /** «لماذا نسأل؟»: أثر الجواب في الحكم. */
   why?: { ar: string; en: string };
+  /** لا يُعرض إلا إن ناسب النوع الفرعي (flow.ts). */
+  showIf?: ShowIf;
   type: AnswerType;
   options?: PillarOption[];
   required: boolean;
@@ -32,7 +35,15 @@ type ChapterTemplate = { ar: string; en: string; ref: string; order: string[]; q
 
 export const PILLARS = pillars as unknown as {
   version: number;
-  limits: { maxQuestions: number; generatedMin: number; generatedMax: number; rulingMin: number; rulingMax: number };
+  limits: {
+    maxQuestions: number;
+    generatedMin: number;
+    generatedMax: number;
+    rulingMin: number;
+    rulingMax: number;
+    extraMin: number;
+    extraMax: number;
+  };
   generationRules: { ar: string[]; en: string[] };
   general: PillarQuestion[];
   chapters: Record<Exclude<Chapter, "other">, ChapterTemplate>;
@@ -45,6 +56,8 @@ export const GENERATED_MIN = PILLARS.limits.generatedMin;
 export const GENERATED_MAX = PILLARS.limits.generatedMax;
 export const RULING_MIN = PILLARS.limits.rulingMin;
 export const RULING_MAX = PILLARS.limits.rulingMax;
+export const EXTRA_MIN = PILLARS.limits.extraMin;
+export const EXTRA_MAX = PILLARS.limits.extraMax;
 
 /** ترتيب الأركان العامة لباب غير معدّ؛ «generated» موضع الأسئلة المولّدة. */
 const OTHER_ORDER = ["occurred", "what_exactly", "generated", "when", "state_intent", "asked_before", "madhhab"];
@@ -78,24 +91,48 @@ export function templateFor(chapter: Chapter, generated: PillarQuestion[] = []):
 }
 
 /**
- * أسئلة الاستيضاح: بلا ما ذكره السائل (known)، والإلزامي أولاً ثم الاختياري، حتى max،
- * مع حفظ ترتيب القالب.
+ * كل الأسئلة المرشحة للخطة، بترتيبها، بلا الحد (يُطبَّق مع كل جواب في flow.ts):
+ * - سؤال الحكم العام: المولّد (2–4)، أو الاحتياطي من 3 أسئلة.
+ * - باب معدّ: القالب ثم 1–2 أسئلة خاصة بنص السؤال (extras)، بلا ما ذكره السائل، وبلا ما لا يناسب شروطه.
+ * - باب آخر: الأركان العامة والمولّد.
  */
+export function planPool(
+  chapter: Chapter,
+  known: Record<string, string | undefined> = {},
+  generated: PillarQuestion[] = [],
+  kind: "personal" | "ruling" = "personal",
+  extras: PillarQuestion[] = [],
+): PillarQuestion[] {
+  const skip = new Set(Object.keys(known));
+  // «وقع» معروف من صيغة الفعل ⇒ لا «هل وقع أم تسأل قبل الفعل؟» في الاحتياطي.
+  if (skip.has("occurred")) skip.add("occurred_before");
+  if (kind === "ruling") {
+    const base = generated.length ? generated.slice(0, RULING_MAX) : fallbackQuestions();
+    return base.filter((q) => !skip.has(q.key));
+  }
+  const all = chapter === "other" ? templateFor(chapter, generated) : [...templateFor(chapter), ...extras];
+  return all.filter((q) => !skip.has(q.key)).filter((q) => {
+    const c = q.showIf;
+    const v = c ? known[c.key] : undefined;
+    return !c || v === undefined || ((!c.in || c.in.includes(v)) && (!c.notIn || !c.notIn.includes(v)));
+  });
+}
+
+/** معاينة الأسئلة الفعلية قبل أي جواب (8 كحد أقصى، الإلزامي أولاً). */
 export function selectQuestions(
   chapter: Chapter,
-  known: Iterable<string> = [],
+  known: Iterable<string> | Record<string, string | undefined> = [],
   generated: PillarQuestion[] = [],
   max = MAX_QUESTIONS,
   kind: "personal" | "ruling" = "personal",
+  extras: PillarQuestion[] = [],
 ): PillarQuestion[] {
-  // سؤال الحكم العام: الشروط المؤثرة فقط (2–4)، لا قالب ولا أركان عامة. بلا نموذج: سؤال الظروف وحده.
-  if (kind === "ruling") return generated.length ? generated.slice(0, RULING_MAX) : fallbackQuestions();
-  const skip = new Set(known);
-  const pool = templateFor(chapter, generated).filter((q) => !skip.has(q.key));
-  const chosen = new Set<string>();
-  for (const q of pool) if (q.required && chosen.size < max) chosen.add(q.key);
-  for (const q of pool) if (!q.required && chosen.size < max) chosen.add(q.key);
-  return pool.filter((q) => chosen.has(q.key));
+  // قائمة مفاتيح (قيمها غير معروفة) أو قيم خيارات معروفة.
+  const values: Record<string, string | undefined> =
+    Array.isArray(known) || known instanceof Set
+      ? Object.fromEntries([...known].map((k) => [k, undefined]))
+      : (known as Record<string, string | undefined>);
+  return activeQuestions(planPool(chapter, values, generated, kind, extras), values, max);
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +141,7 @@ export function selectQuestions(
 
 const PRIVATE: RegExp[] = [
   // الهوية والتواصل
-  /((?<!(دون|بدون|بلا)\s)(اسم|أسماء)|رقم\s*(الهوية|الجواز|الحساب|هاتف|الهاتف|جوال)|هويتك|جواز|حساب\s*(بنكي|مصرفي)|آيبان|عنوانك|عنوان\s*السكن|هاتفك|جوالك|بريدك|إيميل)/u,
+  /((?<!(دون|بدون|بلا)\s)(?<![\p{L}])(?:ال)?(اسم|اسمك|اسمه|اسمها|اسمهم|اسمكم|اسمي|أسماء|أسماؤهم|أسمائهم|الأسماء)(?![\p{L}])|رقم\s*(الهوية|الجواز|الحساب|هاتف|الهاتف|جوال)|هويتك|جواز|حساب\s*(بنكي|مصرفي)|آيبان|عنوانك|عنوان\s*السكن|هاتفك|جوالك|بريدك|إيميل)/u,
   /(?<!(without|no)\s)\bnames?\b|\b(surname|passport|id\s*(number|card)|national\s*id|social\s*security|bank\s*account|iban|account\s*number|phone|mobile|e-?mail|address|street)\b/i,
   // التفاصيل الجنسية
   /(جماع|الجماع|جنس|جنسي|وطء|وطئ|إنزال|عورة|قبلة|مداعبة|استمناء|زنا)/u,
@@ -135,6 +172,21 @@ const RULING: RegExp[] = [
   /\b(permissible|permitted|allowed|forbidden|haram|halal|makruh|obligatory|ruling|fatwa|sinful|is\s+it\s+(ok|okay|valid))\b/i,
 ];
 
+/**
+ * عبارات الحكم الفعلية (لسطر «لماذا نسأل؟»): «لأن الحكم يختلف…» يشرح سبب السؤال ولا يُصدر حكماً،
+ * فلا تُفحص كلمة «الحكم» أو «ruling» وحدها، بل الحكم نفسه: يجوز، حرام، وقع الطلاق، permissible…
+ */
+const RULING_STATEMENT: RegExp[] = [
+  /(?<![\p{L}])(?:لا\s+)?(?:يجوز|تجوز|جائز|جائزة|حرام|محرم|محرمة|حلال|مباح|مباحة|مكروه|مكروهة)(?![\p{L}])|(?:وقع|يقع|لم\s+يقع)\s+الطلاق|(?:يجب|يلزم)\s+عليك/u,
+  /\b(permissible|impermissible|haram|halal|forbidden|allowed|not\s+allowed|makruh|sinful|obligatory\s+(on|for)\s+you|the\s+divorce\s+(has\s+)?(occurred|counts|is\s+valid))\b/i,
+  /\b(caiz|helal|haram|günah)\b|\b(permis|interdit|illicite|licite)\b|\b(boleh|dilarang|haram|halal)\b|(جائز|ناجائز|حرام|حلال)/iu,
+];
+
+/** سطر «لماذا نسأل؟» آمن: بلا هوية ولا تفاصيل جنسية ولا عبارة حكم فعلية. */
+export function isSafeWhy(text: string, allowJob = false): boolean {
+  return !asksPrivate(text) && !RULING_STATEMENT.some((r) => r.test(text)) && (allowJob || !JOB.some((r) => r.test(text)));
+}
+
 /** هل يطلب النص هوية (اسم، رقم، حساب، هاتف، عنوان) أو تفاصيل جنسية؟ (يُطبَّق على القوالب أيضاً) */
 export function asksPrivate(text: string): boolean {
   return PRIVATE.some((r) => r.test(text));
@@ -161,7 +213,7 @@ export function dropReason(q: PillarQuestion, allowJob = false): string | null {
   if (texts.some((t) => asksPrivate(t))) return "identity_or_sexual";
   if (texts.some((t) => RULING.some((r) => r.test(t)))) return "ruling_word";
   if (!allowJob && texts.some((t) => JOB.some((r) => r.test(t)))) return "job";
-  if (q.why && [q.why.ar, q.why.en].some((t) => !isSafeText(t, allowJob))) return "why_unsafe";
+  if (q.why && [q.why.ar, q.why.en].some((t) => !isSafeWhy(t, allowJob))) return "why_unsafe";
   if ((q.options ?? []).some((o) => !isSafeText(o.ar, allowJob) || !isSafeText(o.en, allowJob))) return "option_unsafe";
   return null;
 }

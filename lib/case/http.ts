@@ -64,12 +64,15 @@ export const PlanSchema = z.object({
         options: z.array(z.object({ value: s(60), label: s(200) })).max(8),
         required: z.boolean(),
         generated: z.boolean().optional(),
+        showIf: z
+          .object({ key: s(40), in: z.array(s(60)).max(12).optional(), notIn: z.array(s(60)).max(12).optional() })
+          .optional(),
       }),
     )
-    .max(CASE_LIMITS.maxQuestions),
+    .max(CASE_LIMITS.planQuestions),
 });
 
-export const AnswersSchema = z.array(z.object({ key: s(40), value: s(CASE_LIMITS.value).nullable() })).max(CASE_LIMITS.maxQuestions);
+export const AnswersSchema = z.array(z.object({ key: s(40), value: s(CASE_LIMITS.value).nullable() })).max(CASE_LIMITS.planQuestions);
 
 export const DraftSchema = z.object({
   question: s(CASE_LIMITS.question).min(1),

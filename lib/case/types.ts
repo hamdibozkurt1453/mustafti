@@ -14,6 +14,9 @@ export type ReferralKind = "personal" | "ruling";
 
 export type PlanOption = { value: string; label: string };
 
+/** شرط العرض: لا يُسأل السؤال إلا إن كان جواب key (قيمة خيار) ضمن in، أو خارج notIn. */
+export type ShowIf = { key: string; in?: string[]; notIn?: string[] };
+
 /** سؤال استيضاح جاهز للعرض بلغة السائل. */
 export type PlanQuestion = {
   key: string;
@@ -27,8 +30,9 @@ export type PlanQuestion = {
   type: AnswerType;
   options: PlanOption[];
   required: boolean;
-  /** سؤال ولّده النموذج لباب غير معدّ (يقرؤه المفتي بهذه الصفة). */
+  /** سؤال ولّده النموذج (يقرؤه المفتي بهذه الصفة). */
   generated?: boolean;
+  showIf?: ShowIf;
 };
 
 /** واقعة ذكرها السائل في سؤاله، فلا يُسأل عنها. */
@@ -70,6 +74,8 @@ export type CaseDraft = {
 
 export const CASE_LIMITS = {
   maxQuestions: 8,
+  /** الأسئلة المرشحة في الخطة قبل الشروط والحد (يُسأل منها 8 على الأكثر). */
+  planQuestions: 24,
   question: 2000,
   summary: 4000,
   value: 600,
