@@ -54,7 +54,7 @@ function site(
 ): AccessMethod {
   return {
     kind: "site",
-    via: searchUrl("…", "ar").replace(/^https?:\/\//, ""),
+    via: searchUrl("QUERY", "ar").replace("QUERY", "…").replace(/^https?:\/\//, ""),
     pageUrl: (query, lang) => searchUrl(query, siteLang(id, lang)),
     search: (query, lang) => {
       const l = siteLang(id, lang);

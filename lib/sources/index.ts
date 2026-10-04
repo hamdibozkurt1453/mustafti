@@ -3,7 +3,7 @@ import "server-only";
 import { methodsFor } from "./connectors";
 import { sampleLinks } from "./html";
 import { politeFetch } from "./polite-fetch";
-import { SOURCES, SOURCE_BY_ID, type SourceDef } from "./registry";
+import { SOURCES, type SourceDef } from "./registry";
 import { BlockedError, type AccessKind, type SourceId, type SourceResult, type SourceStatus } from "./types";
 
 export { SOURCES, SOURCE_BY_ID } from "./registry";
