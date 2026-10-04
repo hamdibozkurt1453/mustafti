@@ -17,12 +17,18 @@ import { MESSAGE_LANGS, MESSAGES, message } from "../lib/brain/messages";
 import { CHAPTERS } from "../lib/brain/prompts";
 import { isAffirmative } from "../lib/case/affirm";
 import { jsonCandidates, parseFirstJson } from "../lib/case/json";
+import { activeQuestions, conditionValues, nextQuestion } from "../lib/case/flow";
+import { inferKnown } from "../lib/case/infer";
+import { guessLang } from "../lib/brain/identity";
 import { arabicValue, fallbackDraft, rowsOf, unknownsOf } from "../lib/case/draft";
 import {
   asksPrivate,
   chapterName,
   checkGenerated,
+  dropReason,
   fallbackQuestions,
+  isSafeWhy,
+  planPool,
   chooseChapter,
   isSafeText,
   keywordChapter,
@@ -499,5 +505,238 @@ describe("توليد الأسئلة: المتانة", () => {
     assert.equal(fb.length, 3);
     assert.equal(fb.filter((x) => x.type === "choice").length, 2);
     for (const x of fb) assert.ok(x.why?.ar, x.key);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("سطر «لماذا نسأل؟»: عبارات الحكم الفعلية فقط", () => {
+  const q = (why: { ar: string; en: string }): PillarQuestion => ({
+    key: "g",
+    ar: "ما درجة الاضطرار؟",
+    en: "What is the level of necessity?",
+    why,
+    type: "text",
+    required: true,
+  });
+
+  it("«Because the ruling depends on the level of necessity.» يُقبل", () => {
+    assert.equal(dropReason(q({ ar: "لأن الحكم يختلف باختلاف درجة الاضطرار.", en: "Because the ruling depends on the level of necessity." })), null);
+    assert.equal(isSafeWhy("Because the ruling depends on the level of necessity."), true);
+    assert.equal(isSafeWhy("لأن الحكم يختلف باختلاف درجة الاضطرار."), true);
+  });
+
+  it("عبارة حكم فعلية في السطر تُرفض", () => {
+    for (const bad of ["Because it is haram.", "Because taking it is not allowed.", "لأن ذلك لا يجوز.", "لأن الطلاق وقع الطلاق", "لأنه حرام"]) {
+      assert.equal(isSafeWhy(bad), false, bad);
+    }
+    assert.equal(dropReason(q({ ar: "لأنه حرام.", en: "Because it is haram." })), "why_unsafe");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("القوالب المشروطة (showIf) والأسئلة الفرعية", () => {
+  const keys = (qs: { key: string }[]) => qs.map((x) => x.key);
+
+  it("الراتب (work_income): أسئلة طبيعة المهام ونشاط الجهة والبديل، بلا «كيف تُحسب الزيادة»", () => {
+    const qs = keys(selectQuestions("finance", { finance_type: "work_income", occurred: "ongoing" }));
+    for (const k of ["work_tasks", "work_riba_share", "work_alternative"]) assert.ok(qs.includes(k), k);
+    assert.ok(!qs.includes("finance_return") && !qs.includes("finance_alternative") && !qs.includes("occurred"));
+  });
+
+  it("القرض: «كيف تُحسب الزيادة» يظهر، وأسئلة الراتب لا", () => {
+    const qs = keys(selectQuestions("finance", { finance_type: "loan_mortgage" }));
+    assert.ok(qs.includes("finance_return"));
+    assert.ok(!qs.some((k) => k.startsWith("work_")));
+  });
+
+  it("الصلاة الفائتة: القضاء والسبب، بلا سجود السهو ولا السفر", () => {
+    const qs = keys(selectQuestions("salah", { salah_issue: "missed_prayer" }));
+    assert.ok(qs.includes("missed_madeup") && qs.includes("missed_reason"));
+    assert.ok(!qs.includes("salah_sahw") && !qs.includes("salah_travel"));
+    // السبب لا يُسأل إن ذُكر
+    assert.ok(!keys(selectQuestions("salah", { salah_issue: "missed_prayer", missed_reason: "forgot" })).includes("missed_reason"));
+  });
+
+  it("خلل داخل الصلاة: سجود السهو، والسفر للقصر والجمع فقط", () => {
+    assert.ok(keys(selectQuestions("salah", { salah_issue: "missed_part" })).includes("salah_sahw"));
+    assert.ok(!keys(selectQuestions("salah", { salah_issue: "missed_part" })).includes("salah_travel"));
+    assert.ok(keys(selectQuestions("salah", { salah_issue: "combine_shorten" })).includes("salah_travel"));
+  });
+
+  it("التسلسل الحي: الجواب يحدد ما يلي، و8 كحد أقصى، والمتخطّى لا يُعاد", () => {
+    const pool = planPool("finance").map((x) => ({
+      key: x.key, text: x.ar, textAr: x.ar, why: "", whyAr: "", type: x.type, required: x.required, showIf: x.showIf,
+      options: (x.options ?? []).map((o) => ({ value: o.value, label: o.ar })),
+    }));
+    const plan: CasePlan = { chapter: "finance", lang: "ar", known: [], questions: pool };
+    let answers: { key: string; value: string | null }[] = [];
+    const first = nextQuestion(plan, answers)!;
+    assert.equal(first.question.key, "finance_type");
+    answers = [{ key: "finance_type", value: "work_income" }];
+    const seen: string[] = ["finance_type"];
+    for (let step = nextQuestion(plan, answers); step; step = nextQuestion(plan, answers)) {
+      assert.ok(step.total <= 8);
+      assert.ok(!seen.includes(step.question.key), "لا يُعاد سؤال");
+      seen.push(step.question.key);
+      answers = [...answers, { key: step.question.key, value: null }];
+    }
+    assert.ok(seen.length <= 8);
+    assert.ok(seen.includes("work_tasks") && !seen.includes("finance_return"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("استنتاج المعلوم من صيغة السؤال", () => {
+  it("الماضي ⇒ happened، والمستمر ⇒ ongoing", () => {
+    assert.equal(inferKnown("طلقت زوجتي وأنا غاضب، هل وقع؟", "talaq_khul").occurred, "happened");
+    assert.equal(inferKnown("أعمل في بنك ربوي، هل راتبي حلال؟", "finance").occurred, "ongoing");
+    assert.equal(inferKnown("نسيت صلاة الفجر ثلاثة أيام", "salah").occurred, "happened");
+    assert.equal(inferKnown("Faizli kredi ile ev aldım, ne yapmalıyım?", "finance").occurred, "happened");
+    assert.equal(inferKnown("I need to know about zakat", "zakah").occurred, undefined);
+  });
+
+  it("الأمثلة المطلوبة", () => {
+    assert.equal(inferKnown("أسلمت حديثاً وأهلي يرفضون، هل أخبرهم؟", "new_muslim").nmu_issue, "family");
+    assert.equal(inferKnown("ورث أبي بيتاً ولنا أخت متزوجة", "inheritance_wills").inh_deceased, "father");
+    assert.equal(inferKnown("أعمل في بنك ربوي في قسم تقنية المعلومات", "finance").finance_type, "work_income");
+    const fajr = inferKnown("نسيت صلاة الفجر ثلاثة أيام، ماذا أفعل؟", "salah");
+    assert.equal(fajr.salah_issue, "missed_prayer");
+    assert.equal(fajr.missed_reason, "forgot");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("حالات case-test الحية بمحاكاة رد النموذج", () => {
+  type Fake = { chapter: [string, number]; known?: { key: string; value: string }[]; generated?: unknown[]; extras?: unknown[] };
+  const gq = (ar: string, user: string, whyUser: string, options: string[] = []) => ({
+    ar, user, whyAr: "لأن الحكم يختلف باختلاف ذلك.", whyUser, type: options.length ? "choice" : "text",
+    options: options.map((o) => ({ ar: o, user: o })),
+  });
+  const theftAr = [
+    gq("ما درجة الاضطرار؟", "ما درجة الاضطرار؟", "لأن الحكم يختلف باختلاف درجة الاضطرار.", ["جوع شديد يُخشى منه الهلاك", "جوع عادي", "حاجة غير الطعام"]),
+    gq("هل كان هناك طريق مشروع آخر؟", "هل كان هناك طريق مشروع آخر؟", "لأن وجود البديل يغيّر الحكم.", ["نعم", "لا", "لا أعرف"]),
+    gq("ما الذي أُخذ؟", "ما الذي أُخذ؟", "لأن الحكم يتعلق بالمأخوذ.", ["طعام بقدر الحاجة", "طعام أكثر من الحاجة", "مال"]),
+    gq("هل يمكن ردّ المأخوذ؟", "هل يمكن ردّ المأخوذ؟", "لأن إمكان الرد يؤثر.", ["نعم", "لا"]),
+  ];
+  const theftEn = [
+    gq("ما درجة الاضطرار؟", "What is the level of necessity?", "Because the ruling depends on the level of necessity.", ["Severe hunger", "Ordinary hunger"]),
+    gq("ما الذي أُخذ؟", "What was taken?", "Because the ruling depends on what was taken and how much.", ["Food as needed", "More than needed", "Money"]),
+    gq("هل كان هناك بديل مشروع؟", "Was there a lawful alternative?", "Because an alternative changes the ruling.", ["Yes", "No"]),
+  ];
+  const FAKES: Record<string, Fake> = {
+    "ما حكم من يسرق وهو مضطر لأنه جوعان": { chapter: ["finance", 0.8], generated: theftAr },
+    "طلقت زوجتي وأنا غاضب، هل وقع؟": {
+      chapter: ["talaq_khul", 0.97],
+      known: [{ key: "talaq_type", value: "talaq" }, { key: "state_intent", value: "anger" }],
+      extras: [gq("هل تكرر منك التلفظ بالطلاق في المجلس نفسه؟", "هل تكرر منك التلفظ بالطلاق في المجلس نفسه؟", "لأن التكرار يؤثر في العدد.", ["نعم", "لا"])],
+    },
+    "ورث أبي بيتاً ولنا أخت متزوجة، كيف نقسمه؟": { chapter: ["inheritance_wills", 0.95], known: [], extras: [gq("هل البيت مسجّل باسم المتوفى وحده؟", "هل البيت مسجّل باسم المتوفى وحده؟", "لأن الملكية تحدد ما يدخل في التركة.", ["نعم", "لا", "لا أعلم"])] },
+    "أعمل في بنك ربوي في قسم تقنية المعلومات، هل راتبي حلال؟": {
+      chapter: ["finance", 0.9],
+      known: [{ key: "finance_party", value: "bank" }],
+      // الأول يكرر سؤال القالب، والثاني جديد.
+      extras: [
+        gq("ما طبيعة مهامك؟", "ما طبيعة مهامك؟", "لأن طبيعة العمل تؤثر.", ["تقنية", "عقود"]),
+        gq("هل لعملك صلة مباشرة بأنظمة احتساب الفوائد؟", "هل لعملك صلة مباشرة بأنظمة احتساب الفوائد؟", "لأن المباشرة تختلف عن الإعانة العامة.", ["نعم", "لا", "لا أعرف"]),
+      ],
+    },
+    "أسلمت حديثاً وأهلي يرفضون، هل أخبرهم؟": { chapter: ["new_muslim", 0.9], known: [], extras: [] },
+    "What is the ruling on someone who steals because he is starving?": { chapter: ["other", 0.9], generated: theftEn },
+    "نسيت صلاة الفجر ثلاثة أيام، ماذا أفعل؟": { chapter: ["salah", 0.95], known: [{ key: "salah_which", value: "fajr" }, { key: "salah_count", value: "3" }], extras: [] },
+    "Faizli kredi ile ev aldım, ne yapmalıyım?": { chapter: ["finance", 0.92], known: [{ key: "finance_type", value: "loan_mortgage" }], extras: [] },
+  };
+
+  let current: Fake;
+  let installed = false;
+  async function engine() {
+    if (!installed) {
+      process.env.OPENROUTER_API_KEY = "test";
+      process.env.LLM_MODEL = "test-model";
+      const real = globalThis.fetch;
+      globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+        if (!String(url).includes("openrouter")) return real(url, init);
+        const all = (JSON.parse(String(init?.body)).messages as { content: string }[]).map((m) => m.content).join("\n");
+        let out: unknown;
+        if (all.includes("Pick the ONE fiqh chapter")) out = { chapter: current.chapter[0], confidence: current.chapter[1] };
+        else if (all.includes("A prepared fact template")) out = { known: current.known ?? [], translations: [], yesNo: { yes: "Evet", no: "Hayır" } };
+        else if (all.includes("A prepared template ALREADY asks")) out = { questions: current.extras ?? [] };
+        else out = { questions: current.generated ?? [] };
+        // كما يرد النموذج أحياناً: كلام وmarkdown حول JSON.
+        const text = "Here is the JSON:\n```json\n" + JSON.stringify(out) + "\n```";
+        return new Response(JSON.stringify({ choices: [{ message: { content: text } }], usage: {} }), { status: 200 });
+      }) as typeof fetch;
+      installed = true;
+    }
+    return import("../lib/case/clarify");
+  }
+
+  async function run(question: string) {
+    current = FAKES[question];
+    const { planClarify, newTrace } = await engine();
+    const trace = newTrace();
+    const lang = guessLang(question);
+    const plan = await planClarify({ question, lang, kind: referralKindOf(question) }, trace);
+    const asked = activeQuestions(plan.questions, conditionValues(plan, [])).map((q) => q.key);
+    return { plan, trace, asked, known: Object.fromEntries(plan.known.map((k) => [k.key, k.option ?? k.value])) };
+  }
+
+  it("السرقة بالعربية: 4 أسئلة مولّدة بلا احتياطي، وباب الجنايات لا المعاملات", async () => {
+    const r = await run("ما حكم من يسرق وهو مضطر لأنه جوعان");
+    assert.equal(r.plan.chapter, "other");
+    assert.equal(r.trace.fallback, null);
+    assert.equal(r.plan.questions.length, 4);
+  });
+
+  it("السرقة بالإنجليزية: سطر why فيه «ruling» لا يحذف السؤال", async () => {
+    const r = await run("What is the ruling on someone who steals because he is starving?");
+    assert.deepEqual(r.trace.generation[0].dropped, []);
+    assert.equal(r.plan.questions.length, 3);
+    assert.equal(r.trace.fallback, null);
+  });
+
+  it("الطلاق: لا «هل وقع؟»، والمعلوم من النموذج ومن الصيغة، وسؤال خاص بعد القالب", async () => {
+    const r = await run("طلقت زوجتي وأنا غاضب، هل وقع؟");
+    assert.equal(r.known.occurred, "happened");
+    assert.ok(!r.asked.includes("occurred") && !r.asked.includes("talaq_type") && !r.asked.includes("state_intent"));
+    assert.ok(r.asked.includes("extra_1"), "السؤال الخاص يدخل ضمن الثمانية");
+    assert.ok(r.asked.length <= 8);
+  });
+
+  it("الراتب في بنك: أسئلة work_income، بلا «كيف تُحسب الزيادة» ولا «هل وقع؟»، والمكرر من الإضافي يُحذف", async () => {
+    const r = await run("أعمل في بنك ربوي في قسم تقنية المعلومات، هل راتبي حلال؟");
+    assert.equal(r.known.finance_type, "work_income");
+    assert.equal(r.known.occurred, "ongoing");
+    assert.ok(r.asked.includes("work_tasks") && r.asked.includes("work_riba_share"));
+    assert.ok(!r.asked.includes("finance_return") && !r.asked.includes("occurred") && !r.asked.includes("finance_type"));
+    const extras = r.plan.questions.filter((q) => q.key.startsWith("extra_"));
+    assert.equal(extras.length, 1);
+    assert.ok(extras[0].text.includes("الفوائد"));
+  });
+
+  it("المسلم الجديد: nmu_issue = family من الصيغة ولو لم يذكره النموذج", async () => {
+    const r = await run("أسلمت حديثاً وأهلي يرفضون، هل أخبرهم؟");
+    assert.equal(r.known.nmu_issue, "family");
+    assert.ok(!r.asked.includes("nmu_issue"));
+  });
+
+  it("الميراث: inh_deceased = father، وسؤال خاص بالبيت", async () => {
+    const r = await run("ورث أبي بيتاً ولنا أخت متزوجة، كيف نقسمه؟");
+    assert.equal(r.known.inh_deceased, "father");
+    assert.ok(!r.asked.includes("inh_deceased"));
+    assert.ok(r.asked.includes("extra_1"));
+  });
+
+  it("الفجر الفائت: القضاء يُسأل، والسبب (نسيان) لا، ولا سجود السهو ولا السفر", async () => {
+    const r = await run("نسيت صلاة الفجر ثلاثة أيام، ماذا أفعل؟");
+    assert.equal(r.known.salah_issue, "missed_prayer");
+    assert.ok(r.asked.includes("missed_madeup"));
+    for (const k of ["missed_reason", "salah_sahw", "salah_travel", "occurred", "salah_which"]) assert.ok(!r.asked.includes(k), k);
+  });
+
+  it("التركية: لا «هل وقع؟»، والأسئلة مترجمة أو إنجليزية، و«كيف تُحسب الزيادة» للقرض", async () => {
+    const r = await run("Faizli kredi ile ev aldım, ne yapmalıyım?");
+    assert.equal(r.known.occurred, "happened");
+    assert.ok(!r.asked.includes("occurred"));
+    assert.ok(r.asked.includes("finance_return"));
   });
 });
