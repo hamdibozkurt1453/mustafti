@@ -16,7 +16,7 @@
 -- الأنواع
 -- ---------------------------------------------------------------------
 do $$ begin
-  create type public.admin_role as enum ('super_admin', 'reviewer', 'moderator');
+  create type public.admin_role as enum ('super_admin', 'reviewer', 'moderator', 'viewer');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
