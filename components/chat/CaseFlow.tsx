@@ -95,6 +95,15 @@ export function ClarifyBubble({ msg, api }: { msg: BotMessage; api: CaseApi }) {
                   {o.label}
                 </button>
               ))}
+              {q.type === "choice" && (
+                <button
+                  type="button"
+                  className={`${chip} border-dashed`}
+                  onClick={() => document.querySelector<HTMLTextAreaElement>("#q-dock")?.focus()}
+                >
+                  {t("other")}
+                </button>
+              )}
             </div>
           )}
           <p className="mt-3 text-xs text-ink-600">{t("typeHint")}</p>

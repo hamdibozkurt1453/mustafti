@@ -365,7 +365,8 @@
     "reviewStep": "Last step: review",
     "notSentYet": "Nothing has been sent yet. Your file is saved only after you press “I agree, send”.",
     "edit": "Edit",
-    "doneEditing": "Done editing"
+    "doneEditing": "Done editing",
+    "other": "Other… (type it)"
   },
   "caseFile": {
     "notFoundTitle": "Invalid link",

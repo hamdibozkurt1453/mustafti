@@ -3,7 +3,7 @@
   "about": "قوالب الأركان لمسار المستوى D: ما يحتاج المفتي أن يعرفه من الوقائع المؤثرة في الحكم فقط، دون أي حكم. لا سؤال عن هوية أحد (من فعل، ومن هو، واسمه، وأين يسكن، وعمله)، ولا رقم هوية ولا حساب بنكي ولا تفاصيل جنسية. لكل سؤال سطر «لماذا نسأل؟». العرض المقروء: content/pillars-review.md",
   "limits": {
     "maxQuestions": 8,
-    "generatedMin": 3,
+    "generatedMin": 2,
     "generatedMax": 6,
     "rulingMin": 2,
     "rulingMax": 4
@@ -100,13 +100,63 @@
     },
     {
       "key": "circumstances",
-      "ar": "ما الظروف أو الشروط المحيطة بالمسألة؟",
-      "en": "What are the circumstances or conditions around the matter?",
+      "ar": "ما الظرف أو الضرورة التي أحاطت بالأمر؟",
+      "en": "What circumstance or necessity surrounded the matter?",
       "why": {
-        "ar": "لأن الحكم يختلف باختلاف الظروف والشروط.",
-        "en": "Because the ruling differs with the circumstances and conditions."
+        "ar": "لأن الحكم يختلف باختلاف الظروف والضرورة.",
+        "en": "Because the ruling differs with the circumstances and necessity."
       },
-      "type": "text",
+      "type": "choice",
+      "options": [
+        {
+          "value": "necessity",
+          "ar": "ضرورة أو حاجة شديدة",
+          "en": "Necessity or dire need"
+        },
+        {
+          "value": "coercion",
+          "ar": "إكراه",
+          "en": "Coercion"
+        },
+        {
+          "value": "forgot_ignorance",
+          "ar": "نسيان أو جهل",
+          "en": "Forgetfulness or not knowing"
+        },
+        {
+          "value": "normal",
+          "ar": "ظرف عادي",
+          "en": "An ordinary situation"
+        }
+      ],
+      "required": true
+    },
+    {
+      "key": "occurred_before",
+      "ar": "هل وقع الأمر، أم تسأل قبل الفعل؟",
+      "en": "Has it already happened, or are you asking before doing it?",
+      "why": {
+        "ar": "لأن الحكم فيما وقع يختلف عن السؤال قبل الفعل.",
+        "en": "Because what already happened is treated differently from asking beforehand."
+      },
+      "type": "choice",
+      "options": [
+        {
+          "value": "happened",
+          "ar": "وقع",
+          "en": "It happened"
+        },
+        {
+          "value": "before",
+          "ar": "لم يقع، أسأل قبل الفعل",
+          "en": "Not yet, I'm asking before"
+        },
+        {
+          "value": "general",
+          "ar": "سؤال عام",
+          "en": "A general question"
+        }
+      ],
       "required": true
     },
     {
@@ -2420,5 +2470,10 @@
         }
       ]
     }
-  }
+  },
+  "fallback": [
+    "what_exactly",
+    "circumstances",
+    "occurred_before"
+  ]
 }
