@@ -23,7 +23,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 const STEPS = ["submitted", "assigned", "answered"] as const;
 
-/** `/case/[رمز]` — متابعة ملف المسألة لصاحب الرابط: الحالة، والملف كما أُرسل، وجواب المختص. */
+/**
+ * `/case/[رمز]` — متابعة ملف المسألة لصاحب الرابط: الحالة، والملف كما أُرسل، وجواب المختص
+ * (العربي كما كتبه، ثم الترجمة الآلية تحته). لا يُعرض اسم المختص ولا بريده.
+ */
 export default async function CasePage({ params }: Props) {
   const { locale, token } = await params;
   setRequestLocale(locale as Locale); // اللغة متحقق منها في layout
@@ -85,20 +88,20 @@ export default async function CasePage({ params }: Props) {
           <div className="space-y-4">
             {view.answers.map((a, i) => (
               <article key={i} className="space-y-3">
-                {a.answerTranslated && (
-                  <div>
-                    <p className="mb-1 text-[11px] font-semibold text-green-600">{t("answerTranslated")}</p>
-                    <p dir={dirForText(a.answerTranslated)} className="whitespace-pre-wrap leading-relaxed">
-                      {a.answerTranslated}
-                    </p>
-                  </div>
-                )}
                 <div>
                   <p className="mb-1 text-[11px] font-semibold text-green-600">{t("answerOriginal")}</p>
                   <p dir="rtl" lang="ar" className="whitespace-pre-wrap leading-relaxed">
                     {a.answerAr}
                   </p>
                 </div>
+                {a.answerTranslated && (
+                  <div className="rounded-xl bg-ivory-50 p-3">
+                    <p className="mb-1 text-[11px] font-semibold text-green-600">{t("answerTranslated")}</p>
+                    <p dir={dirForText(a.answerTranslated)} className="whitespace-pre-wrap leading-relaxed">
+                      {a.answerTranslated}
+                    </p>
+                  </div>
+                )}
               </article>
             ))}
           </div>
