@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "model-test": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/model-test.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "adhan": "^4.4.6",
@@ -17,7 +19,8 @@
     "next-intl": "^4.14.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -27,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

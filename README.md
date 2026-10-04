@@ -24,7 +24,11 @@ npm run build                # بناء الإنتاج
 - **اللغات:** next-intl بمسار اللغة في الرابط (`/ar`، `/en`…). العربية افتراضية، و12 لغة واجهة (`i18n/locales.ts`)، وملفات الترجمة في `messages/`. اتجاه الصفحة `rtl` تلقائياً للعربية والأردية والفارسية.
 - **الهوية:** متغيرات `brand/brand-tokens.css` في `app/globals.css` وفي `@theme` الخاص بـ Tailwind، وخط Readex Pro عبر `next/font`. دليل الهوية: `brand/دليل-الهوية-البصرية-مستفتي.html`.
 - **الحسابات والبيانات:** Supabase (Auth وPostgres وRLS). البنية والسياسات في `supabase/schema.sql`، والعملاء في `lib/supabase/`، والأدوار (`getRole()` و`requireRole()`) في `lib/auth/roles.ts`. خطوات الإعداد: [docs/setup-supabase.md](docs/setup-supabase.md).
-- **لاحقاً:** pgvector، وOpenRouter عبر `lib/llm.ts`، وadhan للمواقيت.
+- **النموذج:** OpenRouter عبر `lib/llm.ts` (النموذج من `LLM_MODEL`): بث، وJSON مضبوط بمخطط Zod، ومهلة، وإعادة محاولة، وحد يومي `DAILY_LLM_LIMIT`. رسائل الخطأ للمستخدم لا تذكر النموذج ولا الشركة.
+- **المصادر:** خادم MCP للجمعية عبر `lib/mcp.ts`، وموصّل لكل مصدر في المرجعية في `lib/sources/` (السجل وقواعد الاستخدام في `registry.ts`). الترتيب: MCP ثم API عام بلا مفتاح ثم البحث المباشر في الموقع من الخادم، باحترام robots.txt، وUser-Agent باسم mustafti.com، وطلب في الثانية لكل موقع، وذاكرة 24 ساعة للمقتطفات والروابط فقط.
+- **الحالة:** [`/api/health`](https://mustafti.com/api/health) يعرض حالة النموذج وخادم MCP وأدواته وكل مصدر (يعمل / لا يعمل / محجوب).
+- **اختبار النماذج:** `npm run model-test` أو المسار المحمي `/api/admin/model-test` (super_admin مع MFA). المنطق في `lib/model-test.ts`.
+- **لاحقاً:** pgvector، وadhan للمواقيت.
 
 ## بنية المستودع
 
@@ -36,6 +40,9 @@ npm run build                # بناء الإنتاج
 | `proxy.ts` | توجيه الزائر إلى مسار لغته وتجديد جلسة الدخول |
 | `supabase/schema.sql` | الجداول والفهارس وسياسات RLS والمخزن الخاص |
 | `lib/supabase/` · `lib/auth/` | عملاء Supabase، والدخول، والأدوار، والمشرف الأول |
+| `lib/llm.ts` · `lib/mcp.ts` · `lib/sources/` | النموذج، وخادم MCP، وموصّلات مصادر المرجعية |
+| `app/api/health/` | صفحة حالة المنصة والمصادر |
+| `scripts/model-test.ts` · `lib/model-test.ts` | اختبار المقارنة بين النماذج |
 | `docs/` | الخطة والمواصفات وخريطة المرجعية والقرارات |
 | `brand/` · `public/brand/` | الشعارات والهوية |
 

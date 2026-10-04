@@ -2,12 +2,13 @@ import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getDirection } from "@/i18n/locales";
+import { AccountButton } from "./AccountButton";
 import { HeaderShell } from "./HeaderShell";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MobileMenu } from "./MobileMenu";
 import { NavLinks } from "./NavLinks";
 
-/** الرأس: الشعار، والروابط (حاسوب) أو ☰ (هاتف)، وزر اللغة، وزر الدخول. */
+/** الرأس: الشعار، والروابط (حاسوب) أو ☰ (هاتف)، وزر اللغة، وزر الدخول أو «حسابي». */
 export async function SiteHeader() {
   const t = await getTranslations("nav");
   const locale = await getLocale();
@@ -45,12 +46,7 @@ export async function SiteHeader() {
 
         <div className="ms-auto flex items-center gap-1.5 sm:gap-2">
           <LanguageSwitcher />
-          <Link
-            href="/login"
-            className="rounded-full bg-gold-500 px-4 py-2 text-sm font-semibold text-green-900 transition hover:brightness-105"
-          >
-            {t("login")}
-          </Link>
+          <AccountButton />
           <MobileMenu />
         </div>
       </div>
