@@ -13,13 +13,14 @@ export type { SourceResult, SourceId } from "./types";
 export const SOURCE_DEADLINE_MS = 6_000;
 
 /** طرق المصدر بالترتيب: أول طريقة تنجح بنتائج. فشل طريقة ينقلنا إلى التالية. */
-async function runMethods(id: SourceId, query: string, lang: string): Promise<SourceResult[]> {
+async function runMethods(id: SourceId, query: string, lang: string, onError?: (message: string) => void): Promise<SourceResult[]> {
   for (const method of methodsFor(id)) {
     try {
       const results = await method.search(query, lang);
       if (results.length) return results;
     } catch (error) {
       console.warn(`source ${id} via ${method.kind} failed:`, (error as Error).message);
+      onError?.(`${method.kind}: ${String((error as Error).message).slice(0, 160)}`);
     }
   }
   return [];
@@ -31,11 +32,18 @@ async function runMethods(id: SourceId, query: string, lang: string): Promise<So
  * يجرب طرق الوصول بالترتيب (MCP ← API ← الموقع)، بمهلة قصوى 6 ثوانٍ للمصدر كله.
  * إن تجاوزها يعيد [] الآن، ويكمل الطلب في الخلفية فتجده الأسئلة التالية في الذاكرة.
  */
-export function search(id: SourceId, query: string, lang: string, deadlineMs = SOURCE_DEADLINE_MS): Promise<SourceResult[]> {
+export function search(
+  id: SourceId,
+  query: string,
+  lang: string,
+  deadlineMs = SOURCE_DEADLINE_MS,
+  /** للتشخيص فقط: خطأ كل طريقة وصول فشلت (انقطاع MCP مثلاً). */
+  onError?: (message: string) => void,
+): Promise<SourceResult[]> {
   const q = query.trim().slice(0, 200);
   // المصادر «رابط فقط» (محجوبة، أو بحثها لا يبحث فعلياً) لا يُطلب منها شيء آلياً.
   if (!q || SOURCES.find((s) => s.id === id)?.blocked) return Promise.resolve([]);
-  return withDeadline(runMethods(id, q, lang), deadlineMs);
+  return withDeadline(runMethods(id, q, lang, onError), deadlineMs);
 }
 
 /** البحث في عدة مصادر بالتوازي، ولكل مصدر مهلته القصوى (6 ثوانٍ). */

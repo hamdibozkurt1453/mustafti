@@ -349,9 +349,32 @@ const MODEL_LEAK =
 // الفحص
 // ---------------------------------------------------------------------------
 
+/**
+ * أسماء أعلام فيها «الحرام» أو «Haram» وليست حكماً: تُستبدل قبل فحص عبارات الحكم.
+ * (مثال الخطأ: «وحج بيت الله الحرام» في جواب أركان الإسلام اعتُرض بوصفه حكماً.)
+ */
+const PROPER_NOUNS: RegExp[] = [
+  // العربية والأردية (مع سوابق و ف ب ل ك): المسجد الحرام، بيت الله الحرام، البيت الحرام، الشهر الحرام،
+  // الأشهر الحرم، البلد الحرام، المشعر الحرام، مسجد حرام.
+  new RegExp(
+    `${B}(?:[وفبلك])?(?:ال)?(?:مسجد|بيت(?:\\s+الله)?|شهر|اشهر|أشهر|بلد|مشعر)(?:ِ)?\\s+(?:ال)?(?:حرام|حرم)${E}`,
+    "gu",
+  ),
+  // English / Français / Türkçe / Bahasa Indonesia
+  /(?<![\p{L}])(?:(?:al|el)[-\s])?masjid(?:[-\s]?(?:al|el|il|ul))?[-\s]?haram(?![\p{L}])/giu,
+  /(?<![\p{L}])masjidil\s?haram(?![\p{L}])/giu,
+  /(?<![\p{L}])(?:the\s+)?(?:sacred|holy|haram)\s+(?:mosque|house|months?|precincts?|sanctuary)(?![\p{L}])/giu,
+  /(?<![\p{L}])(?:la\s+)?(?:mosquée|maison)\s+sacrée(?![\p{L}])|(?<![\p{L}])mois\s+sacrés?(?![\p{L}])/giu,
+  /(?<![\p{L}])mescid-?i\s?haram(?![\p{L}])|(?<![\p{L}])haram\s+aylar(?:ı)?(?![\p{L}])/giu,
+];
+
+export function maskProperNouns(text: string): string {
+  return PROPER_NOUNS.reduce((t, re) => t.replace(re, " ⟦P⟧ "), text);
+}
+
 /** يفحص صياغة الأداة (بعد إخراج المقتبس الموثَّق). */
 export function scanOwnText(ownText: string): GuardFinding[] {
-  const text = stripMarks(ownText);
+  const text = maskProperNouns(stripMarks(ownText));
   const findings: GuardFinding[] = [];
   for (const p of PATTERNS) {
     const m = text.match(p.re);

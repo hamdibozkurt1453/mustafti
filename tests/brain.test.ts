@@ -600,7 +600,7 @@ describe("خطة الإحالات: مواضع فقط، مطبَّعة", () => {
         ],
         surah_info: [3, 3, 0, 200],
         hadith_queries: ["«بني الإسلام على خمس»", "ب", "بناء الكعبة إبراهيم"],
-        bayyinat: [27, 0, 999],
+        bayyinat_queries: ["عبادة الكعبة", "ب"],
         library_queries: [],
       }),
     );
@@ -608,7 +608,7 @@ describe("خطة الإحالات: مواضع فقط، مطبَّعة", () => {
     assert.equal(plan.quran.length, 6);
     assert.deepEqual(plan.surahInfo, [3]);
     assert.deepEqual(plan.hadithQueries, ["بني الإسلام على خمس", "بناء الكعبة إبراهيم"]);
-    assert.deepEqual(plan.bayyinat, [27]);
+    assert.deepEqual(plan.bayyinatQueries, ["عبادة الكعبة"]);
     assert.equal(isEmptyPlan(plan), false);
     assert.equal(isEmptyPlan(null), true);
   });
@@ -631,5 +631,34 @@ describe("شكل الجواب: الجملة الأولى جواب مباشر م�
   });
   it("جملة أولى بلا [n] مرفوضة", () => {
     assert.ok(answerFormatIssues("بنى الكعبة إبراهيم عليه السلام. والدليل [1].").includes("no_citation"));
+  });
+});
+
+describe("تنظيف نص الأداة إذا جاء سطراً واحداً", () => {
+  it("الرأس والتعليمات والذيل تُحذف والنص يبقى", () => {
+    const one =
+      "──────── RETRIEVED FROM QURANENC — published text ──────── البقرة 2:127 وَإِذۡ يَرۡفَعُ إِبۡرَٰهِـۧمُ ٱلۡقَوَاعِدَ ──────── CITE ──────── Every result you carry";
+    const out = cleanToolText(one);
+    assert.match(out, /يَرۡفَعُ إِبۡرَٰهِـۧمُ/);
+    assert.doesNotMatch(out, /RETRIEVED|CITE|Every result|─/);
+  });
+});
+
+describe("الحارس: أسماء الأعلام ليست حكماً", () => {
+  for (const text of [
+    "أركان الإسلام خمسة: الشهادتان، وإقام الصلاة، وإيتاء الزكاة، وصوم رمضان، وحج بيت الله الحرام [1].",
+    "يتجه المسلمون في صلاتهم إلى المسجدِ الحرامِ [1].",
+    "وهو البيت الحرام [1]، وفي الشهر الحرام والأشهر الحرم والبلد الحرام والمشعر الحرام.",
+    "مسلمان نماز میں مسجد حرام کی طرف رخ کرتے ہیں [1]۔",
+    "Muslims face Masjid al-Haram, the Sacred Mosque, and perform Hajj to the Sacred House [1].",
+    "Les musulmans se tournent vers la Mosquée sacrée [1].",
+    "Umat Islam menghadap Masjidil Haram [1].",
+    "Müslümanlar Mescid-i Haram'a yönelir [1].",
+  ]) {
+    it(text.slice(0, 40), () => assert.equal(guard(text).ok, true, JSON.stringify(guard(text).findings)));
+  }
+  it("«حرام» حكماً بعد اسم العلم ما زالت تُكشف", () => {
+    assert.equal(guard("يتجه المسلمون إلى المسجد الحرام، وترك ذلك حرام.").ok, false);
+    assert.equal(guard("Facing the Sacred Mosque is required; skipping it is haram.").ok, false);
   });
 });
