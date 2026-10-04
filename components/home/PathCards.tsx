@@ -4,6 +4,7 @@ import { m, useMotionValue, useSpring, useTransform } from "motion/react";
 import { useTranslations } from "next-intl";
 import type { PointerEvent, ReactNode } from "react";
 import { Link } from "@/i18n/navigation";
+import { FEATURE_EXTRAS } from "@/lib/config";
 import type { Persona } from "./Hero";
 import { Reveal } from "./Reveal";
 
@@ -83,6 +84,17 @@ const Star = ({ className }: { className?: string }) => (
 /** ثلاث بطاقات كبيرة للمسارات. */
 export function PathCards({ onAsk, reduced }: { onAsk: (p: Persona) => void; reduced: boolean }) {
   const t = useTranslations("paths");
+  const newMuslimCard = (
+    <TiltCard
+      tone="gold"
+      kicker={t("newMuslim.kicker")}
+      title={t("newMuslim.title")}
+      body={t("newMuslim.body")}
+      cta={t("newMuslim.cta")}
+      ornament={<Star className="h-full w-full text-green-900" />}
+      reduced={reduced}
+    />
+  );
 
   return (
     <section className="bg-ivory-50">
@@ -104,17 +116,16 @@ export function PathCards({ onAsk, reduced }: { onAsk: (p: Persona) => void; red
               reduced={reduced}
             />
           </button>
-          <Link href="/new-muslim" className="rounded-[28px]">
-            <TiltCard
-              tone="gold"
-              kicker={t("newMuslim.kicker")}
-              title={t("newMuslim.title")}
-              body={t("newMuslim.body")}
-              cta={t("newMuslim.cta")}
-              ornament={<Star className="h-full w-full text-green-900" />}
-              reduced={reduced}
-            />
-          </Link>
+          {/* صفحة الرفيق مطفأة مع FEATURE_EXTRAS؛ فالبطاقة تفتح أسئلة المسلم الجديد في المحادثة. */}
+          {FEATURE_EXTRAS ? (
+            <Link href="/new-muslim" className="rounded-[28px]">
+              {newMuslimCard}
+            </Link>
+          ) : (
+            <button type="button" onClick={() => onAsk("newMuslim")} className="rounded-[28px] text-start">
+              {newMuslimCard}
+            </button>
+          )}
           <button type="button" onClick={() => onAsk("nonMuslim")} className="rounded-[28px] text-start">
             <TiltCard
               tone="light"

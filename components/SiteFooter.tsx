@@ -2,6 +2,7 @@ import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getDirection } from "@/i18n/locales";
+import { isEnabledHref } from "@/lib/config";
 import { FooterShell } from "./FooterShell";
 
 /** التذييل: عبارة الهوية، والروابط، و«انضم كمختص»، وسطر المشاركة في التحدي. */
@@ -17,7 +18,7 @@ export function SiteFooter() {
         { href: "/prayer", label: t("nav.prayer") },
         { href: "/adhkar", label: t("nav.adhkar") },
         { href: "/new-muslim", label: t("nav.newMuslim") },
-      ],
+      ].filter((l) => isEnabledHref(l.href)),
     },
     {
       title: t("footer.colProject"),
@@ -28,7 +29,7 @@ export function SiteFooter() {
         { href: "/login", label: t("footer.login") },
       ],
     },
-  ] as const;
+  ];
 
   return (
     <FooterShell>
