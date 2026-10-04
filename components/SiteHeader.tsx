@@ -2,6 +2,7 @@ import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getDirection } from "@/i18n/locales";
+import { HeaderShell } from "./HeaderShell";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MobileMenu } from "./MobileMenu";
 import { NavLinks } from "./NavLinks";
@@ -14,7 +15,7 @@ export async function SiteHeader() {
   const arabicLogo = getDirection(locale) === "rtl";
 
   return (
-    <header className="sticky top-0 z-40 bg-green-900 text-ivory-50">
+    <HeaderShell>
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:gap-4">
         <Link href="/" aria-label={t("homeLink")} className="shrink-0">
           {arabicLogo ? (
@@ -53,6 +54,6 @@ export async function SiteHeader() {
           <MobileMenu />
         </div>
       </div>
-    </header>
+    </HeaderShell>
   );
 }
