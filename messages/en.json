@@ -342,7 +342,7 @@
     "error": "That did not work right now. Please try again.",
     "errorEmail": "The email address is not valid. Correct it or leave it empty.",
     "reviewTitle": "Your case file",
-    "reviewLead": "Review the file and edit it freely before sending. We removed anything that might identify you and put [محذوف] (removed) in its place, and we did not ask for your name.",
+    "reviewLead": "Review your case file before sending, and edit it freely with “Edit”. We removed anything that might identify you and put [محذوف] (removed) in its place, and we did not ask for your name.",
     "question": "Your question",
     "summary": "Summary of the facts",
     "summaryAr": "Arabic summary (read by the mufti)",
@@ -360,7 +360,12 @@
     "sentLinked": "It is linked to your account, so you will also find it in “My questions and files”.",
     "copy": "Copy link",
     "copied": "Copied",
-    "open": "Open the follow-up page"
+    "open": "Open the follow-up page",
+    "why": "Why we ask:",
+    "reviewStep": "Last step: review",
+    "notSentYet": "Nothing has been sent yet. Your file is saved only after you press “I agree, send”.",
+    "edit": "Edit",
+    "doneEditing": "Done editing"
   },
   "caseFile": {
     "notFoundTitle": "Invalid link",

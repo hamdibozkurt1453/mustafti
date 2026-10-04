@@ -315,8 +315,9 @@ export function useChat() {
         setFlow({ ...f, step: "drafting", failed: true });
         return;
       }
-      patchBot(f.botId, () => ({ status: "done", caseStage: undefined, dir: f.dir, lang: f.lang, caseFile: { draft: res.data.draft } }));
+      // المراجعة إلزامية: لا يُرسل شيء حتى يضغط السائل «أوافق وأرسل» في البطاقة.
       setFlow({ ...f, step: "review", failed: false });
+      patchBot(f.botId, () => ({ status: "done", caseStage: undefined, dir: f.dir, lang: f.lang, caseFile: { draft: res.data.draft } }));
     },
     [patchBot, setFlow],
   );
@@ -422,6 +423,7 @@ export function useChat() {
       setFlow({ ...f, step: "submitting", failed: false });
       patchBot(f.botId, (m) => ({ caseStage: "submitting", caseFile: m.caseFile ? { ...m.caseFile, draft: input.draft } : { draft: input.draft } }));
       const res = await postJson<{ token: string; routeTo: "mufti" | "mentor"; linked: boolean }>("/api/case/submit", {
+        approved: true,
         lang: f.plan?.lang ?? f.lang,
         chapter: f.plan?.chapter ?? "other",
         userType: f.userType ?? null,

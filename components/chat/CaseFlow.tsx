@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { dirForText } from "@/lib/chat/protocol";
 import type { CaseDraft } from "@/lib/case/types";
 import type { BotMessage, CaseFlow, SubmitInput } from "./useChat";
@@ -81,6 +81,11 @@ export function ClarifyBubble({ msg, api }: { msg: BotMessage; api: CaseApi }) {
       <p dir={msg.dir} className="font-semibold">
         {msg.text}
       </p>
+      {q.why && (
+        <p dir={msg.dir} className="mt-1 text-xs leading-relaxed text-ink-600">
+          <span className="font-semibold text-green-600">{t("why")}</span> {q.why}
+        </p>
+      )}
       {active && (
         <div className="mf-rise">
           {q.options.length > 0 && (
@@ -125,9 +130,16 @@ export function CaseReview({ msg, api }: { msg: BotMessage; api: CaseApi }) {
   const locale = useLocale();
   const state = msg.caseFile!;
   const f = api.flow;
-  const mine = f?.id === msg.flowId && !state.token;
+  const mine = f?.id === msg.flowId && !state.token && (f?.step === "review" || f?.step === "submitting");
   const sending = mine && f?.step === "submitting";
-  const editable = mine && f?.step === "review";
+  const [editing, setEditing] = useState(false);
+  const ref = useRef<HTMLElement>(null);
+
+  // البطاقة تظهر من أولها (لا زر الإرسال وحده في أسفل الشاشة).
+  useEffect(() => {
+    if (mine && !state.token) ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [draft, setDraft] = useState<CaseDraft>(state.draft);
   const [edited, setEdited] = useState<{ summary: boolean; rows: string[] }>({ summary: false, rows: [] });
@@ -173,8 +185,7 @@ export function CaseReview({ msg, api }: { msg: BotMessage; api: CaseApi }) {
     );
   }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function approve() {
     setError(null);
     const result = await api.submit({ draft, edited, email });
     if (result !== "ok") setError(result);
@@ -185,36 +196,43 @@ export function CaseReview({ msg, api }: { msg: BotMessage; api: CaseApi }) {
     setEdited((e) => (e.rows.includes(key) ? e : { ...e, rows: [...e.rows, key] }));
   };
 
+  // لا إرسال بزر Enter: الإرسال بالضغط الصريح على «أوافق وأرسل» فقط.
+  const noEnter = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") e.preventDefault();
+  };
+
   return (
-    <form onSubmit={onSubmit} className={`${bubble} space-y-4`}>
+    <section ref={ref} aria-label={t("reviewTitle")} onKeyDown={noEnter} className={`${bubble} scroll-mt-24 space-y-4 border-gold-500/70 ring-1 ring-gold-500/40`}>
       <div>
-        <p className="font-semibold">{t("reviewTitle")}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-green-600">{t("reviewStep")}</p>
+        <p className="mt-1 text-lg font-bold">{t("reviewTitle")}</p>
         <p className="mt-1 text-sm text-ink-600">{t("reviewLead")}</p>
+        {mine && !sending && <p className="mt-2 rounded-xl bg-gold-50 px-3 py-2 text-xs font-semibold text-green-900 ring-1 ring-gold-500/40">{t("notSentYet")}</p>}
       </div>
 
       <Field label={t("question")}>
-        <textarea
-          dir={dir}
-          rows={2}
-          disabled={!editable}
-          value={draft.question}
-          onChange={(e) => setDraft((d) => ({ ...d, question: e.target.value }))}
-          className={input}
-        />
+        {editing ? (
+          <textarea dir={dir} rows={2} value={draft.question} onChange={(e) => setDraft((d) => ({ ...d, question: e.target.value }))} className={input} />
+        ) : (
+          <p dir={dir} className="whitespace-pre-wrap rounded-xl bg-ivory-50 px-3 py-2">{draft.question}</p>
+        )}
       </Field>
 
       <Field label={t("summary")}>
-        <textarea
-          dir={dir}
-          rows={5}
-          disabled={!editable}
-          value={draft.summaryUser}
-          onChange={(e) => {
-            setDraft((d) => ({ ...d, summaryUser: e.target.value }));
-            setEdited((x) => ({ ...x, summary: true }));
-          }}
-          className={input}
-        />
+        {editing ? (
+          <textarea
+            dir={dir}
+            rows={5}
+            value={draft.summaryUser}
+            onChange={(e) => {
+              setDraft((d) => ({ ...d, summaryUser: e.target.value }));
+              setEdited((x) => ({ ...x, summary: true }));
+            }}
+            className={input}
+          />
+        ) : (
+          <p dir={dir} className="whitespace-pre-wrap leading-relaxed">{draft.summaryUser}</p>
+        )}
       </Field>
 
       {lang !== "ar" && (
@@ -227,16 +245,27 @@ export function CaseReview({ msg, api }: { msg: BotMessage; api: CaseApi }) {
       )}
 
       {draft.rows.length > 0 && (
-        <fieldset>
-          <legend className="mb-2 text-xs font-semibold text-green-600">{t("pillars")}</legend>
-          <div className="space-y-2.5">
-            {draft.rows.map((r) => (
-              <Field key={r.key} label={`${r.label}${r.source === "question" ? ` · ${t("fromQuestion")}` : ""}`}>
-                <input dir={dir} disabled={!editable} value={r.value} onChange={(e) => setRow(r.key, e.target.value)} className={input} />
-              </Field>
-            ))}
-          </div>
-        </fieldset>
+        <div>
+          <p className="mb-2 text-xs font-semibold text-green-600">{t("pillars")}</p>
+          {editing ? (
+            <div className="space-y-2.5">
+              {draft.rows.map((r) => (
+                <Field key={r.key} label={`${r.label}${r.source === "question" ? ` · ${t("fromQuestion")}` : ""}`}>
+                  <input dir={dir} value={r.value} onChange={(e) => setRow(r.key, e.target.value)} className={input} />
+                </Field>
+              ))}
+            </div>
+          ) : (
+            <dl dir={dir} className="divide-y divide-sand-200 rounded-xl border border-sand-200 text-sm">
+              {draft.rows.map((r) => (
+                <div key={r.key} className="grid gap-0.5 px-3 py-2">
+                  <dt className="text-ink-600">{r.label}</dt>
+                  <dd className="font-semibold">{r.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
       )}
 
       <div>
@@ -252,7 +281,7 @@ export function CaseReview({ msg, api }: { msg: BotMessage; api: CaseApi }) {
         )}
       </div>
 
-      {(editable || sending) && (
+      {mine && (
         <>
           <Field label={t("email")}>
             <input
@@ -260,6 +289,7 @@ export function CaseReview({ msg, api }: { msg: BotMessage; api: CaseApi }) {
               dir="ltr"
               disabled={sending}
               autoComplete="email"
+              enterKeyHint="done"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={input}
@@ -276,11 +306,15 @@ export function CaseReview({ msg, api }: { msg: BotMessage; api: CaseApi }) {
           )}
           <div className="flex flex-wrap items-center gap-2">
             <button
-              type="submit"
+              type="button"
+              onClick={() => void approve()}
               disabled={sending || !draft.question.trim() || !draft.summaryUser.trim()}
               className="inline-flex items-center gap-2 rounded-full bg-green-900 px-5 py-2.5 text-sm font-semibold text-ivory-50 transition hover:bg-green-600 disabled:opacity-60"
             >
               {sending ? t("submitting") : t("approve")}
+            </button>
+            <button type="button" className={chip} onClick={() => setEditing((v) => !v)} disabled={sending} aria-pressed={editing}>
+              {editing ? t("doneEditing") : t("edit")}
             </button>
             <button type="button" className={ghost} onClick={api.cancel} disabled={sending}>
               {t("cancel")}
@@ -288,6 +322,6 @@ export function CaseReview({ msg, api }: { msg: BotMessage; api: CaseApi }) {
           </div>
         </>
       )}
-    </form>
+    </section>
   );
 }
