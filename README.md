@@ -26,7 +26,7 @@ npm run build                # بناء الإنتاج
 - **الحسابات والبيانات:** Supabase (Auth وPostgres وRLS). البنية والسياسات في `supabase/schema.sql`، والعملاء في `lib/supabase/`، والأدوار (`getRole()` و`requireRole()`) في `lib/auth/roles.ts`. خطوات الإعداد: [docs/setup-supabase.md](docs/setup-supabase.md).
 - **النموذج:** OpenRouter عبر `lib/llm.ts` (النموذج من `LLM_MODEL`): بث، وJSON مضبوط بمخطط Zod، ومهلة، وإعادة محاولة، وحد يومي `DAILY_LLM_LIMIT`. رسائل الخطأ للمستخدم لا تذكر النموذج ولا الشركة.
 - **المصادر:** خادم MCP للجمعية عبر `lib/mcp.ts`، وموصّل لكل مصدر في المرجعية في `lib/sources/` (السجل وقواعد الاستخدام في `registry.ts`). الترتيب: MCP ثم API عام بلا مفتاح ثم البحث المباشر في الموقع من الخادم، باحترام robots.txt، وUser-Agent باسم mustafti.com، وطلب في الثانية لكل موقع، وذاكرة 24 ساعة للمقتطفات والروابط فقط.
-- **الحالة:** [`/api/health`](https://mustafti.com/api/health) يعرض حالة النموذج وخادم MCP وأدواته وكل مصدر (يعمل / لا يعمل / محجوب).
+- **الحالة:** [`/api/health`](https://mustafti.vercel.app/api/health) يعرض حالة النموذج وخادم MCP وأدواته وكل مصدر (يعمل / لا يعمل / محجوب).
 - **اختبار النماذج:** `npm run model-test` أو المسار المحمي `/api/admin/model-test` (super_admin مع MFA). المنطق في `lib/model-test.ts`.
 - **لاحقاً:** pgvector، وadhan للمواقيت.
 

@@ -1,5 +1,5 @@
 /**
- * اختبار المقارنة بين النماذج الثلاثة (الخطة 0.4) من سطر الأوامر:
+ * اختبار المقارنة بين النماذج المرشحة الأربعة (الخطة 0.4) من سطر الأوامر:
  *
  *   OPENROUTER_API_KEY=... npm run model-test            # يطبع التقرير
  *   OPENROUTER_API_KEY=... npm run model-test -- --write # ويضيفه إلى docs/decisions.md
@@ -17,7 +17,7 @@ async function main() {
     process.exit(1);
   }
   // النموذج الافتراضي لا يلزم هنا (كل نموذج يُمرَّر صراحة)، لكن isLlmConfigured يتطلبه.
-  process.env.LLM_MODEL ||= "qwen/qwen3.8-omni-flash";
+  process.env.LLM_MODEL ||= "google/gemma-4-31b-it";
 
   const result = await runModelTest();
   const markdown = toMarkdown(result);

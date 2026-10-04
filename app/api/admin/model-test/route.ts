@@ -6,7 +6,7 @@ import { runModelTest, toMarkdown } from "@/lib/model-test";
  * /api/admin/model-test — اختبار المقارنة بين النماذج (الخطة 0.4) من Vercel نفسه.
  * للمشرف الأعلى فقط بعد MFA: requireRole(["super_admin"]) لا يتحقق إلا بجلسة aal2.
  *   GET  ← صفحة صغيرة بزر «شغّل الاختبار».
- *   POST ← يشغّل الاختبار (نحو 30 طلباً، أقل من سنت تقريباً) ويعيد JSON وتقرير Markdown
+ *   POST ← يشغّل الاختبار (نحو 45 طلباً، بضعة سنتات على الأكثر) ويعيد JSON وتقرير Markdown
  *          جاهزاً للصق في docs/decisions.md.
  * كل الردود لغير المشرف 404، حتى لا يُعرف وجود المسار.
  */
@@ -28,7 +28,7 @@ export async function GET() {
   if (denied) return denied;
   const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>اختبار النماذج</title>
 <style>body{font-family:"Readex Pro",system-ui,sans-serif;background:#F5F3EA;color:#04301F;max-width:960px;margin:0 auto;padding:16px}button{background:#FFB800;color:#04301F;border:0;border-radius:999px;padding:10px 22px;font:inherit;font-weight:600;cursor:pointer}button[disabled]{opacity:.6}pre{white-space:pre-wrap;background:#fff;border-radius:12px;padding:14px;direction:rtl;unicode-bidi:plaintext}</style></head>
-<body><h1>اختبار النماذج الثلاثة (الخطة 0.4)</h1>
+<body><h1>اختبار النماذج المرشحة الأربعة (الخطة 0.4)</h1>
 <p>10 أسئلة بخمس لغات: فهم السؤال، وجودة العربية، والالتزام بـ JSON، والسرعة، والتكلفة. يستغرق دقيقة إلى ثلاث دقائق، ويُحسب من الحد اليومي.</p>
 <button id="run">شغّل الاختبار</button> <button id="copy" hidden>انسخ التقرير</button>
 <pre id="out"></pre>
