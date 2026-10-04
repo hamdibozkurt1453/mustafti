@@ -33,7 +33,8 @@ async function runMethods(id: SourceId, query: string, lang: string): Promise<So
  */
 export function search(id: SourceId, query: string, lang: string, deadlineMs = SOURCE_DEADLINE_MS): Promise<SourceResult[]> {
   const q = query.trim().slice(0, 200);
-  if (!q) return Promise.resolve([]);
+  // المصادر «رابط فقط» (محجوبة، أو بحثها لا يبحث فعلياً) لا يُطلب منها شيء آلياً.
+  if (!q || SOURCES.find((s) => s.id === id)?.blocked) return Promise.resolve([]);
   return withDeadline(runMethods(id, q, lang), deadlineMs);
 }
 

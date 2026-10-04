@@ -102,3 +102,51 @@ export function prerank<T extends Candidate>(cands: T[], terms: string[], pool =
   return picked.slice(0, pool).sort((a, b) => b.kw! - a.kw!);
 }
 
+
+// ---------------------------------------------------------------------------
+// إعادة الترتيب بالصلة: معرّفات صريحة (S1، S2…) تُطابق بالمعرّف لا بالترتيب
+// ---------------------------------------------------------------------------
+
+/** معرّف قصير للمرشح في طلب التقييم. */
+export const rerankId = (i: number) => `S${i + 1}`;
+
+/** قائمة المرشحين كما تُرسل للمقيّم، كل نص بمعرّفه. */
+export function rerankList(cands: Candidate[]): string {
+  return cands
+    .map((c, i) => `[${rerankId(i)}] ${c.source} — ${clip(c.title, 140)}\n${clip(c.text, 420)}`)
+    .join("\n\n");
+}
+
+/**
+ * يطبّق درجات المقيّم بالمعرّف: «S3» أو «3» أو «[S3]» كلها للمرشح الثالث، وما لم يُقيَّم يأخذ 0.
+ * لا يُستعمل ترتيب الرد أبداً، فلا تنزاح الدرجات إن رتّب النموذج أو أسقط بعض النصوص.
+ */
+export function applyScores(cands: Candidate[], scores: { id: string; score: number }[]): void {
+  const byId = new Map<string, number>();
+  for (const s of scores) {
+    const n = String(s.id).match(/\d+/)?.[0];
+    if (n) byId.set(`S${Number(n)}`, Math.max(0, Math.min(3, Math.round(s.score))));
+  }
+  cands.forEach((c, i) => (c.score = byId.get(rerankId(i)) ?? 0));
+}
+
+function clip(text: string, max: number): string {
+  return text.length <= max ? text : `${text.slice(0, max)}…`;
+}
+
+/**
+ * يزيل من نص أداة MCP ما ليس محتوى: فواصل «────»، وأقسام CITE، وتعليمات الخادم للنموذج
+ * (مثل «[EXACT] the narration itself — reproduce these words exactly…»).
+ */
+export function cleanToolText(raw: string): string {
+  return raw
+    .split("\n")
+    .filter((line) => !/─{3,}|^\s*(CITE|Every (result|item) you carry)/i.test(line))
+    .join("\n")
+    .replace(/\s*\[[A-Z][A-Z _-]{2,}\][^\n]*/g, (m) =>
+      /reproduce|exactly|verbatim|do not|don't|must|cite|paraphras|instruction/i.test(m) ? "" : m,
+    )
+    .replace(/[#*_`>]/g, "")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+}
