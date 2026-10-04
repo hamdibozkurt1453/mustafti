@@ -8,7 +8,7 @@ import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } fro
 import { answerFormatIssues } from "./format";
 import { message } from "./messages";
 import { planCitations, type CitationPlan } from "./planner";
-import { retrieve, warmSearch, type RetrievalDiag } from "./retrieval";
+import { retrieve, type RetrievalDiag } from "./retrieval";
 import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } from "./prompts";
 
 /**
@@ -155,12 +155,11 @@ export async function respond(question: string, options: RespondOptions = {}): P
   const prefix = probe === "manipulation" ? identityReply("manipulation", guessLang(question)) : "";
   const withPrefix = (text: string) => (prefix ? `${prefix}\n\n${text}` : text);
 
-  // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض)، والبحث يُسخَّن بالتوازي (لا لحالة شخصية أو عاجلة).
+  // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض).
   stage("understanding");
   // خطة الإحالات تبدأ مع التصنيف (لا لحالة شخصية أو عاجلة)، وتُهمل إن صُنّف السؤال D.
   let plan: Promise<CitationPlan | null> | undefined;
   if (!looksPersonal(question) && !looksUrgent(question)) {
-    warmSearch(question, guessLang(question));
     plan = planCitations(question);
   }
   const cls = await classify(question, { history: options.history });
@@ -192,7 +191,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
   // 4) A / B / C: الاسترجاع.
   stage("searching");
   const t0 = Date.now();
-  const found = await retrieve(c, question, plan);
+  const found = await retrieve(c, question, plan, undefined, plan ? (failed) => planCitations(question, failed) : undefined);
   timings.searchMs = Date.now() - t0;
   diag.retrieval = found.diag;
   const passages = found.passages;

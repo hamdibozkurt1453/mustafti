@@ -83,7 +83,7 @@ a{color:var(--mid)}
 <script>
 const CASES=${casesJson};
 const REASON={no_passages:"البحث لم يُرجع نصوصاً",no_relevant:"نصوص لكن لا شيء منها ذو صلة (درجة ≥2)",model_abstained:"النصوص موجودة لكن النموذج امتنع",no_citation:"جواب بلا إحالة [n] ولا اقتباس موثّق",guard:"اعترض الحارس"};
-const planText=p=>[p.quran&&p.quran.length?"آيات "+p.quran.map(v=>v.surah+":"+v.ayah+(v.through?"-"+v.through:"")).join("، "):"",p.surahInfo&&p.surahInfo.length?"سور "+p.surahInfo.join("، "):"",p.hadithQueries&&p.hadithQueries.length?"حديث «"+p.hadithQueries.join("»، «")+"»":"",p.bayyinatQueries&&p.bayyinatQueries.length?"بيّنات «"+p.bayyinatQueries.join("»، «")+"»":"",p.libraryQueries&&p.libraryQueries.length?"مكتبة «"+p.libraryQueries.join("»، «")+"»":""].filter(Boolean).join(" · ")||"فارغة";
+const planText=p=>[p.quran&&p.quran.length?"آيات "+p.quran.map(v=>v.surah+":"+v.ayah+(v.through?"-"+v.through:"")).join("، "):"",p.surahInfo&&p.surahInfo.length?"سور "+p.surahInfo.join("، "):"",p.hadithQueries&&p.hadithQueries.length?"حديث «"+p.hadithQueries.join("»، «")+"»":"",p.bayyinatQueries&&p.bayyinatQueries.length?"بيّنات «"+p.bayyinatQueries.join("»، «")+"»":"",p.quranIndex?"فهرس المصحف":"",p.quranQueries&&p.quranQueries.length?"قرآن «"+p.quranQueries.join("»، «")+"»":""].filter(Boolean).join(" · ")||"فارغة";
 const PIN={ok:"وُجد",empty:"فارغ",error:"خطأ",timeout:"تجاوز المهلة"};
 const CAT={reference:"المرجعية",insistence:"إلحاح",urgent:"عاجل",out_of_scope:"خارج النطاق",identity:"هوية وتلاعب",general:"عام"};
 const results={};
@@ -101,6 +101,7 @@ function render(c,r){
   const diag=d?'<div class="diag">'
    +(d.abstainReason?'<div class="no">سبب الامتناع: '+esc(REASON[d.abstainReason]||d.abstainReason)+"</div>":"")
    +(d.plan?"<div>خطة الإحالات: "+esc(planText(d.plan))+" · بلغ التقييم منها: "+(d.pinned??0)+"</div>":"")
+   +(d.replan?"<div>إعادة التخطيط: "+esc(planText(d.replan))+"</div>":"")
    +(d.pinLog&&d.pinLog.length?"<div>المراجع: "+d.pinLog.map(x=>'<span class="'+(x.status==="ok"?"pass":"no")+'">'+esc(x.ref+" ← "+PIN[x.status]+(x.count>1?" ("+x.count+")":"")+(x.detail?" ["+x.detail+"]":""))+"</span>").join(" · ")+"</div>":"")
    +(d.errors&&d.errors.length?'<div class="no">أخطاء المصادر: '+esc(d.errors.join(" | "))+"</div>":"")
    +((d.basics&&d.basics.length)||(d.verses&&d.verses.length)?"<div>الأساسيات: "+esc((d.basics||[]).join("، ")||"—")+" · الآيات: "+esc((d.verses||[]).join("، ")||"—")+"</div>":"")
@@ -147,6 +148,7 @@ function markdown(){
     if(d&&d.queries.length){
       lines.push("- كلمات البحث: "+d.queries.map(q=>"«"+q.q+"» ("+q.lang+")").join("، "));
       if(d.plan)lines.push("- خطة الإحالات: "+planText(d.plan)+" · بلغ التقييم: "+(d.pinned??0));
+      if(d.replan)lines.push("- إعادة التخطيط: "+planText(d.replan));
       if(d.pinLog&&d.pinLog.length)lines.push("- المراجع: "+d.pinLog.map(x=>x.ref+" ← "+PIN[x.status]+(x.count>1?" ("+x.count+")":"")+(x.detail?" ["+x.detail+"]":"")).join(" · "));
       if(d.errors&&d.errors.length)lines.push("- أخطاء المصادر: "+d.errors.join(" | "));
       if((d.basics&&d.basics.length)||(d.verses&&d.verses.length))lines.push("- الأساسيات: "+((d.basics||[]).join("، ")||"—")+" · الآيات: "+((d.verses||[]).join("، ")||"—"));
@@ -173,12 +175,9 @@ const mcpBtn=document.getElementById("mcp"),mcpOut=document.getElementById("mcpo
 mcpBtn.onclick=async()=>{mcpBtn.disabled=true;mcpOut.hidden=false;mcpOut.textContent="جارٍ…";
   try{const r=await fetch(location.pathname,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({debug:"mcp"})});mcpOut.textContent=JSON.stringify(await r.json(),null,2)}
   catch(e){mcpOut.textContent=String(e)}finally{mcpBtn.disabled=false}};
-run.onclick=async()=>{run.disabled=true;copy.disabled=true;for(const k in results)delete results[k];CASES.forEach(c=>render(c));
-const mcpBtn=document.getElementById("mcp"),mcpOut=document.getElementById("mcpout");
-mcpBtn.onclick=async()=>{mcpBtn.disabled=true;mcpOut.hidden=false;mcpOut.textContent="جارٍ…";
-  try{const r=await fetch(location.pathname,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({debug:"mcp"})});mcpOut.textContent=JSON.stringify(await r.json(),null,2)}
-  catch(e){mcpOut.textContent=String(e)}finally{mcpBtn.disabled=false}};tally();
-  const queue=[...CASES];await Promise.all([0,1,2].map(async()=>{while(queue.length)await one(queue.shift())}));
+run.onclick=async()=>{run.disabled=true;copy.disabled=true;for(const k in results)delete results[k];CASES.forEach(c=>render(c));tally();
+  // حالةً حالة مع فاصل 300ms (لا تزاحم على خادم MCP فيرد 429).
+  for(const c of CASES){await one(c);await new Promise(r=>setTimeout(r,300))}
   run.disabled=false;copy.disabled=false};
 copy.onclick=async()=>{const md=markdown();try{await navigator.clipboard.writeText(md);copy.textContent="نُسخ ✔"}catch{const t=document.createElement("textarea");t.value=md;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();copy.textContent="نُسخ ✔"}setTimeout(()=>copy.textContent="انسخ التقرير",2000)};
 </script></body></html>`;

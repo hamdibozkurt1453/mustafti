@@ -80,6 +80,7 @@ export const SOURCES: SourceDef[] = [
     rule: "الالتزام بما عليه المسلمون خصوصاً الصحابة والتابعون ومن تبعهم. " + TRANSLATION_RULE,
     access: ["mcp"],
     group: "association",
+    blocked: "بحث المكتبة عبر MCP وbrowse_library يتجاوزان المهلة (حتى 15 ثانية) ويضاعفان زمن الرد، ونتائجهما أوصاف كتب لا نصوص (الاختبار الحي، 4 أكتوبر). رابط فقط في المسار الحي.",
   },
   {
     id: "islamenc",
