@@ -1,16 +1,18 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 import type { GlossaryTerm } from "@/lib/brain/glossary";
+import { CaseReview, ClarifyBubble, StartCaseButton, type CaseApi } from "./CaseFlow";
 import { RichText } from "./RichText";
 import { SourceCard } from "./SourceCard";
 import type { BotMessage } from "./useChat";
 
-/** مؤشر العمل: النقاط الثلاث مع المرحلة («يبحث في المصادر…»). */
-function Working({ stage }: { stage?: BotMessage["stage"] }) {
-  const t = useTranslations("chat");
-  const label = t(`stage.${stage ?? "understanding"}`);
+/** مؤشر العمل: النقاط الثلاث مع المرحلة («يبحث في المصادر…»، «أرتّب ملف مسألتك…»). */
+function Working({ stage, caseStage }: { stage?: BotMessage["stage"]; caseStage?: BotMessage["caseStage"] }) {
+  const t = useTranslations();
+  const label = caseStage
+    ? t(`case.${caseStage === "planning" ? "preparing" : caseStage}`)
+    : t(`chat.stage.${stage ?? "understanding"}`);
   return (
     <span className="flex items-center gap-2.5 py-1 text-sm text-ink-600" role="status">
       <span className="flex items-center gap-1" aria-hidden>
@@ -29,44 +31,25 @@ function Working({ stage }: { stage?: BotMessage["stage"] }) {
   );
 }
 
-/** زر «أرسل سؤالك لمختص»: يعمل فعلاً في S8، والآن يعرض رسالة لطيفة. */
-function ExpertButton() {
-  const t = useTranslations("chat");
-  const [shown, setShown] = useState(false);
-  return (
-    <div className="mt-3">
-      <button
-        type="button"
-        onClick={() => setShown(true)}
-        aria-expanded={shown}
-        className="inline-flex items-center gap-2 rounded-full bg-gold-500 px-4 py-2 text-sm font-semibold text-green-900 transition hover:brightness-105 active:scale-95"
-      >
-        {t("askExpert")}
-        <span aria-hidden className="rtl:-scale-x-100">
-          →
-        </span>
-      </button>
-      {shown && (
-        <p role="status" className="mf-rise mt-3 rounded-2xl bg-ivory-50 p-3 text-sm leading-relaxed text-green-900 ring-1 ring-sand-200">
-          {t("expertSoon")}
-        </p>
-      )}
-    </div>
-  );
-}
+type Props = { msg: BotMessage; onTerm: (term: GlossaryTerm) => void; onRetry: (id: string) => void; caseApi: CaseApi };
 
-type Props = { msg: BotMessage; onTerm: (term: GlossaryTerm) => void; onRetry: (id: string) => void };
+const CASE_KINDS = new Set(["clarify", "caseFile", "caseNote"]);
 
-/** رد مُستفتي حسب نوعه: شرح بمصادر، أو امتناع، أو إحالة، أو توجيه عاجل، أو اعتذار. */
-export function BotReply({ msg, onTerm, onRetry }: Props) {
+/**
+ * رد مُستفتي حسب نوعه: شرح بمصادر، أو امتناع، أو إحالة (مع «ابدأ» للاستيضاح)، أو توجيه عاجل،
+ * أو اعتذار، أو رسائل الاستيضاح وملف المسألة (CaseFlow.tsx).
+ */
+export function BotReply({ msg, onTerm, onRetry, caseApi }: Props) {
   const t = useTranslations("chat");
+  const tc = useTranslations("case");
+  const isCase = CASE_KINDS.has(msg.kind ?? "");
   const live = msg.status === "streaming";
   const caret = live ? <span aria-hidden className="mf-caret ms-0.5 inline-block h-4 w-0.5 translate-y-0.5 bg-green-600" /> : null;
 
   if (msg.status === "pending") {
     return (
       <div className="rounded-[22px] rounded-se-md border border-sand-200 bg-white px-4 py-3">
-        <Working stage={msg.stage} />
+        <Working stage={msg.stage} caseStage={msg.caseStage} />
       </div>
     );
   }
@@ -83,7 +66,7 @@ export function BotReply({ msg, onTerm, onRetry }: Props) {
         {msg.error?.key !== "rateLimited" && (
           <button
             type="button"
-            onClick={() => onRetry(msg.id)}
+            onClick={() => (isCase ? caseApi.retry() : onRetry(msg.id))}
             className="mt-3 rounded-full border border-green-600 px-4 py-1.5 text-sm font-semibold text-green-600 transition hover:bg-green-600 hover:text-ivory-50"
           >
             {t("retry")}
@@ -110,8 +93,21 @@ export function BotReply({ msg, onTerm, onRetry }: Props) {
     );
   }
 
+  if (msg.kind === "clarify" && msg.clarify) return <ClarifyBubble msg={msg} api={caseApi} />;
+  if (msg.kind === "caseFile" && msg.caseFile) return <CaseReview msg={msg} api={caseApi} />;
+  if (msg.kind === "caseNote") {
+    return (
+      <div className="rounded-[22px] rounded-se-md border border-sand-200 bg-white px-4 py-3 text-[15px] leading-relaxed text-green-900">
+        {tc("cancelled")}
+      </div>
+    );
+  }
+
   const answer = msg.kind === "answer";
-  const withExpert = msg.kind === "abstain" || msg.kind === "referral" || msg.kind === "refused";
+  // «ابدأ» بعد الإحالة، و«أرسل سؤالك لمختص» بعد الامتناع: يبدأ الاستيضاح في المحادثة نفسها.
+  const flow = caseApi.flow;
+  const started = flow && flow.sourceId === msg.id && flow.step !== "cancelled";
+  const withExpert = (msg.kind === "abstain" || msg.kind === "referral" || msg.kind === "refused") && !started;
   const cards = msg.sources.map((s) => s.n);
 
   return (
@@ -132,7 +128,9 @@ export function BotReply({ msg, onTerm, onRetry }: Props) {
           {answer ? <RichText text={msg.text} messageId={msg.id} cards={cards} onTerm={onTerm} /> : msg.text}
           {caret}
         </p>
-        {withExpert && msg.status === "done" && <ExpertButton />}
+        {withExpert && msg.status === "done" && (
+          <StartCaseButton label={msg.kind === "referral" ? tc("start") : t("askExpert")} onStart={() => caseApi.start(msg.id)} />
+        )}
       </div>
 
       {answer && msg.status === "done" && msg.sources.length > 0 && (

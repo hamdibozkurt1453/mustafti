@@ -1,3 +1,5 @@
+import type { ReferralKind } from "@/lib/case/types";
+
 /**
  * شبكة أمان بالكود فوق المصنّف: ترفع المستوى ولا تخفّضه أبداً.
  * - طلب حكم على حالة السائل نفسه ⇒ D (حتى لو أخطأ النموذج فصنّفه A أو B).
@@ -49,4 +51,41 @@ export function looksPersonal(text: string): boolean {
 
 export function looksUrgent(text: string): boolean {
   return URGENT.some((r) => r.test(text));
+}
+
+/**
+ * سؤال حكم على واقعة لشخص («ما حكم من يسرق وهو مضطر؟»، "ruling on someone who…"):
+ * «الحكم على واقعة فردية» في المستوى D، وإن لم تكن حالة السائل نفسه. يرفع إلى D فقط.
+ */
+const CASE_RULING: RegExp[] = [
+  /ما\s*(هو\s+)?(حكم|الحكم\s+في)\s+(من|مَن|مَنْ|الذي|التي|رجل|امرأة|شخص)\s/u,
+  /\b(what\s+is|what'?s)\s+the\s+(islamic\s+)?ruling\s+(on|for|of|about)\s+(someone|somebody|a\s+(person|man|woman|muslim)|anyone|people|those|one)\s+who\b/i,
+  wb(/\b(birinin|kişinin|kimsenin)\b.*\bhükmü\b/iu),
+  wb(/\b(quel\s+est\s+le\s+(jugement|statut|avis)|que\s+dit\s+l'islam)\b.*\b(celui|quelqu'un|une\s+personne)\s+qui\b/iu),
+  /جو\s+شخص.*(کا|کی)\s+حکم|(اس|ایسے)\s+شخص\s+کا\s+(کیا\s+)?حکم/u,
+  wb(/\b(apa\s+)?hukum(nya)?\s+(orang|seseorang)\s+yang\b/iu),
+];
+
+/** طلب حكم عام (لا عن حالة السائل): لاختيار رسالة الإحالة المناسبة في المستوى D. */
+const RULING_ASK: RegExp[] = [
+  /(ما|ماهو|ما\s+هو|ما\s+هي)\s*(حكم|الحكم)/u,
+  /حكم\s+(من|مَن)\s/u,
+  /\b(what\s+is|what'?s)\s+the\s+(islamic\s+)?ruling\b|\bruling\s+(on|of|for|about)\b|\bis\s+it\s+(haram|halal|permissible|allowed)\s+(to|for\s+(a|someone|people|muslims?))\b/i,
+  wb(/\bhükmü\s+(nedir|ne)\b|\bcaiz\s+mi(dir)?\b/iu),
+  wb(/\b(quel\s+est\s+le\s+(jugement|statut)|est[- ]il\s+permis)\b/iu),
+  /(کا|کی)\s+(کیا\s+)?حکم|حکم\s+کیا\s+ہے/u,
+  wb(/\b(apa\s+)?hukum(nya)?\b/iu),
+];
+
+export function looksCaseRuling(text: string): boolean {
+  return CASE_RULING.some((r) => r.test(text));
+}
+
+export function looksRulingQuestion(text: string): boolean {
+  return RULING_ASK.some((r) => r.test(text));
+}
+
+/** نوع رسالة الإحالة في D: حالة السائل نفسه ⇒ personal؛ طلب حكم عام بلا حالة شخصية ⇒ ruling. */
+export function referralKindOf(question: string): ReferralKind {
+  return !looksPersonal(question) && (looksCaseRuling(question) || looksRulingQuestion(question)) ? "ruling" : "personal";
 }

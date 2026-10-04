@@ -21,7 +21,7 @@ export function HomeExperience() {
   const reduced = useReducedMotion() ?? false;
   const [persona, setPersona] = useState<Persona | null>(null);
   const [text, setText] = useState("");
-  const { messages, send, retry, reset, busy } = useChat();
+  const { messages, send, retry, reset, busy, caseApi } = useChat();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatting = messages.length > 0;
 
@@ -89,6 +89,7 @@ export function HomeExperience() {
                 onSubmit={() => ask(text)}
                 onReset={newChat}
                 onRetry={retry}
+                caseApi={caseApi}
                 busy={busy}
                 inputRef={inputRef}
                 reduced={reduced}

@@ -1,0 +1,1052 @@
+{
+  "version": 1,
+  "about": "قوالب الأركان لمسار المستوى D: ما يحتاج المفتي أن يعرفه من الوقائع، دون أي حكم. لا سؤال عن اسم أو رقم هوية أو حساب بنكي أو تفاصيل جنسية. العرض المقروء: content/pillars-review.md",
+  "limits": { "maxQuestions": 8, "generatedMin": 3, "generatedMax": 6 },
+  "generationRules": {
+    "ar": [
+      "من 3 إلى 6 أسئلة عن الوقائع فقط: ماذا حدث، ومتى، وكم، وبأي صيغة، وفي أي ظرف.",
+      "لا سؤال عن حكم أو رأي («هل يجوز…»، «هل هو حرام…»)، ولا تلميح إلى جواب.",
+      "لا سؤال عن اسم، أو رقم هوية أو جواز، أو حساب بنكي، أو هاتف، أو بريد، أو عنوان، ولا عن تفاصيل جنسية.",
+      "سؤال قصير واحد في كل مرة، بخيارات جاهزة حين يمكن.",
+      "لا يُسأل عما ذكره السائل.",
+      "تُعلَّم الأسئلة «مولّدة» ويقرؤها المفتي بهذه الصفة."
+    ],
+    "en": [
+      "3 to 6 questions about facts only: what happened, when, how much, in what words, under what circumstances.",
+      "No question about a ruling or an opinion (\"is it allowed…\", \"is it haram…\"), and no hint of an answer.",
+      "Never ask for a name, ID or passport number, bank account, phone, email or address, nor for sexual details.",
+      "One short question at a time, with ready options when possible.",
+      "Do not ask about anything the asker already stated.",
+      "Generated questions are marked \"generated\" and the mufti reads them as such."
+    ]
+  },
+  "general": [
+    {
+      "key": "occurred",
+      "ar": "هل وقع الأمر فعلاً، أم تخطط له، أم تسأل عن حالة غيرك؟",
+      "en": "Has this already happened, are you planning it, or are you asking about someone else's case?",
+      "type": "choice",
+      "options": [
+        { "value": "happened", "ar": "وقع فعلاً", "en": "It already happened" },
+        { "value": "planning", "ar": "أخطط له", "en": "I am planning it" },
+        { "value": "ongoing", "ar": "أمر مستمر", "en": "It is ongoing" },
+        { "value": "hypothetical", "ar": "حالة عامة أو لغيري", "en": "A general case or someone else's" }
+      ],
+      "required": true
+    },
+    {
+      "key": "who",
+      "ar": "من المعنيّ بالمسألة؟",
+      "en": "Who is concerned by this matter?",
+      "type": "choice",
+      "options": [
+        { "value": "self", "ar": "أنا", "en": "Me" },
+        { "value": "spouse", "ar": "زوجي أو زوجتي", "en": "My spouse" },
+        { "value": "relative", "ar": "قريب لي", "en": "A relative" },
+        { "value": "other", "ar": "شخص آخر", "en": "Someone else" }
+      ],
+      "required": true
+    },
+    {
+      "key": "what_exactly",
+      "ar": "ما الذي حدث بالضبط؟ اذكر الفعل أو الصيغة أو المقدار، دون أسماء.",
+      "en": "What exactly happened? Describe the act, the words or the amount, without names.",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "when",
+      "ar": "متى حدث ذلك، وكم مرة؟",
+      "en": "When did it happen, and how many times?",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "country",
+      "ar": "في أي بلد تعيش؟ (البلد فقط، لأن الجهة المختصة والعرف يختلفان)",
+      "en": "Which country do you live in? (Country only: the competent authority and custom differ.)",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "state_intent",
+      "ar": "ما الحال التي وقع فيها الأمر؟",
+      "en": "What was the state or intention when it happened?",
+      "type": "choice",
+      "options": [
+        { "value": "intentional", "ar": "عن قصد ووعي", "en": "Intentionally and aware" },
+        { "value": "forgot", "ar": "نسيان", "en": "Forgetfulness" },
+        { "value": "ignorance", "ar": "جهل بالحكم", "en": "Not knowing the ruling" },
+        { "value": "coercion", "ar": "إكراه", "en": "Under coercion" },
+        { "value": "anger", "ar": "غضب", "en": "Anger" },
+        { "value": "necessity", "ar": "ضرورة أو حاجة شديدة", "en": "Necessity or dire need" }
+      ],
+      "required": false
+    },
+    {
+      "key": "asked_before",
+      "ar": "هل سألت أحداً من أهل العلم من قبل؟ إن نعم فاكتب ماذا قيل لك.",
+      "en": "Have you asked a scholar before? If yes, write what you were told.",
+      "type": "yesno",
+      "required": false
+    },
+    {
+      "key": "madhhab",
+      "ar": "هل تتّبع مذهباً فقهياً؟ (اختياري)",
+      "en": "Do you follow a school of jurisprudence? (optional)",
+      "type": "choice",
+      "options": [
+        { "value": "hanafi", "ar": "الحنفي", "en": "Hanafi" },
+        { "value": "maliki", "ar": "المالكي", "en": "Maliki" },
+        { "value": "shafii", "ar": "الشافعي", "en": "Shafi'i" },
+        { "value": "hanbali", "ar": "الحنبلي", "en": "Hanbali" },
+        { "value": "none", "ar": "لا مذهب محدد", "en": "No specific school" }
+      ],
+      "required": false
+    }
+  ],
+  "chapters": {
+    "taharah": {
+      "ar": "الطهارة",
+      "en": "Purification",
+      "ref": "dorar.net/feqhia — كتاب الطهارة · الموسوعة الفقهية الكويتية: طهارة، وضوء، غسل، تيمم، نجاسة",
+      "order": ["taharah_topic", "occurred", "taharah_certainty", "taharah_prayed", "taharah_medical", "taharah_recurring", "when", "madhhab"],
+      "questions": [
+        {
+          "key": "taharah_topic",
+          "ar": "بماذا تتعلق مسألتك؟",
+          "en": "What does your question relate to?",
+          "type": "choice",
+          "options": [
+            { "value": "wudu", "ar": "الوضوء", "en": "Wudu (ablution)" },
+            { "value": "ghusl", "ar": "الغسل", "en": "Ghusl (full bath)" },
+            { "value": "najasa", "ar": "نجاسة في البدن أو الثوب أو المكان", "en": "Impurity on body, clothes or place" },
+            { "value": "tayammum", "ar": "التيمم", "en": "Tayammum (dry ablution)" },
+            { "value": "hayd", "ar": "الحيض أو النفاس أو الاستحاضة", "en": "Menstruation, postnatal bleeding or irregular bleeding" }
+          ],
+          "required": true
+        },
+        {
+          "key": "taharah_certainty",
+          "ar": "هل أنت متيقن مما حدث أم شاكّ فيه؟",
+          "en": "Are you certain of what happened, or in doubt?",
+          "type": "choice",
+          "options": [
+            { "value": "certain", "ar": "متيقن", "en": "Certain" },
+            { "value": "doubt", "ar": "شاكّ", "en": "In doubt" },
+            { "value": "waswasa", "ar": "شكوك تتكرر كثيراً (وسوسة)", "en": "Recurring doubts (waswasa)" }
+          ],
+          "required": true
+        },
+        {
+          "key": "taharah_prayed",
+          "ar": "هل صليت بعد ذلك قبل أن تتطهر؟",
+          "en": "Did you pray afterwards before purifying?",
+          "type": "yesno",
+          "required": false
+        },
+        {
+          "key": "taharah_medical",
+          "ar": "هل عندك مرض أو جرح أو جبيرة أو سلس يتعلق بالمسألة؟",
+          "en": "Do you have an illness, wound, cast or incontinence related to this?",
+          "type": "yesno",
+          "required": false
+        },
+        {
+          "key": "taharah_recurring",
+          "ar": "هل تكرر الأمر؟",
+          "en": "Does it recur?",
+          "type": "choice",
+          "options": [
+            { "value": "once", "ar": "مرة واحدة", "en": "Once" },
+            { "value": "sometimes", "ar": "أحياناً", "en": "Sometimes" },
+            { "value": "constant", "ar": "دائماً تقريباً", "en": "Almost always" }
+          ],
+          "required": false
+        }
+      ]
+    },
+    "salah": {
+      "ar": "الصلاة",
+      "en": "Prayer",
+      "ref": "dorar.net/feqhia — كتاب الصلاة · الموسوعة الفقهية الكويتية: صلاة، سجود السهو، قضاء الفوائت، صلاة المسافر",
+      "order": ["salah_issue", "salah_which", "occurred", "salah_sahw", "salah_count", "salah_travel", "state_intent", "when", "madhhab"],
+      "questions": [
+        {
+          "key": "salah_issue",
+          "ar": "ما الذي حدث في الصلاة؟",
+          "en": "What happened in the prayer?",
+          "type": "choice",
+          "options": [
+            { "value": "missed_part", "ar": "نقص منها شيء (ركعة أو سجدة…)", "en": "Something was left out (a rak'ah, a prostration…)" },
+            { "value": "added", "ar": "زيادة فيها", "en": "Something was added" },
+            { "value": "doubt_count", "ar": "شك في عدد الركعات", "en": "Doubt about the number of rak'ahs" },
+            { "value": "missed_prayer", "ar": "فاتت الصلاة أو أُخّرت عن وقتها", "en": "The prayer was missed or delayed past its time" },
+            { "value": "combine_shorten", "ar": "الجمع أو القصر", "en": "Combining or shortening" }
+          ],
+          "required": true
+        },
+        {
+          "key": "salah_which",
+          "ar": "أي صلاة؟",
+          "en": "Which prayer?",
+          "type": "choice",
+          "options": [
+            { "value": "fajr", "ar": "الفجر", "en": "Fajr" },
+            { "value": "dhuhr", "ar": "الظهر", "en": "Dhuhr" },
+            { "value": "asr", "ar": "العصر", "en": "Asr" },
+            { "value": "maghrib", "ar": "المغرب", "en": "Maghrib" },
+            { "value": "isha", "ar": "العشاء", "en": "Isha" },
+            { "value": "jumuah", "ar": "الجمعة", "en": "Jumu'ah" }
+          ],
+          "required": false
+        },
+        {
+          "key": "salah_sahw",
+          "ar": "هل سجدت للسهو؟",
+          "en": "Did you perform the prostration of forgetfulness (sujud as-sahw)?",
+          "type": "choice",
+          "options": [
+            { "value": "before_salam", "ar": "نعم، قبل السلام", "en": "Yes, before the salam" },
+            { "value": "after_salam", "ar": "نعم، بعد السلام", "en": "Yes, after the salam" },
+            { "value": "no", "ar": "لا", "en": "No" }
+          ],
+          "required": false
+        },
+        {
+          "key": "salah_count",
+          "ar": "كم صلاة تتعلق بها المسألة تقريباً؟",
+          "en": "Roughly how many prayers does this concern?",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "salah_travel",
+          "ar": "هل كنت مسافراً وقتها؟",
+          "en": "Were you travelling at the time?",
+          "type": "yesno",
+          "required": false
+        }
+      ]
+    },
+    "siyam": {
+      "ar": "الصيام",
+      "en": "Fasting",
+      "ref": "dorar.net/feqhia — كتاب الصوم · الموسوعة الفقهية الكويتية: صوم، مفطرات، قضاء، فدية",
+      "order": ["siyam_type", "siyam_what", "occurred", "siyam_days", "siyam_health", "siyam_madeup", "state_intent", "when", "madhhab"],
+      "questions": [
+        {
+          "key": "siyam_type",
+          "ar": "أي صيام؟",
+          "en": "Which fast?",
+          "type": "choice",
+          "options": [
+            { "value": "ramadan", "ar": "رمضان", "en": "Ramadan" },
+            { "value": "qada", "ar": "قضاء", "en": "Making up missed days" },
+            { "value": "vow", "ar": "نذر", "en": "A vow" },
+            { "value": "kaffarah", "ar": "كفارة", "en": "An expiation" },
+            { "value": "voluntary", "ar": "تطوع", "en": "Voluntary" }
+          ],
+          "required": true
+        },
+        {
+          "key": "siyam_what",
+          "ar": "ما الذي حدث؟",
+          "en": "What happened?",
+          "type": "choice",
+          "options": [
+            { "value": "ate_forgetting", "ar": "أكلت أو شربت ناسياً", "en": "Ate or drank forgetting" },
+            { "value": "ate_intentionally", "ar": "أفطرت عمداً", "en": "Broke the fast intentionally" },
+            { "value": "illness", "ar": "مرض", "en": "Illness" },
+            { "value": "travel", "ar": "سفر", "en": "Travel" },
+            { "value": "hayd", "ar": "حيض أو نفاس", "en": "Menstruation or postnatal bleeding" },
+            { "value": "pregnancy", "ar": "حمل أو رضاع", "en": "Pregnancy or breastfeeding" },
+            { "value": "medicine", "ar": "دواء أو علاج", "en": "Medicine or treatment" }
+          ],
+          "required": true
+        },
+        {
+          "key": "siyam_days",
+          "ar": "كم يوماً تتعلق بها المسألة؟",
+          "en": "How many days does this concern?",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "siyam_health",
+          "ar": "إن كان سبب صحي، فهل هو مؤقت أم مزمن؟",
+          "en": "If there is a health reason, is it temporary or chronic?",
+          "type": "choice",
+          "options": [
+            { "value": "none", "ar": "لا سبب صحي", "en": "No health reason" },
+            { "value": "temporary", "ar": "مؤقت", "en": "Temporary" },
+            { "value": "chronic", "ar": "مزمن", "en": "Chronic" }
+          ],
+          "required": false
+        },
+        {
+          "key": "siyam_madeup",
+          "ar": "هل قضيت تلك الأيام؟",
+          "en": "Have you made up those days?",
+          "type": "choice",
+          "options": [
+            { "value": "yes", "ar": "نعم", "en": "Yes" },
+            { "value": "partly", "ar": "بعضها", "en": "Some of them" },
+            { "value": "no", "ar": "لا", "en": "No" }
+          ],
+          "required": false
+        }
+      ]
+    },
+    "zakah": {
+      "ar": "الزكاة",
+      "en": "Zakat",
+      "ref": "dorar.net/feqhia — كتاب الزكاة · الموسوعة الفقهية الكويتية: زكاة، نصاب، حول، مصارف الزكاة",
+      "order": ["zakah_asset", "zakah_amount", "zakah_hawl", "zakah_debts", "zakah_paid", "zakah_recipient", "country", "madhhab"],
+      "questions": [
+        {
+          "key": "zakah_asset",
+          "ar": "ما نوع المال؟",
+          "en": "What kind of wealth?",
+          "type": "choice",
+          "options": [
+            { "value": "cash", "ar": "نقود أو مدخرات", "en": "Cash or savings" },
+            { "value": "gold_silver", "ar": "ذهب أو فضة", "en": "Gold or silver" },
+            { "value": "trade", "ar": "عروض تجارة", "en": "Trade goods" },
+            { "value": "investments", "ar": "أسهم أو استثمارات", "en": "Shares or investments" },
+            { "value": "crops_livestock", "ar": "زروع أو أنعام", "en": "Crops or livestock" },
+            { "value": "property", "ar": "عقار", "en": "Real estate" }
+          ],
+          "required": true
+        },
+        {
+          "key": "zakah_amount",
+          "ar": "ما المقدار التقريبي وعملته؟ (دون أي بيانات مصرفية)",
+          "en": "What is the approximate amount and currency? (No banking details.)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "zakah_hawl",
+          "ar": "هل مرّ على بلوغه النصاب سنة هجرية كاملة؟",
+          "en": "Has a full lunar year passed since it reached the nisab?",
+          "type": "choice",
+          "options": [
+            { "value": "yes", "ar": "نعم", "en": "Yes" },
+            { "value": "no", "ar": "لا", "en": "No" },
+            { "value": "unknown", "ar": "لا أعلم", "en": "I don't know" }
+          ],
+          "required": true
+        },
+        {
+          "key": "zakah_debts",
+          "ar": "هل عليك ديون حالّة؟",
+          "en": "Do you have debts that are due now?",
+          "type": "yesno",
+          "required": false
+        },
+        {
+          "key": "zakah_paid",
+          "ar": "هل أخرجت الزكاة في السنوات الماضية؟",
+          "en": "Have you paid zakat in previous years?",
+          "type": "choice",
+          "options": [
+            { "value": "regularly", "ar": "نعم بانتظام", "en": "Yes, regularly" },
+            { "value": "some_years", "ar": "فاتتني سنوات", "en": "I missed some years" },
+            { "value": "never", "ar": "لم أخرجها من قبل", "en": "Never" }
+          ],
+          "required": false
+        },
+        {
+          "key": "zakah_recipient",
+          "ar": "لمن تنوي دفعها؟",
+          "en": "To whom do you intend to give it?",
+          "type": "choice",
+          "options": [
+            { "value": "relatives", "ar": "أقارب محتاجون", "en": "Needy relatives" },
+            { "value": "poor", "ar": "فقراء ومساكين", "en": "The poor and needy" },
+            { "value": "organization", "ar": "جمعية أو مؤسسة", "en": "An organization" },
+            { "value": "undecided", "ar": "لم أحدد", "en": "Not decided" }
+          ],
+          "required": false
+        }
+      ]
+    },
+    "hajj_umrah": {
+      "ar": "الحج والعمرة",
+      "en": "Hajj and Umrah",
+      "ref": "dorar.net/feqhia — كتاب الحج · الموسوعة الفقهية الكويتية: حج، عمرة، إحرام، محظورات الإحرام، فدية",
+      "order": ["hajj_rite", "hajj_issue", "hajj_type", "hajj_stage", "hajj_where_now", "hajj_first", "state_intent", "madhhab"],
+      "questions": [
+        {
+          "key": "hajj_rite",
+          "ar": "حج أم عمرة؟",
+          "en": "Hajj or umrah?",
+          "type": "choice",
+          "options": [
+            { "value": "hajj", "ar": "حج", "en": "Hajj" },
+            { "value": "umrah", "ar": "عمرة", "en": "Umrah" }
+          ],
+          "required": true
+        },
+        {
+          "key": "hajj_issue",
+          "ar": "ما الذي حدث؟",
+          "en": "What happened?",
+          "type": "choice",
+          "options": [
+            { "value": "ihram_violation", "ar": "فعلت شيئاً من محظورات الإحرام", "en": "Did something prohibited in ihram" },
+            { "value": "missed_rite", "ar": "تركت نسكاً أو واجباً", "en": "Left out a rite or obligation" },
+            { "value": "order", "ar": "خلل في ترتيب المناسك", "en": "The order of the rites was wrong" },
+            { "value": "hayd", "ar": "حيض أو نفاس أثناء النسك", "en": "Menstruation during the rites" },
+            { "value": "miqat", "ar": "تجاوز الميقات بلا إحرام", "en": "Passed the miqat without ihram" }
+          ],
+          "required": true
+        },
+        {
+          "key": "hajj_type",
+          "ar": "ما نوع النسك؟",
+          "en": "Which type of hajj?",
+          "type": "choice",
+          "options": [
+            { "value": "tamattu", "ar": "تمتع", "en": "Tamattu'" },
+            { "value": "qiran", "ar": "قران", "en": "Qiran" },
+            { "value": "ifrad", "ar": "إفراد", "en": "Ifrad" },
+            { "value": "unknown", "ar": "لا أعلم", "en": "I don't know" }
+          ],
+          "required": false
+        },
+        {
+          "key": "hajj_stage",
+          "ar": "في أي منسك أو يوم حدث ذلك؟",
+          "en": "At which rite or on which day did it happen?",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "hajj_where_now",
+          "ar": "أين أنت الآن؟",
+          "en": "Where are you now?",
+          "type": "choice",
+          "options": [
+            { "value": "makkah", "ar": "ما زلت في مكة", "en": "Still in Makkah" },
+            { "value": "returned", "ar": "عدت إلى بلدي", "en": "Back home" }
+          ],
+          "required": false
+        },
+        {
+          "key": "hajj_first",
+          "ar": "هل هي حجة الفريضة (أول حجة) أو عمرتك الأولى؟",
+          "en": "Is this your obligatory (first) hajj or first umrah?",
+          "type": "yesno",
+          "required": false
+        }
+      ]
+    },
+    "finance": {
+      "ar": "المعاملات المالية",
+      "en": "Financial dealings",
+      "ref": "dorar.net/feqhia — كتاب البيوع، والربا، والشركات · الموسوعة الفقهية الكويتية: بيع، ربا، قرض، شركة، إجارة، تأمين",
+      "order": ["finance_type", "occurred", "finance_party", "finance_return", "country", "finance_alternative", "finance_need", "madhhab"],
+      "questions": [
+        {
+          "key": "finance_type",
+          "ar": "ما نوع المعاملة؟",
+          "en": "What type of transaction?",
+          "type": "choice",
+          "options": [
+            { "value": "loan_mortgage", "ar": "قرض أو رهن عقاري", "en": "Loan or mortgage" },
+            { "value": "sale_installments", "ar": "بيع أو تقسيط", "en": "Sale or installments" },
+            { "value": "investment", "ar": "شراكة أو استثمار", "en": "Partnership or investment" },
+            { "value": "insurance", "ar": "تأمين", "en": "Insurance" },
+            { "value": "work_income", "ar": "عمل أو مصدر دخل", "en": "Work or source of income" },
+            { "value": "crypto_trading", "ar": "عملات رقمية أو تداول", "en": "Crypto or trading" }
+          ],
+          "required": true
+        },
+        {
+          "key": "finance_party",
+          "ar": "مع من المعاملة؟",
+          "en": "Who is the other party?",
+          "type": "choice",
+          "options": [
+            { "value": "bank", "ar": "بنك تقليدي", "en": "A conventional bank" },
+            { "value": "islamic_bank", "ar": "بنك أو جهة إسلامية", "en": "An Islamic bank or institution" },
+            { "value": "company", "ar": "شركة", "en": "A company" },
+            { "value": "individual", "ar": "فرد", "en": "An individual" },
+            { "value": "government", "ar": "جهة حكومية", "en": "A government body" }
+          ],
+          "required": true
+        },
+        {
+          "key": "finance_return",
+          "ar": "كيف تُحسب الزيادة أو الربح في المعاملة؟",
+          "en": "How is any increase or profit calculated?",
+          "type": "choice",
+          "options": [
+            { "value": "fixed_interest", "ar": "زيادة ثابتة مشروطة على المبلغ", "en": "A fixed, stipulated increase on the amount" },
+            { "value": "profit_share", "ar": "نسبة من الربح الفعلي", "en": "A share of actual profit" },
+            { "value": "fixed_price", "ar": "سعر بيع محدد مسبقاً", "en": "A sale price fixed in advance" },
+            { "value": "none", "ar": "لا زيادة", "en": "No increase" },
+            { "value": "unknown", "ar": "لا أعلم", "en": "I don't know" }
+          ],
+          "required": false
+        },
+        {
+          "key": "finance_alternative",
+          "ar": "هل يوجد بديل إسلامي متاح لك في بلدك؟",
+          "en": "Is an Islamic alternative available to you in your country?",
+          "type": "choice",
+          "options": [
+            { "value": "yes", "ar": "نعم", "en": "Yes" },
+            { "value": "no", "ar": "لا", "en": "No" },
+            { "value": "unknown", "ar": "لا أعلم", "en": "I don't know" }
+          ],
+          "required": false
+        },
+        {
+          "key": "finance_need",
+          "ar": "ما درجة الحاجة إلى هذه المعاملة؟",
+          "en": "How much do you need this transaction?",
+          "type": "choice",
+          "options": [
+            { "value": "necessity", "ar": "ضرورة (سكن أو علاج…)", "en": "A necessity (housing, treatment…)" },
+            { "value": "need", "ar": "حاجة", "en": "A need" },
+            { "value": "improvement", "ar": "تحسين أو استثمار", "en": "Improvement or investment" }
+          ],
+          "required": false
+        }
+      ]
+    },
+    "nikah": {
+      "ar": "النكاح",
+      "en": "Marriage",
+      "ref": "dorar.net/feqhia — كتاب النكاح · الموسوعة الفقهية الكويتية: نكاح، ولي، مهر، شهادة، كفاءة، نفقة",
+      "order": ["nikah_issue", "nikah_stage", "nikah_wali", "nikah_witnesses", "nikah_registered", "nikah_spouse_religion", "country", "madhhab"],
+      "questions": [
+        {
+          "key": "nikah_issue",
+          "ar": "بماذا تتعلق مسألتك؟",
+          "en": "What does your question relate to?",
+          "type": "choice",
+          "options": [
+            { "value": "contract", "ar": "صحة عقد الزواج", "en": "Validity of the marriage contract" },
+            { "value": "wali", "ar": "الولي", "en": "The guardian (wali)" },
+            { "value": "mahr", "ar": "المهر", "en": "The dowry (mahr)" },
+            { "value": "rights", "ar": "الحقوق والنفقة", "en": "Rights and maintenance" },
+            { "value": "interfaith", "ar": "الزواج من غير مسلم أو مسلمة", "en": "Marriage with a non-Muslim" }
+          ],
+          "required": true
+        },
+        {
+          "key": "nikah_stage",
+          "ar": "في أي مرحلة الزواج؟",
+          "en": "At what stage is the marriage?",
+          "type": "choice",
+          "options": [
+            { "value": "not_yet", "ar": "لم يُعقد بعد", "en": "Not contracted yet" },
+            { "value": "contracted", "ar": "عُقد ولم يجتمعا", "en": "Contracted, not living together" },
+            { "value": "living", "ar": "عُقد ويعيشان معاً", "en": "Contracted and living together" }
+          ],
+          "required": true
+        },
+        {
+          "key": "nikah_wali",
+          "ar": "هل حضر ولي الزوجة أو وافق؟",
+          "en": "Was the bride's guardian present or did he consent?",
+          "type": "choice",
+          "options": [
+            { "value": "yes", "ar": "نعم", "en": "Yes" },
+            { "value": "no", "ar": "لا", "en": "No" },
+            { "value": "no_wali", "ar": "لا ولي مسلم لها", "en": "She has no Muslim guardian" }
+          ],
+          "required": false
+        },
+        {
+          "key": "nikah_witnesses",
+          "ar": "هل حضر العقدَ شاهدان؟",
+          "en": "Were there two witnesses to the contract?",
+          "type": "yesno",
+          "required": false
+        },
+        {
+          "key": "nikah_registered",
+          "ar": "هل الزواج مسجّل رسمياً؟",
+          "en": "Is the marriage officially registered?",
+          "type": "yesno",
+          "required": false
+        },
+        {
+          "key": "nikah_spouse_religion",
+          "ar": "ما دين الطرف الآخر؟",
+          "en": "What is the other spouse's religion?",
+          "type": "choice",
+          "options": [
+            { "value": "muslim", "ar": "مسلم", "en": "Muslim" },
+            { "value": "christian_jewish", "ar": "مسيحي أو يهودي", "en": "Christian or Jewish" },
+            { "value": "other", "ar": "دين آخر أو لا دين", "en": "Another religion or none" }
+          ],
+          "required": false
+        }
+      ]
+    },
+    "talaq_khul": {
+      "ar": "الطلاق والخلع",
+      "en": "Divorce and khul'",
+      "ref": "dorar.net/feqhia — كتاب الطلاق، والخلع · الموسوعة الفقهية الكويتية: طلاق، خلع، عدة، رجعة، طلاق الغضبان",
+      "order": ["talaq_type", "occurred", "talaq_words", "talaq_medium", "talaq_intent", "talaq_anger", "talaq_count", "talaq_wife_state", "talaq_after", "when", "country", "asked_before", "madhhab"],
+      "questions": [
+        {
+          "key": "talaq_type",
+          "ar": "ما نوع الفرقة؟",
+          "en": "What kind of separation?",
+          "type": "choice",
+          "options": [
+            { "value": "talaq", "ar": "طلاق من الزوج", "en": "Divorce by the husband (talaq)" },
+            { "value": "khul", "ar": "خلع بطلب الزوجة", "en": "Khul' at the wife's request" },
+            { "value": "court", "ar": "طلاق عن طريق المحكمة", "en": "Divorce through a court" },
+            { "value": "doubt", "ar": "أشك هل وقع شيء", "en": "I am unsure whether anything happened" }
+          ],
+          "required": true
+        },
+        {
+          "key": "talaq_words",
+          "ar": "ما الصيغة التي قيلت أو كُتبت بالضبط؟ اكتبها كما هي.",
+          "en": "What exact words were said or written? Write them as they were.",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "talaq_medium",
+          "ar": "كيف صدر الطلاق؟",
+          "en": "How was it expressed?",
+          "type": "choice",
+          "options": [
+            { "value": "spoken", "ar": "باللفظ", "en": "Spoken" },
+            { "value": "written", "ar": "كتابة أو رسالة", "en": "Written or a message" },
+            { "value": "conditional", "ar": "معلّق على شرط", "en": "Conditional on something" },
+            { "value": "oath", "ar": "بصيغة يمين («عليّ الطلاق»)", "en": "As an oath (\"divorce is binding on me if…\")" },
+            { "value": "thought", "ar": "حديث نفس بلا لفظ", "en": "Only a thought, not uttered" }
+          ],
+          "required": true
+        },
+        {
+          "key": "talaq_intent",
+          "ar": "هل كان الزوج يقصد الطلاق؟",
+          "en": "Did the husband intend divorce?",
+          "type": "choice",
+          "options": [
+            { "value": "yes", "ar": "نعم", "en": "Yes" },
+            { "value": "no", "ar": "لا، قصد التهديد أو المنع", "en": "No, he meant to threaten or prevent" },
+            { "value": "unsure", "ar": "لا أعلم", "en": "Not sure" }
+          ],
+          "required": true
+        },
+        {
+          "key": "talaq_anger",
+          "ar": "إن كان غاضباً، فما درجة الغضب؟",
+          "en": "If he was angry, how intense was the anger?",
+          "type": "choice",
+          "options": [
+            { "value": "none", "ar": "لم يكن غاضباً", "en": "He was not angry" },
+            { "value": "aware", "ar": "غاضب لكنه يعي ما يقول", "en": "Angry but aware of what he said" },
+            { "value": "severe", "ar": "غضب شديد لكنه يذكر ما قال", "en": "Very angry, but remembers what he said" },
+            { "value": "lost", "ar": "فقد السيطرة ولا يدري ما قال", "en": "Lost control and did not know what he said" }
+          ],
+          "required": true
+        },
+        {
+          "key": "talaq_count",
+          "ar": "كم طلقة سبقت هذه؟",
+          "en": "How many divorces happened before this one?",
+          "type": "choice",
+          "options": [
+            { "value": "0", "ar": "لا شيء، هذه الأولى", "en": "None, this is the first" },
+            { "value": "1", "ar": "طلقة واحدة", "en": "One" },
+            { "value": "2", "ar": "طلقتان", "en": "Two" },
+            { "value": "unknown", "ar": "لا أعلم", "en": "I don't know" }
+          ],
+          "required": true
+        },
+        {
+          "key": "talaq_wife_state",
+          "ar": "هل كانت الزوجة وقت الطلاق في حيض أو نفاس أو حامل؟",
+          "en": "At the time, was the wife menstruating, in postnatal bleeding, or pregnant?",
+          "type": "choice",
+          "options": [
+            { "value": "hayd", "ar": "في حيض أو نفاس", "en": "Menstruating or postnatal" },
+            { "value": "pregnant", "ar": "حامل", "en": "Pregnant" },
+            { "value": "neither", "ar": "لا هذا ولا ذاك", "en": "Neither" },
+            { "value": "unknown", "ar": "لا أعلم", "en": "I don't know" }
+          ],
+          "required": false
+        },
+        {
+          "key": "talaq_after",
+          "ar": "ماذا حدث بعد ذلك؟",
+          "en": "What happened afterwards?",
+          "type": "choice",
+          "options": [
+            { "value": "together", "ar": "ما زالا معاً أو تراجعا", "en": "Still together, or reconciled" },
+            { "value": "separated", "ar": "انفصلا", "en": "Separated" },
+            { "value": "iddah_ended", "ar": "انتهت العدة", "en": "The waiting period ('iddah) ended" }
+          ],
+          "required": false
+        }
+      ]
+    },
+    "inheritance_wills": {
+      "ar": "المواريث والوصايا",
+      "en": "Inheritance and wills",
+      "ref": "dorar.net/feqhia — كتاب الفرائض، والوصايا · الموسوعة الفقهية الكويتية: إرث، فرائض، وصية، تركة",
+      "order": ["inh_deceased", "inh_spouse", "inh_parents", "inh_children", "inh_siblings", "inh_will", "inh_debts", "country", "madhhab"],
+      "questions": [
+        {
+          "key": "inh_deceased",
+          "ar": "ما صلة المتوفى بك؟",
+          "en": "How was the deceased related to you?",
+          "type": "choice",
+          "options": [
+            { "value": "father", "ar": "الأب", "en": "Father" },
+            { "value": "mother", "ar": "الأم", "en": "Mother" },
+            { "value": "spouse", "ar": "الزوج أو الزوجة", "en": "Spouse" },
+            { "value": "child", "ar": "ابن أو بنت", "en": "Son or daughter" },
+            { "value": "sibling", "ar": "أخ أو أخت", "en": "Brother or sister" },
+            { "value": "other", "ar": "قريب آخر", "en": "Another relative" }
+          ],
+          "required": true
+        },
+        {
+          "key": "inh_spouse",
+          "ar": "هل للمتوفى زوج أو زوجة على قيد الحياة؟ وكم عددهن إن كنّ زوجات؟",
+          "en": "Did the deceased leave a living spouse? How many, if wives?",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "inh_parents",
+          "ar": "من بقي حياً من والدي المتوفى؟",
+          "en": "Which of the deceased's parents are alive?",
+          "type": "choice",
+          "options": [
+            { "value": "both", "ar": "الأب والأم", "en": "Both" },
+            { "value": "father", "ar": "الأب فقط", "en": "Father only" },
+            { "value": "mother", "ar": "الأم فقط", "en": "Mother only" },
+            { "value": "none", "ar": "لا أحد", "en": "Neither" }
+          ],
+          "required": true
+        },
+        {
+          "key": "inh_children",
+          "ar": "كم ابناً وكم بنتاً للمتوفى على قيد الحياة؟ (العدد فقط)",
+          "en": "How many living sons and daughters did the deceased leave? (Numbers only.)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "inh_siblings",
+          "ar": "إن لم يكن له أبناء: كم أخاً وأختاً له، وهل هم أشقاء أم لأب أم لأم؟",
+          "en": "If there are no children: how many brothers and sisters, and are they full, paternal or maternal siblings?",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "inh_will",
+          "ar": "هل ترك المتوفى وصية؟",
+          "en": "Did the deceased leave a will?",
+          "type": "choice",
+          "options": [
+            { "value": "yes", "ar": "نعم", "en": "Yes" },
+            { "value": "no", "ar": "لا", "en": "No" },
+            { "value": "unknown", "ar": "لا أعلم", "en": "I don't know" }
+          ],
+          "required": false
+        },
+        {
+          "key": "inh_debts",
+          "ar": "هل على المتوفى ديون لم تُسدَّد؟",
+          "en": "Did the deceased leave unpaid debts?",
+          "type": "yesno",
+          "required": false
+        }
+      ]
+    },
+    "food_slaughter": {
+      "ar": "الأطعمة والذبائح",
+      "en": "Food and slaughter",
+      "ref": "dorar.net/feqhia — كتاب الأطعمة، والذبائح، والصيد · الموسوعة الفقهية الكويتية: أطعمة، ذبائح، ذكاة، صيد",
+      "order": ["food_item", "food_source", "food_ingredient", "occurred", "food_need", "country", "madhhab"],
+      "questions": [
+        {
+          "key": "food_item",
+          "ar": "عن أي طعام أو شراب تسأل؟",
+          "en": "Which food or drink are you asking about?",
+          "type": "choice",
+          "options": [
+            { "value": "meat", "ar": "لحم أو دجاج", "en": "Meat or poultry" },
+            { "value": "processed", "ar": "طعام مصنّع بمكوّنات", "en": "Processed food with ingredients" },
+            { "value": "drink", "ar": "شراب", "en": "A drink" },
+            { "value": "seafood", "ar": "مأكولات بحرية", "en": "Seafood" },
+            { "value": "hunting", "ar": "صيد", "en": "Hunting" },
+            { "value": "medicine", "ar": "دواء أو مكمّل", "en": "Medicine or supplement" }
+          ],
+          "required": true
+        },
+        {
+          "key": "food_source",
+          "ar": "ما الذي تعرفه عن مصدره أو ذبحه؟",
+          "en": "What do you know about its source or slaughter?",
+          "type": "choice",
+          "options": [
+            { "value": "certified", "ar": "عليه شهادة حلال", "en": "It has a halal certificate" },
+            { "value": "muslim", "ar": "ذبحه مسلم", "en": "Slaughtered by a Muslim" },
+            { "value": "ahl_kitab", "ar": "ذبحه كتابي", "en": "Slaughtered by a Christian or Jew" },
+            { "value": "other", "ar": "مصدر آخر", "en": "Another source" },
+            { "value": "unknown", "ar": "لا أعلم", "en": "I don't know" }
+          ],
+          "required": true
+        },
+        {
+          "key": "food_ingredient",
+          "ar": "ما المكوّن أو الأمر المشكوك فيه؟",
+          "en": "Which ingredient or aspect is in doubt?",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "food_need",
+          "ar": "هل يوجد بديل متاح لك؟",
+          "en": "Is an alternative available to you?",
+          "type": "choice",
+          "options": [
+            { "value": "yes", "ar": "نعم", "en": "Yes" },
+            { "value": "hard", "ar": "صعب", "en": "Hard to find" },
+            { "value": "no", "ar": "لا", "en": "No" }
+          ],
+          "required": false
+        }
+      ]
+    },
+    "dress_adornment": {
+      "ar": "اللباس والزينة",
+      "en": "Dress and adornment",
+      "ref": "dorar.net/feqhia — كتاب اللباس والزينة · الموسوعة الفقهية الكويتية: لباس، زينة، حجاب، ذهب، وشم",
+      "order": ["dress_item", "dress_for", "dress_context", "occurred", "dress_medical", "country", "madhhab"],
+      "questions": [
+        {
+          "key": "dress_item",
+          "ar": "بماذا تتعلق مسألتك؟",
+          "en": "What does your question relate to?",
+          "type": "choice",
+          "options": [
+            { "value": "clothing", "ar": "اللباس أو الحجاب", "en": "Clothing or hijab" },
+            { "value": "gold_silk", "ar": "الذهب أو الحرير", "en": "Gold or silk" },
+            { "value": "tattoo", "ar": "الوشم", "en": "Tattoo" },
+            { "value": "hair", "ar": "الشعر أو اللحية", "en": "Hair or beard" },
+            { "value": "cosmetics", "ar": "مستحضرات التجميل أو العطر", "en": "Cosmetics or perfume" },
+            { "value": "surgery", "ar": "عملية تجميل", "en": "Cosmetic surgery" }
+          ],
+          "required": true
+        },
+        {
+          "key": "dress_for",
+          "ar": "المسألة لرجل أم لامرأة؟",
+          "en": "Is this about a man or a woman?",
+          "type": "choice",
+          "options": [
+            { "value": "man", "ar": "رجل", "en": "A man" },
+            { "value": "woman", "ar": "امرأة", "en": "A woman" }
+          ],
+          "required": true
+        },
+        {
+          "key": "dress_context",
+          "ar": "في أي سياق؟",
+          "en": "In what context?",
+          "type": "choice",
+          "options": [
+            { "value": "work", "ar": "شرط في العمل أو الدراسة", "en": "Required at work or school" },
+            { "value": "social", "ar": "مناسبة اجتماعية", "en": "A social occasion" },
+            { "value": "daily", "ar": "الحياة اليومية", "en": "Daily life" },
+            { "value": "medical", "ar": "علاج", "en": "Medical treatment" }
+          ],
+          "required": false
+        },
+        {
+          "key": "dress_medical",
+          "ar": "هل هناك سبب طبي أو عيب يُراد علاجه؟",
+          "en": "Is there a medical reason or a defect to be treated?",
+          "type": "yesno",
+          "required": false
+        }
+      ]
+    },
+    "oaths_vows_expiations": {
+      "ar": "الأيمان والنذور والكفارات",
+      "en": "Oaths, vows and expiations",
+      "ref": "dorar.net/feqhia — كتاب الأيمان، والنذور · الموسوعة الفقهية الكويتية: أيمان، نذر، كفارة اليمين",
+      "order": ["oath_type", "oath_words", "oath_status", "oath_count", "oath_ability", "state_intent", "when", "madhhab"],
+      "questions": [
+        {
+          "key": "oath_type",
+          "ar": "ما نوع المسألة؟",
+          "en": "What kind of matter is it?",
+          "type": "choice",
+          "options": [
+            { "value": "oath", "ar": "يمين (حلف)", "en": "An oath" },
+            { "value": "vow", "ar": "نذر", "en": "A vow" },
+            { "value": "kaffarah", "ar": "كفارة مستحقة", "en": "An expiation that is due" }
+          ],
+          "required": true
+        },
+        {
+          "key": "oath_words",
+          "ar": "ما الصيغة التي قلتها بالضبط؟",
+          "en": "What exact words did you say?",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "oath_status",
+          "ar": "ما الذي حدث بعدها؟",
+          "en": "What happened afterwards?",
+          "type": "choice",
+          "options": [
+            { "value": "broken", "ar": "حنثت (خالفت ما حلفت عليه)", "en": "I broke it" },
+            { "value": "intend_break", "ar": "أريد أن أخالفه", "en": "I want to break it" },
+            { "value": "kept", "ar": "ما زلت ملتزماً به", "en": "I am still keeping it" },
+            { "value": "vow_pending", "ar": "النذر لم يُوفَ بعد", "en": "The vow is not fulfilled yet" }
+          ],
+          "required": true
+        },
+        {
+          "key": "oath_count",
+          "ar": "كم مرة حلفت أو نذرت على الأمر نفسه؟",
+          "en": "How many times did you swear or vow about the same thing?",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "oath_ability",
+          "ar": "هل تستطيع إطعام عشرة مساكين أو كسوتهم؟",
+          "en": "Are you able to feed or clothe ten poor people?",
+          "type": "choice",
+          "options": [
+            { "value": "yes", "ar": "نعم", "en": "Yes" },
+            { "value": "no", "ar": "لا", "en": "No" },
+            { "value": "unsure", "ar": "لست متأكداً", "en": "Not sure" }
+          ],
+          "required": false
+        }
+      ]
+    },
+    "non_muslim_relations": {
+      "ar": "العلاقة بغير المسلمين",
+      "en": "Relations with non-Muslims",
+      "ref": "dorar.net/feqhia — أبواب أهل الذمة والمعاملات · الموسوعة الفقهية الكويتية: أهل الكتاب، تهنئة، معاملة غير المسلمين",
+      "order": ["nm_relation", "nm_situation", "occurred", "country", "nm_harm", "asked_before", "madhhab"],
+      "questions": [
+        {
+          "key": "nm_relation",
+          "ar": "ما صلتك بالشخص أو الأشخاص المعنيين؟",
+          "en": "What is your relation to the person or people concerned?",
+          "type": "choice",
+          "options": [
+            { "value": "family", "ar": "أهلي (والدان أو أقارب)", "en": "My family (parents or relatives)" },
+            { "value": "spouse", "ar": "زوج أو زوجة", "en": "Spouse" },
+            { "value": "work", "ar": "زملاء أو جهة عمل", "en": "Colleagues or employer" },
+            { "value": "neighbor_friend", "ar": "جيران أو أصدقاء", "en": "Neighbours or friends" }
+          ],
+          "required": true
+        },
+        {
+          "key": "nm_situation",
+          "ar": "ما الموقف؟",
+          "en": "What is the situation?",
+          "type": "choice",
+          "options": [
+            { "value": "festivals", "ar": "أعيادهم ومناسباتهم", "en": "Their festivals and occasions" },
+            { "value": "food_gifts", "ar": "الطعام والهدايا", "en": "Food and gifts" },
+            { "value": "funeral", "ar": "المرض أو الوفاة أو الجنازة", "en": "Illness, death or a funeral" },
+            { "value": "work", "ar": "العمل لديهم أو معهم", "en": "Working for or with them" },
+            { "value": "worship_place", "ar": "دخول دور عبادتهم", "en": "Entering their places of worship" }
+          ],
+          "required": true
+        },
+        {
+          "key": "nm_harm",
+          "ar": "هل يترتب على الامتناع ضرر أو حرج كبير عليك؟",
+          "en": "Would refusing cause you serious harm or hardship?",
+          "type": "yesno",
+          "required": false
+        }
+      ]
+    },
+    "new_muslim": {
+      "ar": "قضايا المسلم الجديد",
+      "en": "New Muslim matters",
+      "ref": "dorar.net/feqhia — أبواب الإسلام والشهادتين · الموسوعة الفقهية الكويتية: إسلام، شهادتان، أحكام من أسلم",
+      "order": ["nmu_issue", "nmu_since", "nmu_family", "nmu_marital", "nmu_support", "country", "asked_before"],
+      "questions": [
+        {
+          "key": "nmu_issue",
+          "ar": "بماذا تتعلق مسألتك؟",
+          "en": "What does your question relate to?",
+          "type": "choice",
+          "options": [
+            { "value": "worship", "ar": "تعلّم الصلاة والطهارة", "en": "Learning prayer and purification" },
+            { "value": "family", "ar": "العلاقة بالأهل", "en": "Relations with family" },
+            { "value": "marriage", "ar": "الزواج أو الزوج الحالي", "en": "Marriage or current spouse" },
+            { "value": "work", "ar": "العمل ومصدر الدخل", "en": "Work and income" },
+            { "value": "past", "ar": "أمور من قبل الإسلام", "en": "Matters from before Islam" }
+          ],
+          "required": true
+        },
+        {
+          "key": "nmu_since",
+          "ar": "منذ متى أسلمت؟",
+          "en": "How long ago did you embrace Islam?",
+          "type": "choice",
+          "options": [
+            { "value": "month", "ar": "أقل من شهر", "en": "Less than a month" },
+            { "value": "year", "ar": "أقل من سنة", "en": "Less than a year" },
+            { "value": "more", "ar": "أكثر من سنة", "en": "More than a year" },
+            { "value": "not_yet", "ar": "لم أُسلم بعد", "en": "Not yet" }
+          ],
+          "required": true
+        },
+        {
+          "key": "nmu_family",
+          "ar": "هل يعلم أهلك بإسلامك؟",
+          "en": "Does your family know about your Islam?",
+          "type": "choice",
+          "options": [
+            { "value": "accepting", "ar": "نعم، ويتقبلون", "en": "Yes, and they accept it" },
+            { "value": "opposing", "ar": "نعم، ويعارضون", "en": "Yes, and they oppose it" },
+            { "value": "no", "ar": "لا", "en": "No" }
+          ],
+          "required": false
+        },
+        {
+          "key": "nmu_marital",
+          "ar": "ما حالتك الاجتماعية؟",
+          "en": "What is your marital status?",
+          "type": "choice",
+          "options": [
+            { "value": "single", "ar": "أعزب أو عزباء", "en": "Single" },
+            { "value": "married_muslim", "ar": "متزوج من مسلم أو مسلمة", "en": "Married to a Muslim" },
+            { "value": "married_non_muslim", "ar": "متزوج من غير مسلم", "en": "Married to a non-Muslim" }
+          ],
+          "required": false
+        },
+        {
+          "key": "nmu_support",
+          "ar": "هل يوجد مسجد أو مركز إسلامي قريب منك تتواصل معه؟",
+          "en": "Is there a mosque or Islamic centre near you that you are in touch with?",
+          "type": "yesno",
+          "required": false
+        }
+      ]
+    }
+  }
+}
