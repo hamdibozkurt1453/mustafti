@@ -233,6 +233,12 @@
     "newChat": "",
     "label": "",
     "noteTafsir": "Тафсир аль-Муяссар",
-    "noteTranslation": "Перевод смыслов"
+    "noteTranslation": "Перевод смыслов",
+    "stage": {
+      "understanding": "Читаю ваш вопрос…",
+      "searching": "Ищу в источниках…",
+      "verifying": "Проверяю доказательства…",
+      "writing": "Составляю ответ…"
+    }
   }
 }

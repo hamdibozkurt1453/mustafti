@@ -239,7 +239,8 @@
     "stage": {
       "understanding": "Reading your question…",
       "searching": "Searching the sources…",
-      "writing": "Writing the answer from the texts…"
+      "writing": "Writing the answer…",
+      "verifying": "Checking the evidence…"
     },
     "badgeOwn": "Mustafti's wording",
     "badgeQuoted": "Quoted text",

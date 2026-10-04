@@ -10,7 +10,7 @@
  * النص المبثوث هو رد مُستفتي بعد الحارس كاملاً (lib/brain/respond.ts)، فلا تصل كلمة لم تُفحص.
  */
 
-export type ChatStage = "understanding" | "searching" | "writing";
+export type ChatStage = "understanding" | "searching" | "verifying" | "writing";
 
 export type ChatReplyKind = "identity" | "urgent" | "out_of_scope" | "referral" | "answer" | "abstain" | "refused";
 

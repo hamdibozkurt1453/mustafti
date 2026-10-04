@@ -233,6 +233,12 @@
     "newChat": "",
     "label": "",
     "noteTafsir": "التفسیر المیسر",
-    "noteTranslation": "ترجمۂ معانی"
+    "noteTranslation": "ترجمۂ معانی",
+    "stage": {
+      "understanding": "آپ کا سوال پڑھ رہا ہوں…",
+      "searching": "مصادر میں تلاش کر رہا ہوں…",
+      "verifying": "دلائل کی تصدیق کر رہا ہوں…",
+      "writing": "جواب لکھ رہا ہوں…"
+    }
   }
 }

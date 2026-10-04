@@ -233,6 +233,12 @@
     "newChat": "",
     "label": "",
     "noteTafsir": "التفسیر المیسر",
-    "noteTranslation": "ترجمهٔ معنا"
+    "noteTranslation": "ترجمهٔ معنا",
+    "stage": {
+      "understanding": "پرسش شما را می‌خوانم…",
+      "searching": "در منابع جست‌وجو می‌کنم…",
+      "verifying": "دلایل را بررسی می‌کنم…",
+      "writing": "پاسخ را می‌نویسم…"
+    }
   }
 }

@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { BASICS, matchBasics, parseVerseRef, quotedVerses, verseRefsInText } from "../lib/brain/basics";
-import { answerFormatIssues, firstSentence } from "../lib/brain/format";
+import { answerFormatIssues, firstSentence, unquoteReferenceOnly } from "../lib/brain/format";
 import { isEmptyPlan, normalizePlan, PlanSchema } from "../lib/brain/plan";
 import { equivalentFor, findTerms, GLOSSARY, glossaryBlock } from "../lib/brain/glossary";
 import { checkOutput, guard, isVerbatim, separateQuoted } from "../lib/brain/guard";
@@ -23,7 +23,7 @@ import { looksPersonal, looksUrgent } from "../lib/brain/heuristics";
 import { detectIdentityProbe, identityReply, IDENTITY_PROMPT } from "../lib/brain/identity";
 import { MESSAGE_LANGS, MESSAGES, message } from "../lib/brain/messages";
 import { applyScores, clean, cleanToolText, focusExcerpt, keywords, prerank, rerankList, type Candidate, type Dropped } from "../lib/brain/rank";
-import { cleanForDisplay, indexSummaryLine, isValidVerse, parseVerseText, SURAH_COUNT, SURAHS, surahInfoLine, surahMeta, verseTitle } from "../lib/brain/quran-index";
+import { cleanForDisplay, explicitVerseRef, indexSummaryLine, isValidVerse, parseVerseText, SURAH_COUNT, SURAHS, surahInfoLine, surahMeta, verseTitle } from "../lib/brain/quran-index";
 import { createLimiter, retryDelayMs, retryingFetch, withRetry } from "../lib/limiter";
 import { ABSTAIN_AR, answerSystem, CLASSIFY_SYSTEM, NON_NEGOTIABLE_RULES } from "../lib/brain/prompts";
 import { BRAIN_CASES } from "../lib/brain/test-cases";
@@ -689,6 +689,26 @@ describe("فهرس سور المصحف (data/quran-index.json)", () => {
     assert.deepEqual(v.map((x) => `${x.surah}:${x.ayah}`), ["1:1", "1:2"]);
     assert.equal(v[0].note, "باسم الله أبتدئ");
   });
+  it("الآية المذكورة صراحةً: أرقام، وترتيب (1–10)، واسم السورة", () => {
+    const cases: [string, [number, number] | null][] = [
+      ["ماهو تفسير الآية الثانية من السورة رقم 10", [10, 2]],
+      ["سورة يونس آية 2", [10, 2]],
+      ["السورة رقم 10 الآية 2", [10, 2]],
+      ["الآية الثانية من سورة يونس", [10, 2]],
+      ["تفسير سورة آل عمران الآية 7", [3, 7]],
+      ["سورة البقرة الآية الأولى", [2, 1]],
+      ["البقرة 255", [2, 255]],
+      ["Surah 10 verse 2", [10, 2]],
+      ["What is Surah Al-Baqarah verse 255?", [2, 255]],
+      ["Surah Yunus, verse 2", [10, 2]],
+      ["ما هي السورة الثالثة", null],
+      ["سورة الكوثر الآية 9", null],
+    ];
+    for (const [q, want] of cases) {
+      const got = explicitVerseRef(q);
+      assert.deepEqual(got ? [got.surah, got.ayah] : null, want, q);
+    }
+  });
   it("cleanForDisplay: بلا «[Surah …]» ولا «[3:1]» ولا «[EXACT]» ولا «Source:»", () => {
     const t = cleanForDisplay('[Surah 3, translation "arabic_moyassar"] [3:1] الٓمٓ سبق الكلام عليها. [EXACT] Source: https://islamenc.com/ar/quran/3/1');
     assert.equal(t, "الٓمٓ سبق الكلام عليها.");
@@ -756,6 +776,25 @@ describe("حماية خادم MCP: حد التزامن وإعادة المحاو
 });
 
 // ---------------------------------------------------------------------------
+describe("الاقتباس للآية والحديث و«بيّنات» فقط", () => {
+  const passages = [
+    { source: "فهرس سور المصحف", text: "عدد سور القرآن الكريم في المصحف 114 سورة، أولها سورة الفاتحة وآخرها سورة الناس." },
+    { source: "موسوعة الأحاديث النبوية", text: "«بني الإسلام على خمس»" },
+  ];
+  it("سطر لا فيه إلا اقتباس من الفهرس يُحذف، والاقتباس داخل جملة تُزال أقواسه", () => {
+    const t = "عدد سور القرآن الكريم 114 سورة [1].\n\n«عدد سور القرآن الكريم في المصحف 114 سورة» [1].";
+    assert.equal(unquoteReferenceOnly(t, passages), "عدد سور القرآن الكريم 114 سورة [1].");
+    assert.equal(
+      unquoteReferenceOnly("كما في الفهرس: «أولها سورة الفاتحة» [1].", passages),
+      "كما في الفهرس: أولها سورة الفاتحة [1].",
+    );
+  });
+  it("اقتباس الحديث يبقى", () => {
+    const t = "أركان الإسلام خمسة [2].\n«بني الإسلام على خمس» [2].";
+    assert.equal(unquoteReferenceOnly(t, passages), t);
+  });
+});
+
 describe("المقتطف المركّز للنص الطويل", () => {
   it("الشاهد في آخر الحديث الطويل يصل إلى المقيّم مع مطلعه", () => {
     const filler = Array.from({ length: 30 }, (_, i) => `جملة تمهيدية رقم ${i} لا صلة لها بالسؤال.`).join(" ");

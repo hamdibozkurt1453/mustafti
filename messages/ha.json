@@ -233,6 +233,12 @@
     "newChat": "",
     "label": "",
     "noteTafsir": "Tafsirin Al-Muyassar",
-    "noteTranslation": "Fassarar ma'ana"
+    "noteTranslation": "Fassarar ma'ana",
+    "stage": {
+      "understanding": "Ina karanta tambayarka…",
+      "searching": "Ina bincike a cikin madogarai…",
+      "verifying": "Ina tabbatar da hujjoji…",
+      "writing": "Ina rubuta amsa…"
+    }
   }
 }

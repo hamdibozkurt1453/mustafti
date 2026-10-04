@@ -4,7 +4,7 @@ import { z } from "zod";
 import { cached, DAY } from "@/lib/cache";
 import { chatJson } from "@/lib/llm";
 import { callTool, toolData, toolText } from "@/lib/mcp";
-import { search, SOURCE_DEADLINE_MS, type SourceId, type SourceResult } from "@/lib/sources";
+import { search, type SourceId, type SourceResult } from "@/lib/sources";
 import { clip, htmlToText } from "@/lib/sources/html";
 import { findTool, mcpQuranRange, mcpSearch, mcpSearchAny, type McpItem } from "@/lib/sources/mcp-search";
 import { SOURCE_BY_ID } from "@/lib/sources/registry";
@@ -14,7 +14,7 @@ import type { Classification } from "./classify";
 import { isEmptyPlan, type CitationPlan } from "./plan";
 import { findTerms } from "./glossary";
 import { applyScores, clean, cleanToolText, focusExcerpt, keywords, prerank, rerankList, STOP, type Candidate as RankCandidate } from "./rank";
-import { INDEX_SOURCE, indexSummaryLine, isValidVerse, parseVerseText, surahInfoLine, surahUrl, verseTitle } from "./quran-index";
+import { explicitVerseRef, INDEX_SOURCE, indexSummaryLine, isValidVerse, parseVerseText, surahInfoLine, surahUrl, verseTitle } from "./quran-index";
 import { matchKey } from "./guard";
 import type { Passage } from "./prompts";
 
@@ -71,13 +71,16 @@ export const RETRIEVAL_SOURCES: SourceId[] = ["hadeethenc", "quranenc"];
 /** حد كلمات البحث لكل مصدر (تخفيف الضغط على خادم MCP، ورد 429). */
 export const MAX_QUERIES_PER_SOURCE = 2;
 /** مهلة كل مصدر: المهلة الموحدة 6 ثوانٍ (S5، للسرعة). */
-const SEARCH_DEADLINE_MS = SOURCE_DEADLINE_MS;
+/** مهلة البحث لكل مصدر: استدعاء MCP (12 ث) وإعادته مرة. الانتظار أفضل من الامتناع. */
+const SEARCH_DEADLINE_MS = 26_000;
+/** ميزانية الاسترجاع الافتراضية؛ respond.ts يمرر ما بقي من ميزانية السؤال (40 ث). */
+export const RETRIEVAL_BUDGET_MS = 32_000;
 const RERANK_POOL = 14;
 const MAX_PASSAGES = 6;
 const MIN_SCORE = 2;
 const PASSAGE_CHARS = 1400;
 /** مهلة إثراء كل نص بشرحه (مستقلة عن البحث). */
-const ENRICH_MS = 4_000;
+const ENRICH_MS = 12_000;
 const BAYYINAT_URL = "https://dawa.center/file/7937";
 
 // ---------------------------------------------------------------------------
@@ -113,19 +116,24 @@ function fromSource(r: SourceResult): Candidate {
   return { title: r.title, text: r.text, url: r.url, source: r.source, sourceId: r.sourceId, grade: r.grade, lang: r.lang, ref: r.ref };
 }
 
-async function searchSources(queries: { q: string; lang: string }[], diag: SearchDiag[]): Promise<Candidate[]> {
+async function searchSources(
+  queries: { q: string; lang: string }[],
+  diag: SearchDiag[],
+  sources: SourceId[] = RETRIEVAL_SOURCES,
+  deadlineMs = SEARCH_DEADLINE_MS,
+): Promise<Candidate[]> {
   const one = async (source: SourceId, q: string, lang: string) => {
     const t0 = Date.now();
     const errors: string[] = [];
-    const results = await search(source, q, lang, SEARCH_DEADLINE_MS, (e) => errors.push(e)).catch((e) => {
+    const results = await search(source, q, lang, deadlineMs, (e) => errors.push(e)).catch((e) => {
       errors.push(String((e as Error)?.message ?? e));
       return [];
     });
     diag.push({ query: q, lang, source, results: results.length, ms: Date.now() - t0, ...(errors.length ? { error: errors.join(" | ").slice(0, 300) } : {}) });
     return results.map(fromSource);
   };
-  // كل استدعاء MCP محدود بـ 4 ثوانٍ و3 طلبات متزامنة (lib/mcp.ts)، فلا إعادة هنا تضاعف الضغط.
-  const jobs = RETRIEVAL_SOURCES.map((source) => Promise.all(queries.map(({ q, lang }) => one(source, q, lang))).then((r) => r.flat()));
+  // كل استدعاء MCP محدود بـ 12 ثانية وإعادة واحدة و3 طلبات متزامنة (lib/mcp.ts).
+  const jobs = sources.map((source) => Promise.all(queries.map(({ q, lang }) => one(source, q, lang))).then((r) => r.flat()));
   return (await Promise.all(jobs)).flat();
 }
 
@@ -296,9 +304,6 @@ async function enrich(cands: Candidate[], lang: string): Promise<Candidate[]> {
 // كلها تُجلب من المصدر نفسه، وما لا وجود له يسقط، والباقي يمر بتقييم الصلة كغيره.
 // ---------------------------------------------------------------------------
 
-/** مهلة كل مرجع محدد، فلا يتجاوز مجموعها نحو 6 ثوانٍ (الطلبات متوازية). */
-const PIN_MS = 4_500;
-const PIN_HADITH_MS = 5_000;
 
 /**
  * مصادر المراجع المحددة. قابلة للاستبدال في الاختبار المحلي (tests/retrieval.test.ts) بلا شبكة.
@@ -515,55 +520,88 @@ export async function pinnedCandidates(
   diag: RetrievalDiag,
   planPromise?: Promise<CitationPlan | null>,
   deps: PinDeps = DEFAULT_PIN_DEPS,
+  deadline = Date.now() + RETRIEVAL_BUDGET_MS,
 ): Promise<Candidate[]> {
+  const jobs = pinnedJobs(c, question, diag, planPromise, deps, deadline);
+  const [core, quran] = await Promise.all([jobs.core, jobs.quran]);
+  return mergePinned([...core, ...quran]);
+}
+
+/** المراجع المحددة بلا تكرار (بالرابط)، معلَّمة «محددة» ومقدَّمة عند تساوي الدرجة. */
+function mergePinned(out: Candidate[]): Candidate[] {
+  return [...new Map(out.map((x) => [x.url, { ...x, kw: 50, pinned: true }])).values()];
+}
+
+/**
+ * المراجع المحددة في مسارين متوازيين:
+ * - core: آيات الخطة والسؤال (بأرقامها أو بذكرها الصريح «الآية الثانية من سورة يونس»)، وتعريف
+ *   السورة والفهرس، والأحاديث، و«بيّنات».
+ * - quran: البحث بالكلمات في نص القرآن (الآية المنقولة في السؤال، وquran_queries). أبطأ، فلا
+ *   يُنتظر إن بلغ مرجع من core درجة 2 (retrieve).
+ */
+export function pinnedJobs(
+  c: Classification,
+  question: string,
+  diag: RetrievalDiag,
+  planPromise: Promise<CitationPlan | null> | undefined,
+  deps: PinDeps,
+  deadline: number,
+): { core: Promise<Candidate[]>; quran: Promise<Candidate[]> } {
   const log: PinLog[] = [];
   diag.pinLog = log;
-  const [plan, quotedRefs] = await Promise.all([
-    planPromise ?? Promise.resolve(null),
-    withTimeout(locateQuotedVerses(c, question, deps), PIN_MS, []),
-  ]);
-  const usePlan = !isEmptyPlan(plan);
-  const entries = usePlan ? [] : matchBasics(question);
-  diag.basics = entries.map((e) => e.id);
-  diag.plan = plan ?? undefined;
+  const left = () => Math.max(500, deadline - Date.now());
+  const planP = (planPromise ?? Promise.resolve(null)).catch(() => null);
 
-  const refs: VerseRef[] = [
-    ...quotedRefs,
-    ...verseRefsInText(question),
-    ...(plan?.quran ?? []),
-    ...entries.flatMap((e) => e.verses.map(parseVerseRef).filter((r): r is VerseRef => r !== null)),
-  ];
-  const unique = [...new Map(refs.map((r) => [`${r.surah}:${r.ayah}:${r.through ?? ""}`, r])).values()].slice(0, 6);
-  diag.verses = unique.map((r) => `${r.surah}:${r.ayah}${r.through ? `-${r.through}` : ""}`);
+  const refsP = planP.then((plan) => {
+    const usePlan = !isEmptyPlan(plan);
+    const entries = usePlan ? [] : matchBasics(question);
+    diag.basics = entries.map((e) => e.id);
+    diag.plan = plan ?? undefined;
+    const explicit = explicitVerseRef(question);
+    const refs: VerseRef[] = [
+      ...(explicit ? [explicit] : []),
+      ...verseRefsInText(question),
+      ...(plan?.quran ?? []),
+      ...entries.flatMap((e) => e.verses.map(parseVerseRef).filter((r): r is VerseRef => r !== null)),
+    ];
+    const unique = [...new Map(refs.map((r) => [`${r.surah}:${r.ayah}:${r.through ?? ""}`, r])).values()].slice(0, 6);
+    diag.verses = unique.map((r) => `${r.surah}:${r.ayah}${r.through ? `-${r.through}` : ""}`);
+    return { plan, usePlan, entries, unique };
+  });
 
-  const hadithQs = usePlan ? plan!.hadithQueries : entries.flatMap((e) => e.hadithQueries.slice(0, 2)).slice(0, 3);
-  const bayyinatQs = usePlan ? plan!.bayyinatQueries : [];
-  const bayyinatNs = usePlan ? [] : entries.flatMap((e) => e.bayyinat).slice(0, 3);
-  const jobs: Promise<Candidate | Candidate[] | null>[] = [
-    ...unique.map((r) =>
-      track(log, `آية ${r.surah}:${r.ayah}${r.through ? `-${r.through}` : ""}`, () => verseCandidate(r, c.lang, deps), PIN_MS),
-    ),
-    // تعريف السورة وفهرس المصحف من data/quran-index.json (بلا شبكة).
-    ...(plan?.surahInfo ?? []).map((n) => track(log, `سورة ${n}`, async () => surahInfoCandidate(n), PIN_MS)),
-    ...(plan?.quranIndex ? [track(log, INDEX_SOURCE, async () => quranIndexCandidate(), PIN_MS)] : []),
-    ...(plan?.quranQueries ?? []).map((q) =>
-      track(
-        log,
-        `قرآن «${q}»`,
-        async () => {
-          const found = (await quranQueryRefs(q, deps)).filter((r) => !unique.some((u) => u.surah === r.surah && u.ayah === r.ayah));
-          return (await Promise.all(found.map((r) => verseCandidate(r, c.lang, deps)))).filter((x): x is Candidate => x !== null);
-        },
-        PIN_HADITH_MS,
+  const core = refsP.then(async ({ plan, usePlan, entries, unique }) => {
+    const hadithQs = usePlan ? plan!.hadithQueries : entries.flatMap((e) => e.hadithQueries.slice(0, 2)).slice(0, 3);
+    const bayyinatQs = usePlan ? plan!.bayyinatQueries : [];
+    const bayyinatNs = usePlan ? [] : entries.flatMap((e) => e.bayyinat).slice(0, 3);
+    const jobs: Promise<Candidate | Candidate[] | null>[] = [
+      ...unique.map((r) =>
+        track(log, `آية ${r.surah}:${r.ayah}${r.through ? `-${r.through}` : ""}`, () => verseCandidate(r, c.lang, deps), left()),
       ),
-    ),
-    ...hadithQs.map((q) => track(log, `حديث «${q}»`, () => hadithCandidates(q, c.lang, deps), PIN_HADITH_MS)),
-    ...bayyinatQs.map((q) => track(log, `بيّنات «${q}»`, () => deps.bayyinatSearch(q), PIN_MS)),
-    ...(bayyinatNs.length ? [track(log, `بيّنات ${bayyinatNs.join("، ")}`, () => deps.bayyinatNumbers(bayyinatNs), PIN_MS)] : []),
-  ];
-  const out = (await Promise.all(jobs)).flat().filter((x): x is Candidate => x !== null);
-  // عند تساوي الدرجة يتقدم المرجع المحدد على نتيجة البحث بالكلمات.
-  return [...new Map(out.map((x) => [x.url, { ...x, kw: 50, pinned: true }])).values()];
+      // تعريف السورة وفهرس المصحف من data/quran-index.json (بلا شبكة).
+      ...(plan?.surahInfo ?? []).map((n) => track(log, `سورة ${n}`, async () => surahInfoCandidate(n), left())),
+      ...(plan?.quranIndex ? [track(log, INDEX_SOURCE, async () => quranIndexCandidate(), left())] : []),
+      ...hadithQs.map((q) => track(log, `حديث «${q}»`, () => hadithCandidates(q, c.lang, deps), left())),
+      ...bayyinatQs.map((q) => track(log, `بيّنات «${q}»`, () => deps.bayyinatSearch(q), left())),
+      ...(bayyinatNs.length ? [track(log, `بيّنات ${bayyinatNs.join("، ")}`, () => deps.bayyinatNumbers(bayyinatNs), left())] : []),
+    ];
+    return mergePinned((await Promise.all(jobs)).flat().filter((x): x is Candidate => x !== null));
+  });
+
+  const quran = refsP.then(async ({ plan, unique }) => {
+    const known = (r: VerseRef) => unique.some((u) => u.surah === r.surah && u.ayah === r.ayah);
+    const fetchRefs = async (refs: VerseRef[]) =>
+      (await Promise.all(refs.filter((r) => !known(r)).map((r) => verseCandidate(r, c.lang, deps)))).filter((x): x is Candidate => x !== null);
+    const jobs: Promise<Candidate[] | null>[] = [
+      // الآية المنقولة بنصها في السؤال (ولو بخطأ): موضعها بالبحث في القرآن.
+      ...(quotedVerses(question).length
+        ? [track(log, "آية منقولة في السؤال", async () => fetchRefs(await locateQuotedVerses(c, question, deps)), left())]
+        : []),
+      ...(plan?.quranQueries ?? []).map((q) => track(log, `قرآن «${q}»`, async () => fetchRefs(await quranQueryRefs(q, deps)), left())),
+    ];
+    return mergePinned((await Promise.all(jobs)).flat().filter((x): x is Candidate => x !== null));
+  });
+
+  return { core, quran };
 }
 
 // ---------------------------------------------------------------------------
@@ -631,15 +669,48 @@ function planRefs(p: CitationPlan): string[] {
   ];
 }
 
+/** وعد مع علامة اكتماله (لأخذ ما انتهى دون انتظار ما لم ينتهِ). */
+function settle<T>(p: Promise<T>, fallback: T): { promise: Promise<T>; done: () => boolean; value: () => T } {
+  let done = false;
+  let value = fallback;
+  const promise = p
+    .catch(() => fallback)
+    .then((v) => {
+      done = true;
+      value = v;
+      return v;
+    });
+  return { promise, done: () => done, value: () => value };
+}
+
+export type RetrieveOptions = {
+  /** للاختبار المحلي فقط: مصادر المراجع المحددة. */
+  deps?: PinDeps;
+  /** إعادة التخطيط مرة واحدة بالمواضع التي فشلت (planCitations(question, failed)). */
+  replan?: (failed: string[]) => Promise<CitationPlan | null>;
+  /** آخر لحظة للاسترجاع (ميزانية السؤال 40 ث ناقص زمن الصياغة). */
+  deadline?: number;
+  /** «أتحقق من الأدلة…»: بداية تقييم الصلة. */
+  onVerify?: () => void;
+};
+
+/**
+ * الاسترجاع على جولتين:
+ *  1) المراجع المحددة (core) + بحث الحديث و«بيّنات» ← تقييم الصلة. ويدخل معها ما انتهى من بحث
+ *     القرآن بالكلمات.
+ *  2) إن لم يبلغ مرجع محدد درجة 2: انتظار بحث القرآن بالكلمات (ضمن الميزانية) وتقييم ما جاء به،
+ *     ثم إعادة التخطيط مرة واحدة إن بقي الأمر كذلك.
+ * الانتظار أفضل من الامتناع: كل خطوة محدودة بما بقي من الميزانية فقط.
+ */
 export async function retrieve(
   c: Classification,
   question: string,
   plan?: Promise<CitationPlan | null>,
-  /** للاختبار المحلي فقط: مصادر المراجع المحددة. */
-  deps?: PinDeps,
-  /** إعادة التخطيط مرة واحدة بالمواضع التي فشلت (planCitations(question, failed)). */
-  replan?: (failed: string[]) => Promise<CitationPlan | null>,
+  opts: RetrieveOptions = {},
 ): Promise<{ passages: Passage[]; diag: RetrievalDiag }> {
+  const deadline = opts.deadline ?? Date.now() + RETRIEVAL_BUDGET_MS;
+  const left = () => Math.max(500, deadline - Date.now());
+  const deps = opts.deps ?? DEFAULT_PIN_DEPS;
   const queries = buildQueries(c, question);
   const diag: RetrievalDiag = {
     queries,
@@ -655,43 +726,71 @@ export async function retrieve(
 
   // «بيّنات»: السؤال كما كتبه السائل إن كان عربياً، وإلا كلمات البحث العربية.
   const bayyinatQuery = /[\u0600-\u06FF]/.test(question) && c.lang === "ar" ? question : c.searchQueries.ar.join(" ");
-  // المراجع المحددة («الأساسيات» والآيات) بالتوازي مع البحث.
-  const pinnedJob = pinnedCandidates(c, question, diag, plan, deps).catch(() => [] as Candidate[]);
-  const run = () =>
-    Promise.all([searchSources(queries, diag.searches), searchBayyinat(bayyinatQuery, diag.searches).catch(() => [])]);
-  const [found, bayyinat] = await run();
-  const pinned = await pinnedJob;
-  const pinnedUrls = new Set(pinned.map((x) => x.url));
+  const pins = pinnedJobs(c, question, diag, plan, deps, deadline);
+  const quranPins = settle(pins.quran, [] as Candidate[]);
+  const quranSearch = settle(searchSources(queries, diag.searches, ["quranenc"], left()), [] as Candidate[]);
+  const others = RETRIEVAL_SOURCES.filter((x) => x !== "quranenc");
+  const [pinnedCore, found, bayyinat] = await Promise.all([
+    withTimeout(pins.core, left(), [] as Candidate[]),
+    searchSources(queries, diag.searches, others, left()),
+    searchBayyinat(bayyinatQuery, diag.searches).catch(() => [] as Candidate[]),
+  ]);
+
   // «بيّنات» أولاً لأسئلة الشبهات وغير المسلمين (مصدر أساسي للحلول الحوارية في الشبهات).
   const shubha = c.userType === "non_muslim" || Boolean(c.misconception) || c.level === "B";
-  const raw = [...(shubha ? bayyinat : []), ...found, ...(shubha ? [] : bayyinat)].filter((x) => !pinnedUrls.has(x.url));
-  diag.counts.raw = raw.length + glossary.length + pinned.length;
+  const seenUrls = new Set<string>();
+  const poolOf = async (raw: Candidate[], size: number) => {
+    const fresh = raw.filter((x) => !seenUrls.has(x.url));
+    diag.counts.raw += fresh.length;
+    const cleaned = clean(fresh, diag.dropped);
+    diag.counts.cleaned += cleaned.length;
+    const pool = prerank(cleaned, terms, size).map((x) => (x.sourceId === "bayyinat" && shubha ? { ...x, kw: x.kw! + 2 } : x));
+    diag.counts.ranked += pool.length;
+    pool.forEach((x) => seenUrls.add(x.url));
+    return enrich(pool, c.lang);
+  };
+  const newPinned = (xs: Candidate[]) => {
+    const out = xs.filter((x) => !seenUrls.has(x.url));
+    out.forEach((x) => seenUrls.add(x.url));
+    return out;
+  };
+  const hit = (xs: Candidate[]) => xs.some((x) => x.pinned && (x.score ?? 0) >= MIN_SCORE);
 
-  const cleaned = clean(raw, diag.dropped);
-  diag.counts.cleaned = cleaned.length + glossary.length + pinned.length;
-  const pool = prerank(cleaned, terms, RERANK_POOL).map((x) => (x.sourceId === "bayyinat" && shubha ? { ...x, kw: x.kw! + 2 } : x));
-  diag.counts.ranked = pool.length;
-
-  const enriched = await enrich(pool, c.lang);
-  // المراجع المحددة تدخل التقييم مع نتائج البحث (لا درجة مسبقة).
-  const reranked = await rerank(question, [...pinned, ...enriched], terms);
+  // الجولة 1: ما وصل + ما انتهى من بحث القرآن.
+  const round1Pinned = newPinned([...pinnedCore, ...(quranPins.done() ? quranPins.value() : [])]);
+  const round1Raw = [...(shubha ? bayyinat : []), ...found, ...(quranSearch.done() ? quranSearch.value() : []), ...(shubha ? [] : bayyinat)];
+  const enriched = await poolOf(round1Raw, RERANK_POOL);
+  opts.onVerify?.();
+  const reranked = await rerank(question, [...round1Pinned, ...enriched], terms);
   let all = reranked.cands;
+
+  // الجولة 2: لا مرجع محدد بلغ درجة 2 ← انتظار بحث القرآن بالكلمات وتقييم ما جاء به.
+  if (!hit(all) && (!quranPins.done() || !quranSearch.done())) {
+    const [qp, qs] = await Promise.all([withTimeout(quranPins.promise, left(), []), withTimeout(quranSearch.promise, left(), [])]);
+    const fresh = [...newPinned(qp), ...(await poolOf(qs, 6))];
+    if (fresh.length) all = [...all, ...(await rerank(question, fresh, terms)).cands];
+  }
 
   // إعادة التخطيط مرة واحدة: خطة غير فارغة لم يبلغ أي موضع منها درجة 2.
   const firstPlan = diag.plan;
-  if (replan && firstPlan && !isEmptyPlan(firstPlan) && !all.some((x) => x.pinned && (x.score ?? 0) >= MIN_SCORE)) {
+  if (opts.replan && firstPlan && !isEmptyPlan(firstPlan) && !hit(all) && deadline - Date.now() > 3_000) {
     const failed = planRefs(firstPlan);
     const sub: RetrievalDiag = { ...diag, pinLog: [] };
-    const second = await pinnedCandidates(c, question, sub, replan(failed), deps).catch(() => [] as Candidate[]);
+    const second = await withTimeout(
+      pinnedCandidates(c, question, sub, opts.replan(failed), deps, deadline),
+      left(),
+      [] as Candidate[],
+    );
     diag.replan = sub.plan;
     diag.pinLog = [...(diag.pinLog ?? []), ...(sub.pinLog ?? []).map((x) => ({ ...x, ref: `↻ ${x.ref}` }))];
-    const seen = new Set(all.map((x) => x.url));
-    const fresh = second.filter((x) => !seen.has(x.url));
+    const fresh = newPinned(second);
     if (fresh.length) all = [...all, ...(await rerank(question, fresh, terms)).cands];
   }
 
   // «وُجد»: ما بلغ تقييم الصلة فعلاً من المراجع المحددة.
   diag.pinned = all.filter((x) => x.pinned).length;
+  diag.counts.raw += glossary.length + diag.pinned;
+  diag.counts.cleaned += glossary.length + diag.pinned;
   // القاموس نص المرجعية نفسها: يُقبل دائماً للمصطلح الوارد في السؤال.
   const cands = [...glossary.map((g) => ({ ...g, kw: 0 })), ...all];
   diag.rerank = reranked.mode;
