@@ -2,7 +2,7 @@
 
 import { m } from "motion/react";
 import { useTranslations } from "next-intl";
-import { forwardRef, type FormEvent, type KeyboardEvent } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState, type FormEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { SendIcon } from "../icons";
 import { Typewriter } from "./Typewriter";
 
@@ -24,6 +24,15 @@ export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer
 ) {
   const t = useTranslations("composer");
   const hero = variant === "hero";
+  const [focused, setFocused] = useState(false);
+  const inner = useRef<HTMLTextAreaElement>(null);
+  useImperativeHandle(ref, () => inner.current as HTMLTextAreaElement);
+
+  // الضغط في أي مكان داخل الخانة (لا على زر الإرسال) يضع المؤشر في الحقل.
+  function focusField(e: MouseEvent<HTMLFormElement>) {
+    if ((e.target as HTMLElement).closest("button")) return;
+    if (e.target !== inner.current) inner.current?.focus();
+  }
 
   function submit(e?: FormEvent) {
     e?.preventDefault();
@@ -42,7 +51,8 @@ export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer
       layoutId="mf-composer"
       transition={{ type: "spring", stiffness: 260, damping: 32 }}
       onSubmit={submit}
-      className={`relative flex w-full items-end gap-2 bg-ivory-50 text-green-900 ${
+      onClick={focusField}
+      className={`relative flex w-full cursor-text items-end gap-2 bg-ivory-50 text-green-900 ${
         hero
           ? "rounded-[28px] p-2.5 shadow-[0_0_0_1px_rgb(255_184_0/0.35),0_24px_80px_-20px_rgb(255_184_0/0.35)] sm:p-3"
           : "rounded-[26px] border border-sand-200 bg-white p-2 shadow-[0_10px_40px_-18px_rgb(4_48_31/0.35)]"
@@ -52,21 +62,24 @@ export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer
         <label htmlFor={`q-${variant}`} className="sr-only">
           {t("label")}
         </label>
-        {hero && !value && (
-          <div className="absolute inset-0 flex items-start px-3 py-3 text-[17px] text-ink-600 sm:text-lg">
+        {/* نص متحرك بصري فقط: لا يستقبل الضغط، ويختفي عند التركيز أو الكتابة */}
+        {hero && !value && !focused && (
+          <div aria-hidden className="pointer-events-none absolute inset-0 flex items-start px-3 py-3 text-[17px] text-ink-600 sm:text-lg">
             <Typewriter reduced={reduced} />
           </div>
         )}
         <textarea
           id={`q-${variant}`}
-          ref={ref}
+          ref={inner}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           rows={1}
           dir="auto"
           placeholder={hero ? undefined : t("placeholder")}
-          className={`field-sizing-content block w-full resize-none bg-transparent px-3 outline-none placeholder:text-ink-600 ${
+          className={`field-sizing-content relative z-10 block w-full resize-none bg-transparent px-3 outline-none placeholder:text-ink-600 ${
             hero ? "max-h-48 min-h-[3.25rem] py-3 text-[17px] sm:text-lg" : "max-h-40 min-h-11 py-2.5 text-base"
           }`}
         />
