@@ -1,6 +1,7 @@
 import type { LlmHealth } from "@/lib/llm";
 import type { McpHealth } from "@/lib/mcp";
-import type { SourceHealth } from "@/lib/sources";
+import type { SiteDebug, SourceHealth } from "@/lib/sources";
+import type { BayyinatCheck } from "@/lib/sources/bayyinat";
 
 export type HealthReport = {
   generatedAt: string;
@@ -8,10 +9,11 @@ export type HealthReport = {
   usage: { used: number; limit: number; shared: boolean };
   mcp: McpHealth;
   sources: SourceHealth[];
+  bayyinat: BayyinatCheck;
   /** اسم النموذج: للمشرف الأعلى فقط. */
   model: string | null;
   viewerIsAdmin: boolean;
-  debug?: { id: string; page: { url: string; links: string[]; error?: string } }[];
+  debug?: { id: string; page: SiteDebug }[];
 };
 
 const esc = (value: unknown) =>
@@ -64,7 +66,7 @@ export function renderHealthPage(r: HealthReport): string {
         <td>${esc(s.domain)}</td>
         <td>${s.access.length ? s.access.map((a) => esc(KIND[a])).join(" ← ") : `<span class="muted">رابط فقط</span>`}</td>
         <td>${badge(s.status)}</td>
-        <td>${methods}${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}</td>
+        <td>${s.blocked ? `<div class="note"><b>لماذا رابط فقط:</b> ${esc(s.blocked)}</div>` : ""}${methods}${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}</td>
         <td class="rule">${esc(s.rule)}</td>
       </tr>`;
     })
@@ -79,15 +81,30 @@ export function renderHealthPage(r: HealthReport): string {
     })
     .join("");
 
+  const b = r.bayyinat;
+  const bayyinat = `<h2>ملف «بيّنات» (dawa.center/file/7937): هل يمكن فهرسته محلياً؟</h2>
+  <div class="card"><dl>
+    <dt>صفحة الملف</dt><dd>${b.page === "allowed" ? `<span class="badge ok">مسموحة</span> ${esc(b.title ?? "")}` : `<span class="badge ${b.page === "blocked" ? "blocked" : "down"}">${b.page === "blocked" ? "ممنوعة" : "تعذّر الوصول"}</span> <span class="err">${esc(b.reason ?? "")}</span>`}</dd>
+    <dt>روابط التنزيل</dt><dd>${
+      b.files.length
+        ? b.files
+            .map((f) => `<div class="ltr"><code>${esc(f.url)}</code> — ${f.blocked ? `<span class="err">${esc(f.blocked)}</span>` : `${f.status ?? ""} · ${esc(f.type ?? "؟")} · ${f.bytes ? `${(f.bytes / 1048576).toFixed(1)} MB` : "الحجم غير معلن"}`}</div>`)
+            .join("")
+        : `<span class="muted">${b.page === "allowed" ? "لا روابط ملفات ظاهرة في الصفحة" : "—"}</span>`
+    }</dd>
+  </dl><p class="muted">فحص بطلب HEAD فقط، بلا تنزيل. الفهرسة نفسها لم تُنفَّذ.</p></div>`;
+
+  const list = (items: string[] | undefined) => (items?.length ? items.map(esc).join("<br>") : `<span class="muted">—</span>`);
   const debug = r.debug?.length
-    ? `<h2>تشخيص صفحات البحث</h2><table><thead><tr><th>المصدر</th><th>الصفحة</th><th>أول الروابط</th></tr></thead><tbody>${r.debug
-        .map(
-          (d) =>
-            `<tr><td>${esc(d.id)}</td><td class="ltr">${esc(d.page.url)}${d.page.error ? `<div class="err">${esc(d.page.error)}</div>` : ""}</td><td class="ltr"><code>${d.page.links
-              .map(esc)
-              .join("<br>")}</code></td></tr>`,
-        )
-        .join("")}</tbody></table>`
+    ? `<h2>تشخيص صفحات البحث (للمصادر التي لم تُرجع نتائج)</h2><div class="table-wrap"><table><thead><tr><th>المصدر</th><th>الصفحة</th><th>روابط بمعرّف رقمي</th><th>نماذج البحث وOpenSearch</th><th>روابط API في السكربتات</th></tr></thead><tbody>${r.debug
+        .map(({ id, page: d }) => {
+          const meta = d.error
+            ? `<div class="err">${esc(d.error)}</div>`
+            : `<div class="muted">${esc(d.title)} · ${d.bytes ?? 0} بايت · ${d.anchors ?? 0} رابطاً · __NEXT_DATA__: ${d.nextData ? "نعم" : "لا"} · JSON: ${d.jsonBlocks ?? 0}</div>`;
+          const forms = [...(d.forms ?? []).map((f) => `${f.action} [${f.field}]`), ...(d.openSearch ? [`OpenSearch: ${d.openSearch}`] : [])];
+          return `<tr><td>${esc(id)}</td><td class="ltr">${esc(d.url)}${meta}</td><td class="ltr"><code>${list(d.numericLinks)}</code></td><td class="ltr"><code>${list(forms)}</code></td><td class="ltr"><code>${list(d.apiHints)}</code></td></tr>`;
+        })
+        .join("")}</tbody></table></div>`
     : "";
 
   return `<!doctype html>
@@ -183,6 +200,7 @@ export function renderHealthPage(r: HealthReport): string {
     <thead><tr><th>الأداة</th><th>المعطيات (* إلزامي)</th><th>الوصف</th></tr></thead>
     <tbody>${toolRows || `<tr><td colspan="3" class="muted">لا أدوات (الخادم لا يستجيب)</td></tr>`}</tbody>
   </table></div>
+  ${bayyinat}
   ${debug}
 </main>
 </body>

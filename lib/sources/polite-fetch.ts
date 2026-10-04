@@ -228,3 +228,27 @@ export async function politeJson<T = unknown>(url: string): Promise<T> {
   const { text } = await politeFetch(url, { respectRobots: false, accept: "application/json" });
   return JSON.parse(text) as T;
 }
+
+/**
+ * فحص ملف دون تنزيله (طلب HEAD): نوعه وحجمه وهل يسمح به robots.txt.
+ * يُستعمل لتقييم إمكان فهرسة ملف منشور (مثل «بيّنات») قبل أي تنزيل.
+ */
+export async function politeHead(url: string): Promise<{ status: number; type: string | null; bytes: number | null; finalUrl: string }> {
+  const target = new URL(url);
+  if (!isAllowedHost(target.hostname)) throw new BlockedError(`host outside the reference list: ${target.hostname}`);
+  const robots = await getRobots(target.origin);
+  if (!robotsAllows(robots, target.pathname + target.search)) throw new BlockedError("disallowed by robots.txt");
+  await waitTurn(target.hostname, Math.min(Math.max(MIN_INTERVAL_MS, robots.crawlDelayMs), MAX_CRAWL_DELAY_MS));
+  const res = await fetch(target, {
+    method: "HEAD",
+    headers: { "User-Agent": USER_AGENT },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    redirect: "follow",
+    cache: "no-store",
+  });
+  const finalUrl = res.url || url;
+  if (!isAllowedHost(new URL(finalUrl).hostname)) throw new BlockedError("redirected outside the reference list");
+  if ([401, 403, 429, 451].includes(res.status)) throw new BlockedError(`HTTP ${res.status}`);
+  const length = Number(res.headers.get("content-length"));
+  return { status: res.status, type: res.headers.get("content-type"), bytes: Number.isFinite(length) && length > 0 ? length : null, finalUrl };
+}
