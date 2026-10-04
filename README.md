@@ -23,7 +23,8 @@ npm run build                # بناء الإنتاج
 - **Next.js** (App Router) + TypeScript + Tailwind CSS، ويُنشر على Vercel.
 - **اللغات:** next-intl بمسار اللغة في الرابط (`/ar`، `/en`…). العربية افتراضية، و12 لغة واجهة (`i18n/locales.ts`)، وملفات الترجمة في `messages/`. اتجاه الصفحة `rtl` تلقائياً للعربية والأردية والفارسية.
 - **الهوية:** متغيرات `brand/brand-tokens.css` في `app/globals.css` وفي `@theme` الخاص بـ Tailwind، وخط Readex Pro عبر `next/font`. دليل الهوية: `brand/دليل-الهوية-البصرية-مستفتي.html`.
-- **لاحقاً:** Supabase (Auth وPostgres وpgvector وRLS)، وOpenRouter عبر `lib/llm.ts`، وadhan للمواقيت.
+- **الحسابات والبيانات:** Supabase (Auth وPostgres وRLS). البنية والسياسات في `supabase/schema.sql`، والعملاء في `lib/supabase/`، والأدوار (`getRole()` و`requireRole()`) في `lib/auth/roles.ts`. خطوات الإعداد: [docs/setup-supabase.md](docs/setup-supabase.md).
+- **لاحقاً:** pgvector، وOpenRouter عبر `lib/llm.ts`، وadhan للمواقيت.
 
 ## بنية المستودع
 
@@ -32,7 +33,9 @@ npm run build                # بناء الإنتاج
 | `app/[locale]/` | الصفحات لكل لغة |
 | `components/` | الرأس، والقائمة، وزر اللغة، وشريط الإفصاح، والتذييل، والمحادثة |
 | `i18n/` · `messages/` | إعداد اللغات وملفات الترجمة |
-| `proxy.ts` | توجيه الزائر إلى مسار لغته |
+| `proxy.ts` | توجيه الزائر إلى مسار لغته وتجديد جلسة الدخول |
+| `supabase/schema.sql` | الجداول والفهارس وسياسات RLS والمخزن الخاص |
+| `lib/supabase/` · `lib/auth/` | عملاء Supabase، والدخول، والأدوار، والمشرف الأول |
 | `docs/` | الخطة والمواصفات وخريطة المرجعية والقرارات |
 | `brand/` · `public/brand/` | الشعارات والهوية |
 
