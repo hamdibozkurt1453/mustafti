@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/*
+ * مُستفتي — متغيرات الهوية البصرية (من brand/brand-tokens.css).
+ * لا تُضف ألواناً خارج الهوية، ولا أزرق.
+ */
+:root {
+  --mf-green-900: #04301F; /* الأخضر العميق: الخلفيات الداكنة والنصوص */
+  --mf-green-600: #0A6B45; /* الأخضر المتوسط: الروابط والتفاصيل */
+  --mf-gold-500:  #FFB800; /* الذهبي: الفقاعة والأزرار الأساسية — لا يُكتب به نص على خلفية فاتحة */
+  --mf-ivory-50:  #F5F3EA; /* العاجي: الخلفية الفاتحة */
+  --mf-sand-200:  #E4DFCF; /* الرملي: الحدود والفواصل */
+  --mf-ink-600:   #4A5B52; /* نص ثانوي */
+  --mf-alert-600: #A8432A; /* للحالات العاجلة فقط */
+  --mf-font: var(--font-readex), "Readex Pro", system-ui, sans-serif;
+  --mf-radius: 16px;
+}
+
+/*
+ * إعدادات Tailwind (v4 تُضبط هنا عبر @theme بدل tailwind.config).
+ * نلغي لوحة Tailwind الافتراضية كلها حتى لا يتسلل لون خارج الهوية (كالأزرق).
+ */
+@theme inline {
+  --color-*: initial;
+  --color-white: #fff;
+  --color-black: #000;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-green-900: var(--mf-green-900);
+  --color-green-600: var(--mf-green-600);
+  --color-gold-500: var(--mf-gold-500);
+  --color-gold-50: #FFFBEF;
+  --color-ivory-50: var(--mf-ivory-50);
+  --color-sand-200: var(--mf-sand-200);
+  --color-ink-600: var(--mf-ink-600);
+  --color-alert-600: var(--mf-alert-600);
+
+  --font-sans: var(--mf-font);
+  --radius-mf: var(--mf-radius);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--mf-ivory-50);
+  color: var(--mf-green-900);
+  font-family: var(--mf-font);
+  line-height: 1.7;
+}
+
+:focus-visible {
+  outline: 2px solid var(--mf-gold-500);
+  outline-offset: 2px;
+}
