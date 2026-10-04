@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { CaseFileView, CaseStatusBadge } from "@/components/case/CaseFileView";
+import { AnswerCard } from "@/components/experts/AnswerCard";
 import { placeholderMetadata } from "@/components/PagePlaceholder";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
@@ -10,6 +11,8 @@ import { getAuthContext, roleSatisfies } from "@/lib/auth/roles";
 import { chapterName } from "@/lib/case/pillars";
 import type { CaseRow, CaseUnknown } from "@/lib/case/types";
 import { dirForText } from "@/lib/chat/protocol";
+import { answerCards } from "@/lib/experts/store";
+import { isAdminClientConfigured } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -30,7 +33,7 @@ type MyCase = {
     pillars: { question?: string; rows?: CaseRow[] } | null;
     unknowns: CaseUnknown[] | null;
   }[];
-  expert_answers: { answer_ar: string; answer_translated: string | null }[];
+  expert_answers: { answer_ar: string; answer_translated: string | null; expert_id: string }[];
 };
 
 /**
@@ -55,7 +58,7 @@ export default async function MePage({ params }: Props) {
   const { data, error } = await supabase
     .from("cases")
     .select(
-      "id, status, chapter, created_at, case_files(summary_ar, summary_user_lang, pillars, unknowns), expert_answers(answer_ar, answer_translated)",
+      "id, status, chapter, created_at, case_files(summary_ar, summary_user_lang, pillars, unknowns), expert_answers(answer_ar, answer_translated, expert_id)",
     )
     .eq("owner_id", ctx.userId!)
     .order("created_at", { ascending: false })
@@ -63,6 +66,8 @@ export default async function MePage({ params }: Props) {
     .returns<MyCase[]>();
   if (error) console.error("me cases:", error.message);
   const cases = data ?? [];
+  // بطاقة «أجاب عن مسألتك»: الملفات من جلسة المستخدم (RLS: ملفاته فقط)، وبيانات المختص العامة من الخادم.
+  const cards = isAdminClientConfigured() ? await answerCards(cases.flatMap((c) => c.expert_answers.map((a) => a.expert_id))) : new Map();
 
   return (
     <main className="relative flex-1 px-4 py-10 sm:py-14">
@@ -143,6 +148,7 @@ export default async function MePage({ params }: Props) {
                             </p>
                           </div>
                         )}
+                        {cards.get(a.expert_id) && <AnswerCard card={cards.get(a.expert_id)!} />}
                       </div>
                     ))}
                     {file && (

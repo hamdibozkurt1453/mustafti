@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { CaseFileView, CaseStatusBadge } from "@/components/case/CaseFileView";
+import { AnswerCard } from "@/components/experts/AnswerCard";
 import { placeholderMetadata } from "@/components/PagePlaceholder";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { getCaseByToken } from "@/lib/case/store";
+import { answerCards } from "@/lib/experts/store";
 import { dirForText } from "@/lib/chat/protocol";
 import { isAdminClientConfigured } from "@/lib/supabase/admin";
 
@@ -36,6 +38,7 @@ export default async function CasePage({ params }: Props) {
   const pages = await getTranslations("pages");
   const format = await getFormatter();
   const view = isAdminClientConfigured() ? await getCaseByToken(decodeURIComponent(token)) : null;
+  const cards = view ? await answerCards(view.answers.map((a) => a.expertId)) : new Map();
 
   if (!view) {
     return (
@@ -102,6 +105,7 @@ export default async function CasePage({ params }: Props) {
                     </p>
                   </div>
                 )}
+                {cards.get(a.expertId) && <AnswerCard card={cards.get(a.expertId)!} />}
               </article>
             ))}
           </div>
