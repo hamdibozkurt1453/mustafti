@@ -471,3 +471,14 @@ create policy expert_docs_admin_delete on storage.objects for delete to authenti
   );
 
 -- انتهى. تحقّق: Table Editor يجب أن يعرض 12 جدولاً، وكلها بشارة "RLS enabled".
+
+-- ---------------------------------------------------------------------
+-- تقوية إضافية (نُفّذت في القاعدة بعد S2): دوال الصلاحيات لا يستدعيها الزائر anon،
+-- ومشغّل إنشاء الملف الشخصي لا يستدعيه أحد مباشرة.
+-- ---------------------------------------------------------------------
+revoke execute on function public.current_admin_role() from anon;
+revoke execute on function public.has_admin_role(public.admin_role[]) from anon;
+revoke execute on function public.is_approved_expert() from anon;
+revoke execute on function public.is_assigned_expert(uuid) from anon;
+revoke execute on function public.owns_case(uuid) from anon;
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
