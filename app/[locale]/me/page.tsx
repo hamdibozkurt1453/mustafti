@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { CaseFileView, CaseStatusBadge } from "@/components/case/CaseFileView";
 import { placeholderMetadata } from "@/components/PagePlaceholder";
+import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { signOut } from "@/lib/auth/actions";
 import { getAuthContext, roleSatisfies } from "@/lib/auth/roles";
@@ -82,15 +83,26 @@ export default async function MePage({ params }: Props) {
               <dd className="font-semibold">{t(`auth.roles.${ctx.role}`)}</dd>
             </div>
           </dl>
-          <form action={signOut} className="mt-6">
-            <input type="hidden" name="locale" value={locale} />
-            <button
-              type="submit"
-              className="rounded-full border border-green-900/20 px-5 py-2.5 font-semibold text-green-900 transition hover:bg-green-900/5"
-            >
-              {t("auth.signOut")}
-            </button>
-          </form>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            {ctx.expertStatus ? (
+              <Link href="/expert" className="rounded-full bg-gold-500 px-5 py-2.5 font-semibold text-green-900">
+                {t("experts.dashboardLink")}
+              </Link>
+            ) : (
+              <Link href="/experts/join" className="font-semibold text-green-600 underline underline-offset-4">
+                {t("experts.joinLink")}
+              </Link>
+            )}
+            <form action={signOut}>
+              <input type="hidden" name="locale" value={locale} />
+              <button
+                type="submit"
+                className="rounded-full border border-green-900/20 px-5 py-2.5 font-semibold text-green-900 transition hover:bg-green-900/5"
+              >
+                {t("auth.signOut")}
+              </button>
+            </form>
+          </div>
         </section>
 
         <section className="rounded-[var(--radius-mf)] border border-sand-200 bg-white p-6 sm:p-8">
@@ -117,14 +129,22 @@ export default async function MePage({ params }: Props) {
                     <p dir={dirForText(summary)} className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-green-900">
                       {summary}
                     </p>
-                    {c.expert_answers.length > 0 && (
-                      <div className="mt-3 rounded-xl bg-ivory-50 p-3 text-sm">
-                        <p className="mb-1 text-[11px] font-semibold text-green-600">{tf("answerTitle")}</p>
-                        <p dir={dirForText(c.expert_answers[0].answer_translated || c.expert_answers[0].answer_ar)} className="whitespace-pre-wrap">
-                          {c.expert_answers[0].answer_translated || c.expert_answers[0].answer_ar}
+                    {c.expert_answers.map((a, i) => (
+                      <div key={i} className="mt-3 space-y-2 rounded-xl bg-ivory-50 p-3 text-sm">
+                        <p className="text-[11px] font-semibold text-green-600">{tf("answerTitle")}</p>
+                        <p dir="rtl" lang="ar" className="whitespace-pre-wrap">
+                          {a.answer_ar}
                         </p>
+                        {a.answer_translated && (
+                          <div className="border-t border-sand-200 pt-2">
+                            <p className="mb-1 text-[11px] font-semibold text-green-600">{tf("answerTranslated")}</p>
+                            <p dir={dirForText(a.answer_translated)} className="whitespace-pre-wrap">
+                              {a.answer_translated}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    ))}
                     {file && (
                       <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-semibold text-green-600">{tf("showFile")}</summary>
