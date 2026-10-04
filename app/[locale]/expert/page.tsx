@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CaseStatusBadge } from "@/components/case/CaseFileView";
+import { CaseMeta } from "@/components/experts/CaseMeta";
 import { ExpertGate } from "@/components/experts/ExpertGate";
 import { placeholderMetadata } from "@/components/PagePlaceholder";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { AuthzError, getAuthContext } from "@/lib/auth/roles";
 import { CHAPTERS } from "@/lib/brain/prompts";
-import { chapterName } from "@/lib/case/pillars";
+import { chapterOptionsAr } from "@/lib/experts/format";
 import { expertQueue, requireApprovedExpert, type ExpertSelf } from "@/lib/experts/store";
 import { CASE_STATUSES } from "@/lib/experts/types";
 import { isAdminClientConfigured } from "@/lib/supabase/admin";
@@ -53,8 +54,6 @@ export default async function ExpertPage({ params, searchParams }: Props) {
   const tj = await getTranslations("experts.join");
   const tf = await getTranslations("caseFile");
   const pages = await getTranslations("pages");
-  const format = await getFormatter();
-  const lang = locale === "ar" ? "ar" : "en";
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 sm:py-14">
@@ -68,9 +67,9 @@ export default async function ExpertPage({ params, searchParams }: Props) {
           <span className="block font-semibold text-green-900">{t("filterChapter")}</span>
           <select name="chapter" defaultValue={chapter ?? ""} className="rounded-xl border border-sand-200 bg-white px-3 py-2">
             <option value="">{t("all")}</option>
-            {CHAPTERS.map((c) => (
-              <option key={c} value={c}>
-                {chapterName(c, lang)}
+            {chapterOptionsAr().map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
               </option>
             ))}
           </select>
@@ -103,9 +102,8 @@ export default async function ExpertPage({ params, searchParams }: Props) {
                   <span className="rounded-full bg-alert-600 px-3 py-1 text-xs font-semibold text-ivory-50">{t("high")}</span>
                 )}
                 {c.mine && <span className="rounded-full border border-green-600 px-3 py-1 text-xs font-semibold text-green-600">{t("mine")}</span>}
-                <span className="ms-auto text-xs text-ink-600">
-                  {chapterName(c.chapter, lang)} · {t("langLabel")}: {c.lang ?? "ar"} ·{" "}
-                  {format.dateTime(new Date(c.created_at), { dateStyle: "medium", timeStyle: "short" })}
+                <span className="ms-auto">
+                  <CaseMeta chapter={c.chapter} lang={c.lang} createdAt={c.created_at} />
                 </span>
               </div>
               <p dir="rtl" lang="ar" className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-green-900">
