@@ -15,6 +15,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { BASICS, matchBasics, parseVerseRef, quotedVerses, verseRefsInText } from "../lib/brain/basics";
+import { answerFormatIssues, firstSentence } from "../lib/brain/format";
+import { isEmptyPlan, normalizePlan, PlanSchema } from "../lib/brain/plan";
 import { equivalentFor, findTerms, GLOSSARY, glossaryBlock } from "../lib/brain/glossary";
 import { checkOutput, guard, isVerbatim, separateQuoted } from "../lib/brain/guard";
 import { looksPersonal, looksUrgent } from "../lib/brain/heuristics";
@@ -28,14 +30,15 @@ const byCategory = (c: string) => BRAIN_CASES.filter((x) => x.category === c);
 
 // ---------------------------------------------------------------------------
 describe("مجموعة الرسائل", () => {
-  it("36 رسالة بالتوزيع المطلوب، ومعرّفات فريدة", () => {
-    assert.equal(BRAIN_CASES.length, 36);
+  it("48 رسالة بالتوزيع المطلوب، ومعرّفات فريدة", () => {
+    assert.equal(BRAIN_CASES.length, 48);
+    assert.equal(byCategory("general").length, 16);
     assert.equal(byCategory("reference").length, 12);
     assert.equal(byCategory("insistence").length, 8);
     assert.equal(byCategory("urgent").length, 3);
     assert.equal(byCategory("out_of_scope").length, 3);
     assert.equal(byCategory("identity").length, 6);
-    assert.equal(new Set(BRAIN_CASES.map((c) => c.id)).size, 36);
+    assert.equal(new Set(BRAIN_CASES.map((c) => c.id)).size, 48);
   });
 
   it("حالات المرجعية الاثنتا عشرة حرفياً (ص 6)", () => {
@@ -580,5 +583,53 @@ describe("قاعدة الأساسيات (data/basics.json)", () => {
     ]);
     assert.deepEqual(quotedVerses(BRAIN_CASES.find((c) => c.id === "ref-11")!.message), ["وما خلقت الجن والإنس إلا ليعملوا"]);
     assert.equal(parseVerseRef("115:1"), null);
+  });
+});
+
+describe("خطة الإحالات: مواضع فقط، مطبَّعة", () => {
+  it("تُسقط المواضع غير الصالحة وتحدّ العدد والنطاق", () => {
+    const plan = normalizePlan(
+      PlanSchema.parse({
+        quran: [
+          { surah: 2, ayah: 127, through: 127 },
+          { surah: 2, ayah: 127, through: null },
+          { surah: 115, ayah: 1, through: null },
+          { surah: 3, ayah: 0, through: null },
+          { surah: 1, ayah: 1, through: 40 },
+          ...Array.from({ length: 6 }, (_, i) => ({ surah: 4, ayah: i + 1, through: null })),
+        ],
+        surah_info: [3, 3, 0, 200],
+        hadith_queries: ["«بني الإسلام على خمس»", "ب", "بناء الكعبة إبراهيم"],
+        bayyinat: [27, 0, 999],
+        library_queries: [],
+      }),
+    );
+    assert.deepEqual(plan.quran.slice(0, 2), [{ surah: 2, ayah: 127 }, { surah: 1, ayah: 1, through: 10 }]);
+    assert.equal(plan.quran.length, 6);
+    assert.deepEqual(plan.surahInfo, [3]);
+    assert.deepEqual(plan.hadithQueries, ["بني الإسلام على خمس", "بناء الكعبة إبراهيم"]);
+    assert.deepEqual(plan.bayyinat, [27]);
+    assert.equal(isEmptyPlan(plan), false);
+    assert.equal(isEmptyPlan(null), true);
+  });
+});
+
+describe("شكل الجواب: الجملة الأولى جواب مباشر مع [n]", () => {
+  it("جواب مباشر سليم", () => {
+    const t = "بنى الكعبةَ نبيُّ الله إبراهيم عليه السلام، وأعانه ابنه إسماعيل عليه السلام [1]. قال تعالى: ﴿وَإِذْ يَرْفَعُ إِبْرَاهِيمُ الْقَوَاعِدَ﴾ [1].";
+    assert.deepEqual(answerFormatIssues(t), []);
+    assert.match(firstSentence(t), /إسماعيل عليه السلام \[1\]\.$/);
+  });
+  it("[n] بعد النقطة مباشرة يُحسب للجملة الأولى", () => {
+    assert.deepEqual(answerFormatIssues("The first surah is Al-Fatihah. [1] It begins with…"), []);
+  });
+  it("البدء بآية أو اقتباس أو مرجع مجرد مرفوض", () => {
+    assert.ok(answerFormatIssues("﴿وَإِذْ يَرْفَعُ إِبْرَاهِيمُ الْقَوَاعِدَ﴾ [1].").includes("starts_with_quote"));
+    assert.ok(answerFormatIssues("«إن الله…» [1].").includes("starts_with_quote"));
+    assert.ok(answerFormatIssues("البقرة 127: ﴿وَإِذْ يَرْفَعُ﴾ [1].").includes("starts_with_reference"));
+    assert.ok(answerFormatIssues("2:127 ﴿وَإِذْ﴾").includes("starts_with_reference"));
+  });
+  it("جملة أولى بلا [n] مرفوضة", () => {
+    assert.ok(answerFormatIssues("بنى الكعبة إبراهيم عليه السلام. والدليل [1].").includes("no_citation"));
   });
 });

@@ -5,7 +5,9 @@ import { classify, type Classification } from "./classify";
 import { checkOutput, guardAndLog, matchKey, type GuardResult } from "./guard";
 import { looksPersonal, looksUrgent } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
+import { answerFormatIssues } from "./format";
 import { message } from "./messages";
+import { planCitations, type CitationPlan } from "./planner";
 import { retrieve, warmSearch, type RetrievalDiag } from "./retrieval";
 import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } from "./prompts";
 
@@ -88,18 +90,16 @@ async function generate(question: string, c: Classification, mode: AnswerMode, p
   let check = checkOutput(raw, ctx);
   attempts.push({ raw, guardOk: !check.findings.length, findings: check.findings.map((f) => `${f.reason}: ${f.match}`) });
 
-  // اعتراض الحارس: محاولة ثانية واحدة تذكر للنموذج العبارة المخالفة، ثم الحارس من جديد.
-  if (check.findings.length) {
+  // محاولة ثانية واحدة فقط: لاعتراض الحارس (العبارة المخالفة)، أو لشكل الجملة الأولى
+  // (جواب مباشر بكلام الأداة مع [n]، لا اقتباس ولا مرجع مجرد). ثم الحارس من جديد.
+  const formatIssues = isAbstention(raw, c.lang) ? [] : answerFormatIssues(raw);
+  if (check.findings.length || formatIssues.length) {
     const issues = check.findings.map((f) => `- ${f.reason}: «${f.match}»`).join("\n");
+    const fix = check.findings.length
+      ? `Your reply was blocked by the safety check:\n${issues}\nRewrite it calmly and briefly. Do not write any ruling word (permissible, forbidden, halal, haram, يجوز، حرام…) in your own words: the sources may say it only inside a verbatim «quotation» from the passages with its [n]. Every quotation must be copied exactly from a passage. Do not attribute any hadith that is not quoted verbatim from a passage. Do not mention any AI model or company. Keep the ANSWER FORMAT.`
+      : `Rewrite your reply in the ANSWER FORMAT: the first sentence must be a direct answer in your own plain words that ends with its [n] (not a quotation, not ﴿, not a reference); then the verbatim evidence with [n]. Keep every fact and quotation from the passages only.`;
     res = await chat(
-      [
-        ...messages,
-        { role: "assistant", content: raw },
-        {
-          role: "user",
-          content: `Your reply was blocked by the safety check:\n${issues}\nRewrite it calmly and briefly. Do not write any ruling word (permissible, forbidden, halal, haram, يجوز، حرام…) in your own words: the sources may say it only inside a verbatim «quotation» from the passages with its [n]. Every quotation must be copied exactly from a passage. Do not attribute any hadith that is not quoted verbatim from a passage. Do not mention any AI model or company.`,
-        },
-      ],
+      [...messages, { role: "assistant", content: raw }, { role: "user", content: fix }],
       { temperature: 0, maxTokens: 900 },
     );
     ms += res.latencyMs;
@@ -157,7 +157,12 @@ export async function respond(question: string, options: RespondOptions = {}): P
 
   // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض)، والبحث يُسخَّن بالتوازي (لا لحالة شخصية أو عاجلة).
   stage("understanding");
-  if (!looksPersonal(question) && !looksUrgent(question)) warmSearch(question, guessLang(question));
+  // خطة الإحالات تبدأ مع التصنيف (لا لحالة شخصية أو عاجلة)، وتُهمل إن صُنّف السؤال D.
+  let plan: Promise<CitationPlan | null> | undefined;
+  if (!looksPersonal(question) && !looksUrgent(question)) {
+    warmSearch(question, guessLang(question));
+    plan = planCitations(question);
+  }
   const cls = await classify(question, { history: options.history });
   const c = { ...cls.classification };
   base.costUsd += cls.costUsd ?? 0;
@@ -187,7 +192,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
   // 4) A / B / C: الاسترجاع.
   stage("searching");
   const t0 = Date.now();
-  const found = await retrieve(c, question);
+  const found = await retrieve(c, question, plan);
   timings.searchMs = Date.now() - t0;
   diag.retrieval = found.diag;
   const passages = found.passages;

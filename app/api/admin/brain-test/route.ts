@@ -83,6 +83,7 @@ a{color:var(--mid)}
 <script>
 const CASES=${casesJson};
 const REASON={no_passages:"البحث لم يُرجع نصوصاً",no_relevant:"نصوص لكن لا شيء منها ذو صلة (درجة ≥2)",model_abstained:"النصوص موجودة لكن النموذج امتنع",no_citation:"جواب بلا إحالة [n] ولا اقتباس موثّق",guard:"اعترض الحارس"};
+const planText=p=>[p.quran&&p.quran.length?"آيات "+p.quran.map(v=>v.surah+":"+v.ayah+(v.through?"-"+v.through:"")).join("، "):"",p.surahInfo&&p.surahInfo.length?"سور "+p.surahInfo.join("، "):"",p.hadithQueries&&p.hadithQueries.length?"حديث «"+p.hadithQueries.join("»، «")+"»":"",p.bayyinat&&p.bayyinat.length?"بيّنات "+p.bayyinat.join("، "):"",p.libraryQueries&&p.libraryQueries.length?"مكتبة «"+p.libraryQueries.join("»، «")+"»":""].filter(Boolean).join(" · ")||"فارغة";
 const CAT={reference:"المرجعية",insistence:"إلحاح",urgent:"عاجل",out_of_scope:"خارج النطاق",identity:"هوية وتلاعب",general:"عام"};
 const results={};
 const list=document.getElementById("list"),run=document.getElementById("run"),copy=document.getElementById("copy"),summary=document.getElementById("summary");
@@ -98,6 +99,7 @@ function render(c,r){
   const d=r.diag;
   const diag=d?'<div class="diag">'
    +(d.abstainReason?'<div class="no">سبب الامتناع: '+esc(REASON[d.abstainReason]||d.abstainReason)+"</div>":"")
+   +(d.plan?"<div>خطة الإحالات: "+esc(planText(d.plan))+" · وُجد منها في المصادر: "+(d.pinned??0)+"</div>":"")
    +((d.basics&&d.basics.length)||(d.verses&&d.verses.length)?"<div>الأساسيات: "+esc((d.basics||[]).join("، ")||"—")+" · الآيات: "+esc((d.verses||[]).join("، ")||"—")+"</div>":"")
    +(d.queries.length?"<div>كلمات البحث: "+d.queries.map(q=>"«"+esc(q.q)+"» ("+q.lang+")").join("، ")+"</div>":"")
    +(d.counts?"<div>المراحل: خام "+d.counts.raw+" ← بعد التنظيف "+d.counts.cleaned+" ← للتقييم "+d.counts.ranked+" ← مقبول (≥2) "+d.counts.kept+" · الترتيب: "+(d.rerank==="llm"?"النموذج":"الكلمات")+"</div>":"")
@@ -120,13 +122,16 @@ function render(c,r){
 function tally(){
   const done=Object.values(results);const ok=done.filter(r=>r.ok).length;
   const noRuling=done.filter(r=>r.checks&&r.checks.noRuling&&r.checks.noRuling.ok).length;
-  summary.textContent="النتيجة: "+ok+" / "+done.length+" ناجحة من "+CASES.length+" · بلا حكم: "+noRuling+" / "+done.length;
+  const nonD=done.filter(r=>r.level&&r.level!=="D"&&["reference","general"].includes(r.category));
+  const answered=nonD.filter(r=>r.kind==="answer").length;
+  const lat=done.filter(r=>r.totalMs).map(r=>r.totalMs);
+  summary.textContent="النتيجة: "+ok+" / "+done.length+" ناجحة من "+CASES.length+" · بلا حكم: "+noRuling+" / "+done.length+" · أُجيب من غير D: "+answered+" / "+nonD.length+" · متوسط الزمن: "+(lat.length?(lat.reduce((a,b)=>a+b,0)/lat.length/1000).toFixed(1):"—")+" ث";
 }
 function markdown(){
   const done=CASES.map(c=>results[c.id]).filter(Boolean);
   const ok=done.filter(r=>r.ok).length;
   const lines=["### نتيجة الاختبار الحي لعقل مُستفتي ("+new Date().toISOString().slice(0,16).replace("T"," ")+" UTC)","",
-   "**"+ok+" / "+done.length+" ناجحة.** بلا حكم: "+done.filter(r=>r.checks&&r.checks.noRuling&&r.checks.noRuling.ok).length+" / "+done.length+". التكلفة: $"+done.reduce((s,r)=>s+(r.costUsd||0),0).toFixed(4)+".","",
+   "**"+ok+" / "+done.length+" ناجحة.** "+summary.textContent+". بلا حكم: "+done.filter(r=>r.checks&&r.checks.noRuling&&r.checks.noRuling.ok).length+" / "+done.length+". التكلفة: $"+done.reduce((s,r)=>s+(r.costUsd||0),0).toFixed(4)+".","",
    "| الحالة | الفئة | النوع | المستوى | لا حكم | النتيجة | نصوص | سبب الامتناع | ملاحظة |","|---|---|---|---|---|---|---|---|---|"];
   for(const r of done){
     const fails=Object.entries(r.checks||{}).filter(([,v])=>!v.ok).map(([k,v])=>k+": "+v.detail).join("؛ ");
@@ -138,6 +143,7 @@ function markdown(){
     const d=r.diag;
     if(d&&d.queries.length){
       lines.push("- كلمات البحث: "+d.queries.map(q=>"«"+q.q+"» ("+q.lang+")").join("، "));
+      if(d.plan)lines.push("- خطة الإحالات: "+planText(d.plan)+" · وُجد: "+(d.pinned??0));
       if((d.basics&&d.basics.length)||(d.verses&&d.verses.length))lines.push("- الأساسيات: "+((d.basics||[]).join("، ")||"—")+" · الآيات: "+((d.verses||[]).join("، ")||"—"));
       if(d.counts)lines.push("- المراحل: خام "+d.counts.raw+" ← تنظيف "+d.counts.cleaned+" ← تقييم "+d.counts.ranked+" ← مقبول "+d.counts.kept+" ("+d.rerank+")");
       if(d.scored)lines.push("- الدرجات: "+d.scored.map(x=>(x.score??"—")+"/"+x.kw+(x.enriched?"+":"")+" "+x.source+" — "+x.title.slice(0,50)).join(" ؛ "));

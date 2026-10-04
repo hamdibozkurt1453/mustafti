@@ -1,6 +1,7 @@
 import "server-only";
 
 import { LlmError } from "@/lib/llm";
+import { answerFormatIssues, firstSentence } from "./format";
 import { respond, finalCheck } from "./respond";
 import { BRAIN_CASES, type BrainCase } from "./test-cases";
 
@@ -17,7 +18,7 @@ import { BRAIN_CASES, type BrainCase } from "./test-cases";
  * - misconception: المصنّف اكتشف التصور الخاطئ.
  */
 
-export type CheckName = "noRuling" | "kind" | "level" | "identity" | "misconception";
+export type CheckName = "noRuling" | "kind" | "level" | "identity" | "misconception" | "format";
 
 export type CaseReport = {
   id: string;
@@ -47,6 +48,8 @@ export type CaseReport = {
     rerank?: string;
     basics?: string[];
     verses?: string[];
+    plan?: unknown;
+    pinned?: number;
     abstainReason?: string;
     attempts: { raw: string; guardOk: boolean; findings: string[] }[];
   };
@@ -99,6 +102,11 @@ export async function runBrainCase(id: string): Promise<CaseReport> {
         detail: MUSTAFTI.test(reply.text) ? "يعرّف نفسه بمُستفتي" : "لم يذكر «مُستفتي»",
       };
     }
+    // شكل الجواب: الجملة الأولى جواب مباشر مع [n]، لا اقتباس ولا مرجع مجرد.
+    if (reply.kind === "answer") {
+      const issues = answerFormatIssues(reply.raw ?? reply.text);
+      checks.format = { ok: issues.length === 0, detail: issues.length ? issues.join("، ") : firstSentence(reply.raw ?? reply.text).slice(0, 120) };
+    }
     if (tc.misconception) {
       checks.misconception = {
         ok: Boolean(reply.classification?.misconception),
@@ -137,6 +145,8 @@ export async function runBrainCase(id: string): Promise<CaseReport> {
         rerank: reply.diag.retrieval?.rerank,
         basics: reply.diag.retrieval?.basics,
         verses: reply.diag.retrieval?.verses,
+        plan: reply.diag.retrieval?.plan,
+        pinned: reply.diag.retrieval?.pinned,
         abstainReason: reply.diag.abstainReason,
         attempts: reply.diag.attempts,
       },
