@@ -17,7 +17,7 @@ import { MESSAGE_LANGS, MESSAGES, message } from "../lib/brain/messages";
 import { CHAPTERS } from "../lib/brain/prompts";
 import { isAffirmative } from "../lib/case/affirm";
 import { jsonCandidates, parseFirstJson } from "../lib/case/json";
-import { activeQuestions, conditionValues, nextQuestion } from "../lib/case/flow";
+import { activeQuestions, capPlan, conditionValues, nextQuestion, worstCase } from "../lib/case/flow";
 import { inferKnown } from "../lib/case/infer";
 import { guessLang } from "../lib/brain/identity";
 import { arabicValue, fallbackDraft, rowsOf, unknownsOf } from "../lib/case/draft";
@@ -25,7 +25,10 @@ import {
   asksPrivate,
   chapterName,
   checkGenerated,
+  commonWords,
   dropReason,
+  similarQuestion,
+  templateFor as templateOf,
   fallbackQuestions,
   isSafeWhy,
   planPool,
@@ -628,7 +631,10 @@ describe("حالات case-test الحية بمحاكاة رد النموذج", (
     "طلقت زوجتي وأنا غاضب، هل وقع؟": {
       chapter: ["talaq_khul", 0.97],
       known: [{ key: "talaq_type", value: "talaq" }, { key: "state_intent", value: "anger" }],
-      extras: [gq("هل تكرر منك التلفظ بالطلاق في المجلس نفسه؟", "هل تكرر منك التلفظ بالطلاق في المجلس نفسه؟", "لأن التكرار يؤثر في العدد.", ["نعم", "لا"])],
+      extras: [
+        gq("هل كنت مدركاً أثناء الغضب؟", "هل كنت مدركاً أثناء الغضب؟", "لأن درجة الإدراك تؤثر.", ["نعم", "لا"]),
+        gq("هل تكرر منك التلفظ بالطلاق في المجلس نفسه؟", "هل تكرر منك التلفظ بالطلاق في المجلس نفسه؟", "لأن التكرار يؤثر في العدد.", ["نعم", "لا"]),
+      ],
     },
     "ورث أبي بيتاً ولنا أخت متزوجة، كيف نقسمه؟": { chapter: ["inheritance_wills", 0.95], known: [], extras: [gq("هل البيت مسجّل باسم المتوفى وحده؟", "هل البيت مسجّل باسم المتوفى وحده؟", "لأن الملكية تحدد ما يدخل في التركة.", ["نعم", "لا", "لا أعلم"])] },
     "أعمل في بنك ربوي في قسم تقنية المعلومات، هل راتبي حلال؟": {
@@ -642,7 +648,11 @@ describe("حالات case-test الحية بمحاكاة رد النموذج", (
     },
     "أسلمت حديثاً وأهلي يرفضون، هل أخبرهم؟": { chapter: ["new_muslim", 0.9], known: [], extras: [] },
     "What is the ruling on someone who steals because he is starving?": { chapter: ["other", 0.9], generated: theftEn },
-    "نسيت صلاة الفجر ثلاثة أيام، ماذا أفعل؟": { chapter: ["salah", 0.95], known: [{ key: "salah_which", value: "fajr" }, { key: "salah_count", value: "3" }], extras: [] },
+    "نسيت صلاة الفجر ثلاثة أيام، ماذا أفعل؟": {
+      chapter: ["salah", 0.95],
+      known: [{ key: "salah_which", value: "fajr" }, { key: "salah_count", value: "3" }],
+      extras: [gq("ما سبب نسيان هذه الصلوات؟", "ما سبب نسيان هذه الصلوات؟", "لأن السبب يؤثر.", ["نوم", "انشغال"])],
+    },
     "Faizli kredi ile ev aldım, ne yapmalıyım?": { chapter: ["finance", 0.92], known: [{ key: "finance_type", value: "loan_mortgage" }], extras: [] },
   };
 
@@ -699,7 +709,11 @@ describe("حالات case-test الحية بمحاكاة رد النموذج", (
     assert.equal(r.known.occurred, "happened");
     assert.ok(!r.asked.includes("occurred") && !r.asked.includes("talaq_type") && !r.asked.includes("state_intent"));
     assert.ok(r.asked.includes("extra_1"), "السؤال الخاص يدخل ضمن الثمانية");
-    assert.ok(r.asked.length <= 8);
+    const extras = r.plan.questions.filter((q) => q.key.startsWith("extra_"));
+    assert.equal(extras.length, 1, "«هل كنت مدركاً أثناء الغضب» يكرر درجة الغضب فيُحذف");
+    assert.ok(extras[0].text.includes("تكرر"));
+    assert.ok(r.trace.extras[0].dropped.some((d) => d.reason === "duplicate_of:talaq_anger"));
+    assert.ok(r.plan.questions.length <= 8, `الخطة نفسها 8 على الأكثر (${r.plan.questions.length})`);
   });
 
   it("الراتب في بنك: أسئلة work_income، بلا «كيف تُحسب الزيادة» ولا «هل وقع؟»، والمكرر من الإضافي يُحذف", async () => {
@@ -708,6 +722,7 @@ describe("حالات case-test الحية بمحاكاة رد النموذج", (
     assert.equal(r.known.occurred, "ongoing");
     assert.ok(r.asked.includes("work_tasks") && r.asked.includes("work_riba_share"));
     assert.ok(!r.asked.includes("finance_return") && !r.asked.includes("occurred") && !r.asked.includes("finance_type"));
+    assert.ok(!r.asked.includes("finance_need"), "الحاجة إلى المعاملة لا تُسأل للراتب");
     const extras = r.plan.questions.filter((q) => q.key.startsWith("extra_"));
     assert.equal(extras.length, 1);
     assert.ok(extras[0].text.includes("الفوائد"));
@@ -730,7 +745,8 @@ describe("حالات case-test الحية بمحاكاة رد النموذج", (
     const r = await run("نسيت صلاة الفجر ثلاثة أيام، ماذا أفعل؟");
     assert.equal(r.known.salah_issue, "missed_prayer");
     assert.ok(r.asked.includes("missed_madeup"));
-    for (const k of ["missed_reason", "salah_sahw", "salah_travel", "occurred", "salah_which"]) assert.ok(!r.asked.includes(k), k);
+    for (const k of ["missed_reason", "salah_sahw", "salah_travel", "occurred", "salah_which", "state_intent"]) assert.ok(!r.asked.includes(k), k);
+    assert.equal(r.plan.questions.filter((q) => q.key.startsWith("extra_")).length, 0, "«ما سبب نسيان هذه الصلوات» يكرر سبب الفوات");
   });
 
   it("التركية: لا «هل وقع؟»، والأسئلة مترجمة أو إنجليزية، و«كيف تُحسب الزيادة» للقرض", async () => {
@@ -738,5 +754,107 @@ describe("حالات case-test الحية بمحاكاة رد النموذج", (
     assert.equal(r.known.occurred, "happened");
     assert.ok(!r.asked.includes("occurred"));
     assert.ok(r.asked.includes("finance_return"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("لا تكرار، و8 أسئلة صارمة في الخطة", () => {
+  const dup = (chapter: Parameters<typeof templateOf>[0], extra: string) => {
+    const cov = templateOf(chapter);
+    const common = commonWords(cov.map((q) => q.ar));
+    return cov.find((q) => similarQuestion(extra, q.ar, common))?.key ?? null;
+  };
+
+  it("الأمثلة الحية: الإضافي المكرر يُعرف بمقارنة الكلمات", () => {
+    assert.equal(dup("finance", "ما هي طبيعة المهام التقنية؟"), "work_tasks");
+    assert.equal(dup("salah", "ما سبب نسيان هذه الصلوات؟"), "missed_reason");
+    assert.equal(dup("talaq_khul", "هل كنت مدركاً أثناء الغضب؟"), "talaq_anger");
+  });
+
+  it("وكلمة الباب الشائعة وحدها لا تكفي («الطلاق» في عدة أسئلة)", () => {
+    assert.equal(dup("talaq_khul", "هل تكرر منك التلفظ بالطلاق في المجلس نفسه؟"), null);
+    assert.equal(dup("inheritance_wills", "هل البيت مسجّل باسم المتوفى وحده؟"), null);
+    assert.equal(dup("finance", "هل لعملك صلة مباشرة بأنظمة احتساب الفوائد؟"), null);
+  });
+
+  it("«الحال والنية» لا يُعرض إن عُرف سبب الفوات أو درجة الغضب، و«الحاجة» لا للراتب", () => {
+    const keys = (qs: { key: string }[]) => qs.map((q) => q.key);
+    assert.ok(!keys(planPool("salah", { salah_issue: "missed_prayer", missed_reason: "forgot" })).includes("state_intent"));
+    assert.ok(!keys(planPool("talaq_khul", { talaq_anger: "severe" })).includes("state_intent"));
+    assert.ok(!keys(planPool("finance", { finance_type: "work_income" })).includes("finance_need"));
+    assert.ok(keys(planPool("finance", { finance_type: "loan_mortgage" })).includes("finance_need"));
+  });
+
+  it("الخطة لا تتجاوز 8 في أي باب وأي مسار، ولو بلا معلوم", () => {
+    for (const c of CHAPTERS) {
+      const pool = planPool(c);
+      assert.ok(worstCase(pool, pool) <= 8, `${c}: ${worstCase(pool, pool)}`);
+    }
+  });
+
+  it("الطلاق: الإلزامية أولاً، ثم الإضافية، ثم الاختيارية (البلد والمذهب وسألت أحداً في الآخر)", () => {
+    const extra: PillarQuestion = { key: "extra_1", ar: "هل تكرر التلفظ؟", en: "Repeated?", type: "yesno", required: true, generated: true };
+    const pool = planPool("talaq_khul", { occurred: "happened" }, [], "personal", [extra]);
+    assert.equal(pool.length, 8);
+    const firstOptional = pool.findIndex((q) => !q.required);
+    assert.ok(pool.slice(0, firstOptional).every((q) => q.required));
+    assert.equal(pool[firstOptional - 1].key, "extra_1");
+    assert.ok(!pool.some((q) => ["country", "madhhab", "asked_before"].includes(q.key)), "الاختيارية الأخيرة تخرج أولاً");
+  });
+
+  it("capPlan يحسب أسوأ مسار للشروط: فرعان لا يجتمعان يُحسبان مرة", () => {
+    const q = (key: string, showIf?: { key: string; in: string[] }) => ({ key, required: true, showIf, options: key === "t" ? [{ value: "a" }, { value: "b" }] : [] });
+    const qs = [q("t"), q("a1", { key: "t", in: ["a"] }), q("a2", { key: "t", in: ["a"] }), q("b1", { key: "t", in: ["b"] }), q("b2", { key: "t", in: ["b"] })];
+    assert.equal(worstCase(qs, qs), 5); // قيمة t غير معروفة: كلها ظاهرة
+    assert.equal(capPlan(qs, 3).map((x) => x.key).join(","), "t,a1,a2");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("أعطال المزوّد: المهلة والإعادة والنموذج الاحتياطي (lib/llm.ts)", () => {
+  it("مهلة أثناء قراءة الجواب تُعدّ timeout، ثم إعادة فورية، ثم LLM_FALLBACK_MODEL", async () => {
+    process.env.OPENROUTER_API_KEY = "test";
+    process.env.LLM_MODEL = "primary/model";
+    process.env.LLM_FALLBACK_MODEL = "google/gemini-2.5-flash";
+    const calls: string[] = [];
+    const real = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      if (!String(url).includes("openrouter")) return real(url, init);
+      const model = JSON.parse(String(init?.body)).model as string;
+      calls.push(model);
+      if (model === "primary/model") {
+        // الترويسات تصل، والجواب لا يكتمل قبل المهلة (كما في «invalid JSON response» الحي).
+        const body = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('{"choices":'));
+            init?.signal?.addEventListener("abort", () => controller.error(Object.assign(new Error("aborted"), { name: "AbortError" })));
+          },
+        });
+        return new Response(body, { status: 200 });
+      }
+      return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }], usage: {} }), { status: 200 });
+    }) as typeof fetch;
+    // مؤقّت AbortSignal.timeout لا يُبقي العملية حية (unref)، والخادم الحي يبقى؛ نبقيها حية هنا.
+    const keepAlive = setInterval(() => {}, 1000);
+    try {
+      const { chat } = await import("../lib/llm");
+      const res = await chat([{ role: "user", content: "x" }], { timeoutMs: 50, retries: 1, retryDelayMs: 0 });
+      assert.equal(res.text, "ok");
+      assert.equal(res.model, "google/gemini-2.5-flash");
+      assert.deepEqual(calls, ["primary/model", "primary/model", "google/gemini-2.5-flash"]);
+
+      // بلا نموذج احتياطي: الخطأ timeout (لا «invalid JSON response»).
+      delete process.env.LLM_FALLBACK_MODEL;
+      calls.length = 0;
+      await assert.rejects(
+        chat([{ role: "user", content: "x" }], { timeoutMs: 50, retries: 0 }),
+        (e: Error & { code?: string }) => e.code === "timeout",
+      );
+      assert.deepEqual(calls, ["primary/model"]);
+    } finally {
+      clearInterval(keepAlive);
+      globalThis.fetch = real;
+      delete process.env.LLM_FALLBACK_MODEL;
+    }
   });
 });
