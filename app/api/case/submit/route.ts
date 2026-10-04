@@ -3,6 +3,7 @@ import { redactDraft } from "@/lib/case/draft";
 import { translateEdits } from "@/lib/case/file";
 import { ChapterSchema, DraftSchema, guardCaseRequest, KindSchema, LangSchema } from "@/lib/case/http";
 import { saveCase } from "@/lib/case/store";
+import { countryCodeOf } from "@/lib/experts/countries";
 import { isAdminClientConfigured } from "@/lib/supabase/admin";
 
 /**
@@ -49,6 +50,8 @@ export async function POST(request: Request) {
       kind,
       email: email ? email.toLowerCase() : null,
       ownerId: gate.ctx.userId,
+      // البلد فقط من ترويسة Vercel (رمز ISO مثل TN)، ولا يُقرأ عنوان IP ولا يُحفظ.
+      askerCountry: countryCodeOf(request.headers.get("x-vercel-ip-country")),
     });
     return Response.json({ token: saved.token, routeTo: saved.routeTo, linked: Boolean(gate.ctx.userId) });
   } catch (error) {
