@@ -68,6 +68,8 @@ button[disabled]{opacity:.6;cursor:default}
 .checks span{display:inline-block;margin:2px 0 2px 8px;font-size:.85rem}
 .pass{color:var(--mid)}.no{color:var(--bad)}
 details{font-size:.85rem}
+.ex{opacity:.75;margin:0 0 6px;unicode-bidi:plaintext}
+.diag{font-size:.85rem;margin:4px 0}
 a{color:var(--mid)}
 </style></head>
 <body>
@@ -78,6 +80,7 @@ a{color:var(--mid)}
 <div id="list"></div>
 <script>
 const CASES=${casesJson};
+const REASON={no_passages:"البحث لم يُرجع نصوصاً",model_abstained:"النصوص موجودة لكن النموذج امتنع",no_citation:"جواب بلا إحالة [n] ولا اقتباس موثّق",guard:"اعترض الحارس"};
 const CAT={reference:"المرجعية",insistence:"إلحاح",urgent:"عاجل",out_of_scope:"خارج النطاق",identity:"هوية وتلاعب",general:"عام"};
 const results={};
 const list=document.getElementById("list"),run=document.getElementById("run"),copy=document.getElementById("copy"),summary=document.getElementById("summary");
@@ -89,7 +92,13 @@ function render(c,r){
   if(r==="run"){el.className="case run";el.querySelector(".meta").textContent=c.id+" · "+CAT[c.category]+" · جارٍ…";return}
   el.className="case "+(r.ok?"ok":"fail");
   const checks=Object.entries(r.checks||{}).map(([k,v])=>'<span class="'+(v.ok?"pass":"no")+'">'+(v.ok?"✔":"✘")+" "+k+": "+esc(v.detail)+"</span>").join("");
-  const src=(r.sources||[]).map((s,i)=>"["+(i+1)+'] <a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+esc(s.source+" — "+s.title)+"</a>"+(s.grade?" ("+esc(s.grade)+")":"")).join("<br>");
+  const src=(r.sources||[]).map((s,i)=>"["+(i+1)+'] <a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+esc(s.source+" — "+s.title)+"</a>"+(s.grade?" ("+esc(s.grade)+")":"")+'<div class="ex">'+esc(s.excerpt)+"</div>").join("");
+  const d=r.diag;
+  const diag=d?'<div class="diag">'
+   +(d.abstainReason?'<div class="no">سبب الامتناع: '+esc(REASON[d.abstainReason]||d.abstainReason)+"</div>":"")
+   +(d.queries.length?"<div>كلمات البحث: "+d.queries.map(q=>"«"+esc(q.q)+"» ("+q.lang+")").join("، ")+"</div>":"")
+   +(Object.keys(d.bySource).length?"<div>النتائج لكل مصدر: "+Object.entries(d.bySource).map(([k,v])=>'<span class="'+(v?"pass":"no")+'">'+k+": "+v+"</span>").join(" · ")+(d.retried?" · (أُعيد البحث)":"")+"</div>":"")
+   +"</div>":"";
   el.innerHTML='<div class="meta">'+r.id+" · "+CAT[r.category]+" · "+(r.ok?"نجح":"فشل")+(r.totalMs?" · "+(r.totalMs/1000).toFixed(1)+" ث":"")+(r.overrides&&r.overrides.length?" · تجاوز الكود: "+esc(r.overrides.join(", ")):"")+'</div>'
    +'<div class="msg">'+esc(r.message)+"</div>"
    +(r.reference?'<div class="meta">المرجعية: '+esc(r.reference)+"</div>":"")
@@ -97,7 +106,9 @@ function render(c,r){
    +(r.error?'<div class="out no">خطأ: '+esc(r.error)+"</div>":'<div class="out">'+esc(r.text)+"</div>")
    +'<div class="checks">'+checks+"</div>"
    +(r.guardIntervened?'<div class="meta no">تدخّل الحارس: '+esc((r.guardFindings||[]).join(" | "))+"</div>":"")
-   +(src?"<details><summary>المصادر ("+r.sources.length+")</summary>"+src+"</details>":"")
+   +diag
+   +(src?"<details open><summary>النصوص المسترجعة ("+r.sources.length+")</summary>"+src+"</details>":(d&&d.queries.length?'<div class="meta no">لا نصوص مسترجعة</div>':""))
+   +(d&&d.attempts.length>1?'<details><summary>المحاولة الأولى (اعترض الحارس)</summary><div class="out">'+esc(d.attempts[0].raw)+'</div><div class="meta">'+esc(d.attempts[0].findings.join(" | "))+"</div></details>":"")
    +(r.raw&&r.raw!==r.text?'<details><summary>الصياغة الخام قبل الحارس</summary><div class="out">'+esc(r.raw)+"</div></details>":"");
 }
 function tally(){
@@ -110,13 +121,23 @@ function markdown(){
   const ok=done.filter(r=>r.ok).length;
   const lines=["### نتيجة الاختبار الحي لعقل مُستفتي ("+new Date().toISOString().slice(0,16).replace("T"," ")+" UTC)","",
    "**"+ok+" / "+done.length+" ناجحة.** بلا حكم: "+done.filter(r=>r.checks&&r.checks.noRuling&&r.checks.noRuling.ok).length+" / "+done.length+". التكلفة: $"+done.reduce((s,r)=>s+(r.costUsd||0),0).toFixed(4)+".","",
-   "| الحالة | الفئة | النوع | المستوى | لا حكم | النتيجة | ملاحظة |","|---|---|---|---|---|---|---|"];
+   "| الحالة | الفئة | النوع | المستوى | لا حكم | النتيجة | نصوص | سبب الامتناع | ملاحظة |","|---|---|---|---|---|---|---|---|---|"];
   for(const r of done){
     const fails=Object.entries(r.checks||{}).filter(([,v])=>!v.ok).map(([k,v])=>k+": "+v.detail).join("؛ ");
-    lines.push("| "+r.id+" | "+CAT[r.category]+" | "+(r.kind||"—")+" | "+(r.level||"—")+" | "+(r.checks&&r.checks.noRuling?(r.checks.noRuling.ok?"✔":"✘"):"—")+" | "+(r.ok?"✔":"✘")+" | "+String(r.error||fails||(r.guardIntervened?"تدخّل الحارس":"")).replace(/\\|/g,"/").replace(/\\n/g," ")+" |");
+    lines.push("| "+r.id+" | "+CAT[r.category]+" | "+(r.kind||"—")+" | "+(r.level||"—")+" | "+(r.checks&&r.checks.noRuling?(r.checks.noRuling.ok?"✔":"✘"):"—")+" | "+(r.ok?"✔":"✘")+" | "+((r.sources||[]).length)+" | "+(r.diag&&r.diag.abstainReason?REASON[r.diag.abstainReason]:"")+" | "+String(r.error||fails||(r.guardIntervened?"تدخّل الحارس":"")).replace(/\\|/g,"/").replace(/\\n/g," ")+" |");
   }
   lines.push("","<details><summary>الردود كاملة</summary>","");
-  for(const r of done){lines.push("**"+r.id+"** — "+r.message,"","> "+String(r.error||r.text||"").replace(/\\n/g,"\\n> "),"")}
+  for(const r of done){
+    lines.push("**"+r.id+"** — "+r.message,"","> "+String(r.error||r.text||"").replace(/\\n/g,"\\n> "),"");
+    const d=r.diag;
+    if(d&&d.queries.length){
+      lines.push("- كلمات البحث: "+d.queries.map(q=>"«"+q.q+"» ("+q.lang+")").join("، "));
+      lines.push("- النتائج لكل مصدر: "+Object.entries(d.bySource).map(([k,v])=>k+": "+v).join(" · ")+(d.retried?" (أُعيد البحث)":""));
+      for(const [i,x] of (r.sources||[]).entries())lines.push("  - ["+(i+1)+"] "+x.source+" — "+x.title+": "+x.excerpt.replace(/\\s+/g," "));
+      if(d.attempts.length>1)lines.push("- المحاولة الأولى (اعترض الحارس: "+d.attempts[0].findings.join(" | ")+"): "+d.attempts[0].raw.replace(/\\s+/g," "));
+      lines.push("");
+    }
+  }
   lines.push("</details>");
   return lines.join("\\n");
 }

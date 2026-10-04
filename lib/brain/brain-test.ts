@@ -34,7 +34,16 @@ export type CaseReport = {
   overrides?: string[];
   guardIntervened?: boolean;
   guardFindings?: string[];
-  sources?: { source: string; title: string; url: string; grade?: string }[];
+  sources?: { source: string; title: string; url: string; grade?: string; excerpt: string }[];
+  /** تشخيص الامتناع: كلمات البحث، ونتائج كل مصدر، وسبب الامتناع، ومحاولات الصياغة. */
+  diag?: {
+    queries: { q: string; lang: string }[];
+    bySource: Record<string, number>;
+    searches: { query: string; lang: string; source: string; results: number; ms: number }[];
+    retried: boolean;
+    abstainReason?: string;
+    attempts: { raw: string; guardOk: boolean; findings: string[] }[];
+  };
   text?: string;
   raw?: string;
   totalMs?: number;
@@ -100,7 +109,24 @@ export async function runBrainCase(id: string): Promise<CaseReport> {
       overrides: reply.overrides,
       guardIntervened: reply.guard ? !reply.guard.ok : false,
       guardFindings: reply.guard?.findings.map((f) => `${f.reason}/${f.lang}: ${f.match}`),
-      sources: reply.passages.map((p) => ({ source: p.source, title: p.title, url: p.url, grade: p.grade })),
+      sources: reply.passages.map((p) => ({
+        source: p.source,
+        title: p.title,
+        url: p.url,
+        grade: p.grade,
+        excerpt: p.text.slice(0, 200),
+      })),
+      diag: {
+        queries: reply.diag.queries,
+        bySource: reply.diag.searches.reduce<Record<string, number>>(
+          (acc, x) => ({ ...acc, [x.source]: (acc[x.source] ?? 0) + x.results }),
+          {},
+        ),
+        searches: reply.diag.searches,
+        retried: reply.diag.retried,
+        abstainReason: reply.diag.abstainReason,
+        attempts: reply.diag.attempts,
+      },
       text: reply.text,
       raw: reply.raw,
       totalMs: reply.timings.totalMs,
