@@ -1,0 +1,138 @@
+{
+  "meta": {
+    "title": "Mustafti — Clarifies your question, never issues fatwas",
+    "description": "Mustafti answers your questions about Islam in any language from trusted Islamic sources, and carries your personal question to qualified scholars. It never issues religious rulings."
+  },
+  "nav": {
+    "home": "Chat",
+    "prayer": "Prayer times",
+    "adhkar": "Adhkar",
+    "newMuslim": "New Muslim",
+    "about": "About",
+    "login": "Sign in",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "language": "Language",
+    "mainNav": "Main navigation",
+    "homeLink": "Mustafti — Home"
+  },
+  "disclosure": {
+    "text": "Mustafti is an AI tool, not a mufti or a preacher. It answers from trusted sources only."
+  },
+  "footer": {
+    "links": "Links",
+    "joinExpert": "Join as a scholar",
+    "joinExpertHint": "A mufti, preacher or new-Muslim mentor? Help us route questions to the right people.",
+    "privacy": "Privacy",
+    "eval": "Transparency & testing",
+    "challenge": "An entry in the AI for Islamic Content Challenge 2026.",
+    "rights": "All rights reserved © Hamdi Bozkurt 2026"
+  },
+  "home": {
+    "greeting": "Ask about your faith in any language",
+    "intro": "I answer from trusted Islamic sources with links. If your question is about your personal situation, I clarify it and pass it on to qualified scholars. I do not issue religious rulings.",
+    "whoAreYou": "Who are you?",
+    "whoOptional": "Optional — it only changes the suggestions",
+    "personas": {
+      "muslim": "Muslim",
+      "newMuslim": "New Muslim",
+      "nonMuslim": "Not Muslim"
+    },
+    "suggestionsTitle": "Suggested questions",
+    "suggestions": {
+      "general": {
+        "q1": "What is the virtue of praying Fajr in congregation?",
+        "q2": "What are the Sunnah remembrances after prayer?",
+        "q3": "What does Ayat al-Kursi mean?",
+        "q4": "How do I perform wudu correctly?"
+      },
+      "muslim": {
+        "q1": "What is the virtue of reading Surat al-Kahf on Friday?",
+        "q2": "What are the Sunnah remembrances after prayer?",
+        "q3": "How do I make up prayers I have missed?",
+        "q4": "When is zakat due on wealth?"
+      },
+      "newMuslim": {
+        "q1": "How do I pray, step by step?",
+        "q2": "What should I learn first after becoming Muslim?",
+        "q3": "How do I perform ghusl?",
+        "q4": "What does the Shahada mean?"
+      },
+      "nonMuslim": {
+        "q1": "What are the pillars of Islam?",
+        "q2": "Who is the Prophet Muhammad ﷺ?",
+        "q3": "What does the Quran say about Jesus?",
+        "q4": "Why do Muslims fast in Ramadan?"
+      }
+    },
+    "nextPrayer": {
+      "title": "Next prayer",
+      "hint": "Choose your city to see prayer times.",
+      "link": "View prayer times"
+    }
+  },
+  "composer": {
+    "label": "Type your question",
+    "placeholder": "Type your question in any language…",
+    "send": "Send",
+    "notice": "Chat is being activated and will be available soon.",
+    "privacy": "We never ask for your name or identity."
+  },
+  "pages": {
+    "underConstruction": "This page is under construction.",
+    "backHome": "Back to chat",
+    "case": {
+      "title": "Track your case",
+      "description": "Follow your case and the scholar's answer through your private link."
+    },
+    "me": {
+      "title": "My questions & cases",
+      "description": "All your questions and cases in one place."
+    },
+    "prayer": {
+      "title": "Prayer times",
+      "description": "Prayer times for your city, with the calculation method you choose."
+    },
+    "adhkar": {
+      "title": "Adhkar",
+      "description": "Morning, evening and daily remembrances from trusted sources."
+    },
+    "newMuslim": {
+      "title": "New Muslim companion",
+      "description": "Gentle steps for your first days in Islam."
+    },
+    "about": {
+      "title": "About Mustafti",
+      "description": "What Mustafti is, where its answers come from, and its limits."
+    },
+    "privacy": {
+      "title": "Privacy policy",
+      "description": "What we keep, why, and when we delete it."
+    },
+    "eval": {
+      "title": "Transparency & testing",
+      "description": "How we test Mustafti, with published results."
+    },
+    "login": {
+      "title": "Sign in or register",
+      "description": "Register to keep your questions and cases. You don't need an account to ask."
+    },
+    "expertsJoin": {
+      "title": "Join as a scholar",
+      "description": "Four steps: your details, qualifications, certificates or recommendations, then the pledge. Every application is reviewed by hand."
+    },
+    "expert": {
+      "title": "Scholar dashboard",
+      "description": "Cases routed to you and your answers."
+    },
+    "admin": {
+      "title": "Admin dashboard",
+      "description": "Scholar applications, cases, admins and statistics."
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "We couldn't find what you were looking for."
+  }
+}

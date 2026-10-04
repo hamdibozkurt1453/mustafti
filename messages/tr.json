@@ -1,0 +1,138 @@
+{
+  "meta": {
+    "title": "",
+    "description": ""
+  },
+  "nav": {
+    "home": "",
+    "prayer": "",
+    "adhkar": "",
+    "newMuslim": "",
+    "about": "",
+    "login": "",
+    "menu": "",
+    "openMenu": "",
+    "closeMenu": "",
+    "language": "",
+    "mainNav": "",
+    "homeLink": ""
+  },
+  "disclosure": {
+    "text": ""
+  },
+  "footer": {
+    "links": "",
+    "joinExpert": "",
+    "joinExpertHint": "",
+    "privacy": "",
+    "eval": "",
+    "challenge": "",
+    "rights": ""
+  },
+  "home": {
+    "greeting": "",
+    "intro": "",
+    "whoAreYou": "",
+    "whoOptional": "",
+    "personas": {
+      "muslim": "",
+      "newMuslim": "",
+      "nonMuslim": ""
+    },
+    "suggestionsTitle": "",
+    "suggestions": {
+      "general": {
+        "q1": "",
+        "q2": "",
+        "q3": "",
+        "q4": ""
+      },
+      "muslim": {
+        "q1": "",
+        "q2": "",
+        "q3": "",
+        "q4": ""
+      },
+      "newMuslim": {
+        "q1": "",
+        "q2": "",
+        "q3": "",
+        "q4": ""
+      },
+      "nonMuslim": {
+        "q1": "",
+        "q2": "",
+        "q3": "",
+        "q4": ""
+      }
+    },
+    "nextPrayer": {
+      "title": "",
+      "hint": "",
+      "link": ""
+    }
+  },
+  "composer": {
+    "label": "",
+    "placeholder": "",
+    "send": "",
+    "notice": "",
+    "privacy": ""
+  },
+  "pages": {
+    "underConstruction": "",
+    "backHome": "",
+    "case": {
+      "title": "",
+      "description": ""
+    },
+    "me": {
+      "title": "",
+      "description": ""
+    },
+    "prayer": {
+      "title": "",
+      "description": ""
+    },
+    "adhkar": {
+      "title": "",
+      "description": ""
+    },
+    "newMuslim": {
+      "title": "",
+      "description": ""
+    },
+    "about": {
+      "title": "",
+      "description": ""
+    },
+    "privacy": {
+      "title": "",
+      "description": ""
+    },
+    "eval": {
+      "title": "",
+      "description": ""
+    },
+    "login": {
+      "title": "",
+      "description": ""
+    },
+    "expertsJoin": {
+      "title": "",
+      "description": ""
+    },
+    "expert": {
+      "title": "",
+      "description": ""
+    },
+    "admin": {
+      "title": "",
+      "description": ""
+    }
+  },
+  "notFound": {
+    "title": "",
+    "description": ""
+  }
+}
