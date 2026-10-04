@@ -19,7 +19,7 @@ import { checkOutput, guard, isVerbatim, separateQuoted } from "../lib/brain/gua
 import { looksPersonal, looksUrgent } from "../lib/brain/heuristics";
 import { detectIdentityProbe, identityReply, IDENTITY_PROMPT } from "../lib/brain/identity";
 import { MESSAGE_LANGS, MESSAGES, message } from "../lib/brain/messages";
-import { clean, keywords, prerank, type Candidate, type Dropped } from "../lib/brain/rank";
+import { applyScores, clean, cleanToolText, keywords, prerank, rerankList, type Candidate, type Dropped } from "../lib/brain/rank";
 import { ABSTAIN_AR, answerSystem, CLASSIFY_SYSTEM, NON_NEGOTIABLE_RULES } from "../lib/brain/prompts";
 import { BRAIN_CASES } from "../lib/brain/test-cases";
 
@@ -455,5 +455,49 @@ describe("الحارس: ترجمة المعنى", () => {
   it("الحكم داخل ترجمة موسومة يُكشف", () => {
     const out = "«Alcohol is haram for you» (translation of meaning) [1].";
     assert.equal(guard(out, { sources: [src], lang: "en" }).ok, false);
+  });
+});
+
+describe("إعادة الترتيب: الدرجات بالمعرّف لا بالترتيب", () => {
+  const make = () => [
+    cand("hadeethenc", "إن الله تابع الوحي على رسول الله", "إن الله عز وجل تابع الوحي على رسول الله"),
+    cand("hadeethenc", "قال زيد بن ثابت وكان ممن يكتب الوحي", "قال زيد بن ثابت الأنصاري وكان ممن يكتب الوحي"),
+    cand("islamqa", "هل يجوز لمن صلى على الجنازة أن يعيد الصلاة عليها؟", "صلاة الجنازة"),
+  ];
+
+  it("كل نص يحمل معرّفه في القائمة المرسلة", () => {
+    const list = rerankList(make());
+    assert.match(list, /\[S1\] hadeethenc — إن الله تابع الوحي/);
+    assert.match(list, /\[S3\] islamqa — هل يجوز لمن صلى على الجنازة/);
+  });
+
+  it("رد مرتب بغير ترتيب القائمة لا يزيح الدرجات (حالة ref-02)", () => {
+    const cands = make();
+    applyScores(cands, [
+      { id: "S3", score: 0 },
+      { id: "S1", score: 3 },
+      { id: "S2", score: 2 },
+    ]);
+    assert.deepEqual(cands.map((c) => c.score), [3, 2, 0]);
+  });
+
+  it("المعرّف بصيغ مختلفة، وما لم يُقيَّم 0، وما يفوق 3 يُقصّ", () => {
+    const cands = make();
+    applyScores(cands, [
+      { id: "[S2]", score: 9 },
+      { id: "1", score: 2 },
+    ]);
+    assert.deepEqual(cands.map((c) => c.score), [2, 3, 0]);
+  });
+});
+
+describe("تنظيف نص أدوات MCP", () => {
+  it("يحذف الفواصل وتعليمات الخادم ويبقي الحديث", () => {
+    const raw =
+      "──────── RETRIEVED FROM HADEETHENC — published text ────────\nيا رسول الله، نرى الجهاد أفضل العمل، أفلا نجاهد؟ قال: لا، لكن أفضل الجهاد: حج مبرور [EXACT] the narration itself — reproduce these words exactly, without changing anything\nالدرجة: صحيح\n──────── CITE ────────\nEvery result you carry into your reply must bring the URL";
+    const out = cleanToolText(raw);
+    assert.match(out, /أفضل الجهاد: حج مبرور/);
+    assert.match(out, /الدرجة: صحيح/);
+    assert.doesNotMatch(out, /EXACT|reproduce|RETRIEVED|CITE|Every result/);
   });
 });

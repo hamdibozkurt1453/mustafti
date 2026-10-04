@@ -7,11 +7,10 @@ import { callTool, toolData, toolText } from "@/lib/mcp";
 import { search, SOURCE_DEADLINE_MS, type SourceId, type SourceResult } from "@/lib/sources";
 import { clip, htmlToText } from "@/lib/sources/html";
 import { findTool } from "@/lib/sources/mcp-search";
-import { politeFetch } from "@/lib/sources/polite-fetch";
 import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin";
 import type { Classification } from "./classify";
 import { findTerms } from "./glossary";
-import { clean, keywords, prerank, STOP, type Candidate as RankCandidate } from "./rank";
+import { applyScores, clean, cleanToolText, keywords, prerank, rerankList, STOP, type Candidate as RankCandidate } from "./rank";
 import { matchKey } from "./guard";
 import type { Passage } from "./prompts";
 
@@ -43,7 +42,11 @@ export type RetrievalDiag = {
   rerank: "llm" | "keywords";
 };
 
-export const RETRIEVAL_SOURCES: SourceId[] = ["islamhouse", "hadeethenc", "quranenc", "byenah", "risala", "islamqa"];
+/**
+ * مصادر البحث الآلي: منصات الجمعية عبر MCP. بيان الإسلام ورسالة الحرمين والإسلام سؤال وجواب
+ * صارت «رابط فقط» لأن بحثها يعيد النتائج نفسها مهما كان السؤال (registry.ts).
+ */
+export const RETRIEVAL_SOURCES: SourceId[] = ["islamhouse", "hadeethenc", "quranenc"];
 /** مهلة كل مصدر: المهلة الموحدة 6 ثوانٍ (S5، للسرعة). */
 const SEARCH_DEADLINE_MS = SOURCE_DEADLINE_MS;
 const RETRY_WAIT_MS = 2_500;
@@ -113,31 +116,37 @@ async function searchSources(queries: { q: string; lang: string }[], diag: Searc
   return (await Promise.all(jobs)).flat();
 }
 
-/** «بيّنات» من جدول Supabase (supabase/bayyinat.sql) ببحث نصي على fts. */
-export async function searchBayyinat(terms: string[], diag: SearchDiag[]): Promise<Candidate[]> {
-  if (!isAdminClientConfigured() || !terms.length) return [];
+/**
+ * «بيّنات» عبر الدالة public.search_bayyinat(q, n) في Supabase (أي كلمة مع تشابه الحروف).
+ * تُمرَّر لها صيغة السؤال كما كتبها السائل إن كانت عربية، وإلا كلمات البحث العربية.
+ */
+export async function searchBayyinat(q: string, diag: SearchDiag[], n = 5): Promise<Candidate[]> {
+  if (!isAdminClientConfigured() || !q.trim()) return [];
   const t0 = Date.now();
-  // fts بإعداد simple: الكلمة كما هي، فنبحث بها وبصيغتها مع «ال».
-  const words = [...new Set(terms.flatMap((t) => [t, `ال${t}`]))]
-    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ""))
-    .filter(Boolean)
-    .slice(0, 16);
-  const { data, error } = await createAdminClient()
-    .from("bayyinat")
-    .select("number, question, answer, page, source_url")
-    .textSearch("fts", words.join(" | "))
-    .limit(8);
-  diag.push({ query: words.slice(0, 6).join(" | "), lang: "ar", source: "bayyinat", results: data?.length ?? 0, ms: Date.now() - t0 });
-  if (error || !data) return [];
-  return data.map((row) => ({
-    title: `بيّنات — السؤال رقم ${row.number}${row.page ? `، ص ${row.page}` : ""}: ${String(row.question).replace(/﴿\s*﴾/g, "")}`,
-    text: `${String(row.question)}\n${String(row.answer)}`.replace(/﴿\s*﴾/g, "").replace(/[ \t]+/g, " ").trim(),
-    // علامة # برقم السؤال: الرابط نفسه لكل الأجوبة، فلا يحذفها التنظيف مكرراً.
-    url: `${row.source_url || BAYYINAT_URL}#${row.number}`,
-    source: `بيّنات — السؤال رقم ${row.number}${row.page ? `، ص ${row.page}` : ""}`,
-    sourceId: "bayyinat" as const,
-    lang: "ar",
-  }));
+  const { data, error } = await createAdminClient().rpc("search_bayyinat", { q: q.trim().slice(0, 300), n });
+  const rows = (Array.isArray(data) ? data : []) as {
+    number: number;
+    question: string;
+    answer: string;
+    page: number | null;
+    source_url: string | null;
+    score?: number;
+  }[];
+  diag.push({ query: q.slice(0, 80), lang: "ar", source: "bayyinat", results: rows.length, ms: Date.now() - t0 });
+  if (error) console.warn("search_bayyinat:", error.message);
+  return rows.map((row) => {
+    const label = `بيّنات — السؤال رقم ${row.number}${row.page ? `، ص ${row.page}` : ""}`;
+    const question = String(row.question).replace(/﴿\s*﴾/g, "").trim();
+    return {
+      title: `${label}: ${question}`,
+      text: `${question}\n${String(row.answer)}`.replace(/﴿\s*﴾/g, "").replace(/[ \t]+/g, " ").trim(),
+      // علامة # برقم السؤال: الرابط نفسه لكل الأجوبة، فلا يحذفها التنظيف مكرراً.
+      url: `${row.source_url || BAYYINAT_URL}#${row.number}`,
+      source: label,
+      sourceId: "bayyinat" as const,
+      lang: "ar",
+    };
+  });
 }
 
 /** قاموس المرجعية (ص 7) نصاً معتمداً للمصطلحات الواردة في السؤال (التوحيد، الشريعة…). */
@@ -181,12 +190,13 @@ function deepPick(node: unknown, keys: string[], depth = 0): string | undefined 
 const GRADE_RE = /(?:Grade|Hadith grade|الدرجة|درجة الحديث|الحكم|Derecesi|Degré|درجہ|Derajat)\s*[:：]\s*([^\n|]{2,60})/i;
 
 /**
- * تفاصيل نتيجة MCP بمعرّفها: get_hadith / get_library_item أولاً، ثم fetch.
+ * تفاصيل نتيجة MCP بمعرّفها الكامل من search (مثل "hadith:66212:ar"): fetch أولاً، ثم
+ * get_hadith / get_library_item بالرقم.
  * معطيات الأداة من مخططها (اسم حقل المعرّف ونوعه). يُخزَّن 24 ساعة.
  */
 export function mcpDetail(ref: string, lang: string, kind: "hadith" | "library"): Promise<{ text: string; grade?: string } | null> {
   return cached(`brain:detail:${kind}:${lang}:${ref}`, DAY, async () => {
-    const names = kind === "hadith" ? ["get_hadith", "fetch"] : ["get_library_item", "fetch"];
+    const names = kind === "hadith" ? ["fetch", "get_hadith"] : ["fetch", "get_library_item"];
     for (const name of names) {
       const tool = await findTool(name);
       const props = tool?.inputSchema.properties ?? {};
@@ -206,16 +216,15 @@ export function mcpDetail(ref: string, lang: string, kind: "hadith" | "library")
         if (result.isError) continue;
         const data = toolData(result);
         const raw = toolText(result);
+        const explanation = deepPick(data, ["explanation", "sharh", "explanation_text", "commentary"]);
+        // بلا شرح في البيانات المنظمة: النص الكامل بعد التنظيف (فيه الحديث والشرح والدرجة).
         const body =
           kind === "hadith"
-            ? [
-                deepPick(data, ["hadeeth", "hadith", "text", "arabic_text", "content"]),
-                deepPick(data, ["explanation", "sharh", "explanation_text", "commentary"]),
-              ]
-                .filter(Boolean)
-                .join("\n")
+            ? explanation
+              ? [deepPick(data, ["hadeeth", "hadith", "text", "arabic_text", "content"]), explanation].filter(Boolean).join("\n")
+              : ""
             : [deepPick(data, ["description", "summary", "content", "text", "body"])].filter(Boolean).join("\n");
-        const text = clip(htmlToText(body || raw.replace(/[#*_`>]/g, "")), PASSAGE_CHARS);
+        const text = clip(htmlToText(body || cleanToolText(raw)), PASSAGE_CHARS);
         const grade = deepPick(data, ["grade", "hadith_grade", "grade_ar", "hukm", "degree", "authenticity"]) ?? raw.match(GRADE_RE)?.[1]?.trim();
         if (text.length > 20) return { text, grade };
       } catch {
@@ -226,26 +235,6 @@ export function mcpDetail(ref: string, lang: string, kind: "hadith" | "library")
   });
 }
 
-/** المقتطف الفعلي من صفحة (بيان الإسلام): أكثر مقطع فيه كلمات السؤال، باحترام robots.txt. */
-export async function pageExcerpt(url: string, terms: string[]): Promise<string | null> {
-  const text = await cached(`brain:page:${url}`, DAY, async () => {
-    const page = await politeFetch(url, { respectRobots: true });
-    const main = page.text.match(/<(article|main)\b[\s\S]*?<\/\1>/i)?.[0] ?? page.text;
-    return htmlToText(main).slice(0, 40_000);
-  }).catch(() => "");
-  if (!text) return null;
-  const sentences = text.split(/(?<=[.!؟?。])\s+/);
-  let best = { i: 0, s: -1 };
-  for (let i = 0; i < sentences.length; i++) {
-    const window = sentences.slice(i, i + 4).join(" ");
-    const keys = new Set(keywords(window));
-    const s = terms.reduce((acc, t) => acc + (keys.has(t) ? 1 : 0), 0);
-    if (s > best.s) best = { i, s };
-  }
-  if (best.s <= 0) return null;
-  return clip(sentences.slice(Math.max(0, best.i - 1), best.i + 6).join(" "), PASSAGE_CHARS);
-}
-
 function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   return Promise.race([p.catch(() => fallback), new Promise<T>((r) => (timer = setTimeout(() => r(fallback), ms)))]).finally(() =>
@@ -253,9 +242,9 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   );
 }
 
-/** يثري أعلى المرشحين: 3 أحاديث (شرح + درجة)، وصفحتان من بيان الإسلام، ومادتان من IslamHouse. */
-async function enrich(cands: Candidate[], terms: string[], lang: string): Promise<Candidate[]> {
-  const quota: Partial<Record<Candidate["sourceId"], number>> = { hadeethenc: 3, byenah: 2, islamhouse: 2 };
+/** يثري أعلى المرشحين بمحتواهم: 4 أحاديث (نص + شرح + درجة)، و3 مواد من IslamHouse. */
+async function enrich(cands: Candidate[], lang: string): Promise<Candidate[]> {
+  const quota: Partial<Record<Candidate["sourceId"], number>> = { hadeethenc: 4, islamhouse: 3 };
   const used: Partial<Record<Candidate["sourceId"], number>> = {};
   return Promise.all(
     cands.map(async (c) => {
@@ -268,10 +257,6 @@ async function enrich(cands: Candidate[], terms: string[], lang: string): Promis
         const d = await withTimeout(mcpDetail(ref, c.lang ?? lang, c.sourceId === "hadeethenc" ? "hadith" : "library"), 6_000, null);
         return d ? { ...c, text: d.text, grade: c.grade ?? d.grade, enriched: true } : c;
       }
-      if (c.sourceId === "byenah") {
-        const ex = await withTimeout(pageExcerpt(c.url, terms), 6_000, null);
-        return ex ? { ...c, text: ex, enriched: true } : c;
-      }
       return c;
     }),
   );
@@ -282,33 +267,31 @@ async function enrich(cands: Candidate[], terms: string[], lang: string): Promis
 // ---------------------------------------------------------------------------
 
 const RerankSchema = z.object({
-  scores: z.array(z.object({ i: z.number().int(), score: z.number().int().min(0).max(3) })),
+  scores: z.array(z.object({ id: z.string(), score: z.number().int().min(0).max(3) })),
 });
 
 const RERANK_SYSTEM = `You rate retrieved passages for an Islamic Q&A tool. You do NOT answer the question.
-For each passage give a relevance score:
+Each passage has an id like S1, S2… For each passage give a relevance score:
 3 = directly answers the question or its core concept;
 2 = clearly relevant content that helps explain the answer;
 1 = shares a word or the topic but does not help answer;
 0 = unrelated.
 A book or article description without actual content is at most 1. A passage in another language is judged by its meaning.
-Return JSON {"scores":[{"i":<passage number>,"score":<0-3>}]} covering every passage.`;
+Return JSON {"scores":[{"id":"S1","score":<0-3>}, …]} with one entry per passage, using the exact ids given.`;
 
 async function rerank(question: string, cands: Candidate[]): Promise<{ cands: Candidate[]; mode: "llm" | "keywords" }> {
   const toRate = cands.filter((c) => c.score === undefined);
   if (!toRate.length) return { cands, mode: "llm" };
-  const list = toRate.map((c, i) => `[${i + 1}] ${c.source} — ${clip(c.title, 140)}\n${clip(c.text, 420)}`).join("\n\n");
   try {
     const res = await chatJson(
       [
         { role: "system", content: RERANK_SYSTEM },
-        { role: "user", content: `QUESTION: """${question}"""\n\nPASSAGES:\n${list}` },
+        { role: "user", content: `QUESTION: """${question}"""\n\nPASSAGES:\n${rerankList(toRate)}` },
       ],
       RerankSchema,
-      { temperature: 0, schemaName: "relevance", maxTokens: 600, timeoutMs: 20_000, retries: 1 },
+      { temperature: 0, schemaName: "relevance", maxTokens: 700, timeoutMs: 20_000, retries: 1 },
     );
-    const byIndex = new Map(res.data.scores.map((s) => [s.i, s.score]));
-    toRate.forEach((c, i) => (c.score = byIndex.get(i + 1) ?? 0));
+    applyScores(toRate, res.data.scores);
     return { cands, mode: "llm" };
   } catch {
     // احتياط بلا نموذج: تداخل الكلمات.
@@ -342,7 +325,10 @@ export async function retrieve(
   const terms = [...new Set([...keywords(question), ...queries.flatMap((q) => keywords(q.q))])];
   const glossary = glossaryCandidates(question);
 
-  const run = () => Promise.all([searchSources(queries, diag.searches), searchBayyinat(terms, diag.searches).catch(() => [])]);
+  // «بيّنات»: السؤال كما كتبه السائل إن كان عربياً، وإلا كلمات البحث العربية.
+  const bayyinatQuery = /[\u0600-\u06FF]/.test(question) && c.lang === "ar" ? question : c.searchQueries.ar.join(" ");
+  const run = () =>
+    Promise.all([searchSources(queries, diag.searches), searchBayyinat(bayyinatQuery, diag.searches).catch(() => [])]);
   let [found, bayyinat] = await run();
   if (!found.length && !bayyinat.length) {
     diag.retried = true;
@@ -359,7 +345,7 @@ export async function retrieve(
   const pool = prerank(cleaned, terms, RERANK_POOL).map((x) => (x.sourceId === "bayyinat" && shubha ? { ...x, kw: x.kw! + 2 } : x));
   diag.counts.ranked = pool.length;
 
-  const enriched = await enrich(pool, terms, c.lang);
+  const enriched = await enrich(pool, c.lang);
   const reranked = await rerank(question, enriched);
   const mode = reranked.mode;
   // القاموس نص المرجعية نفسها: يُقبل دائماً للمصطلح الوارد في السؤال.

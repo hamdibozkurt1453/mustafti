@@ -45,30 +45,49 @@ async function connect(): Promise<Client> {
   const transport = new StreamableHTTPClientTransport(new URL(mcpUrl()), {
     requestInit: { headers: { "User-Agent": "MustaftiBot/1.0 (+https://mustafti.com)" } },
   });
-  client.onerror = () => reset();
-  transport.onclose = () => reset();
+  // يُلغى الاتصال المشترك فقط إن كان هو هذا العميل نفسه: إغلاق عميل قديم (بعد إعادة الاتصال)
+  // كان يطلق onclose فيُغلق العميل الجديد، فتفشل الاستدعاءات التالية بـ «Not connected».
+  client.onerror = () => resetIf(client);
+  transport.onclose = () => resetIf(client);
   await withTimeout(client.connect(transport), CONNECT_TIMEOUT_MS, "mcp connect");
   return client;
 }
 
+let current: Client | null = null;
+
 function reset() {
   const old = clientPromise;
   clientPromise = null;
+  current = null;
   old?.then((c) => c.close()).catch(() => {});
+}
+
+function resetIf(client: Client) {
+  if (current === client) reset();
 }
 
 async function getClient(): Promise<Client> {
   if (!clientPromise) {
-    clientPromise = connect().catch((error) => {
-      clientPromise = null;
-      throw error;
-    });
+    const promise = connect().then(
+      (c) => {
+        if (clientPromise === promise) current = c;
+        return c;
+      },
+      (error) => {
+        if (clientPromise === promise) clientPromise = null;
+        throw error;
+      },
+    );
+    clientPromise = promise;
   }
   return clientPromise;
 }
 
+const DISCONNECTED = /not connected|session|closed|terminated|ECONNRESET|fetch failed|socket/i;
+
 /**
- * ينفذ عملية على العميل، ويعيد الاتصال مرة واحدة إن انتهت الجلسة أو انقطع الاتصال.
+ * ينفذ عملية على العميل المشترك، ويعيد الاتصال مرة واحدة إن انتهت الجلسة أو انقطع الاتصال.
+ * وإن فشلت الإعادة بانقطاع أيضاً (نسخ خادم متوازية تتشارك العميل)، فعميل مستقل لهذا الطلب وحده.
  * انتهاء المهلة لا يُعاد (إعادته تضاعف الانتظار فقط).
  */
 async function withClient<T>(run: (client: Client) => Promise<T>): Promise<T> {
@@ -77,7 +96,17 @@ async function withClient<T>(run: (client: Client) => Promise<T>): Promise<T> {
   } catch (error) {
     if (/timed? ?out|timeout/i.test(String((error as Error)?.message ?? error))) throw error;
     reset();
-    return run(await getClient());
+    try {
+      return await run(await getClient());
+    } catch (second) {
+      if (!DISCONNECTED.test(String((second as Error)?.message ?? second))) throw second;
+      const own = await connect();
+      try {
+        return await run(own);
+      } finally {
+        own.close().catch(() => {});
+      }
+    }
   }
 }
 
