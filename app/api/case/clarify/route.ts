@@ -8,7 +8,7 @@ import { ChapterSchema, guardCaseRequest, KindSchema, LangSchema, QuestionSchema
  * والمتصفح يعرضها سؤالاً سؤالاً (بلا طلب لكل سؤال).
  */
 export const dynamic = "force-dynamic";
-export const maxDuration = 90;
+export const maxDuration = 120;
 
 const Body = z.object({
   question: QuestionSchema,

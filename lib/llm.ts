@@ -8,7 +8,9 @@ import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin
  *
  * - النموذج من LLM_MODEL، والمفتاح من OPENROUTER_API_KEY (Vercel فقط).
  * - chat(): جواب كامل. chatStream(): بث كلمة بكلمة. chatJson(): JSON مضبوط بمخطط Zod.
- * - مهلة زمنية، وإعادة محاولة عند 429 و5xx وانقطاع الشبكة، وعدّاد يومي يتوقف عند DAILY_LLM_LIMIT.
+ * - مهلة زمنية (للطلب وقراءة الجواب معاً)، وإعادة محاولة عند 429 و5xx والمهلة وانقطاع الشبكة والجواب
+ *   التالف، ثم النموذج الاحتياطي LLM_FALLBACK_MODEL مرة واحدة إن ضُبط (للجواب الكامل وللبث قبل أول جزء).
+ *   وعدّاد يومي يتوقف عند DAILY_LLM_LIMIT.
  *
  * الهوية (الخطة 0.5): لا يصل إلى المستخدم أي نص يذكر اسم النموذج أو الشركة.
  * لذلك كل خطأ يُرمى من نوع LlmError، ولا يُعرض للمستخدم منه إلا userMessage(lang)،
@@ -33,6 +35,10 @@ export type LlmOptions = {
   timeoutMs?: number;
   /** عدد مرات إعادة المحاولة بعد الفشل المؤقت. */
   retries?: number;
+  /** الانتظار قبل الإعادة بالمللي ثانية (0 = إعادة فورية). الافتراضي: تزايد تدريجي. */
+  retryDelayMs?: number;
+  /** لا يُستعمل النموذج الاحتياطي (LLM_FALLBACK_MODEL) لهذا الطلب. */
+  noFallback?: boolean;
   signal?: AbortSignal;
 };
 
@@ -43,7 +49,13 @@ export type LlmUsage = {
   costUsd: number | null;
 };
 
-export type LlmResult = { text: string; usage: LlmUsage; latencyMs: number };
+export type LlmResult = {
+  text: string;
+  usage: LlmUsage;
+  latencyMs: number;
+  /** النموذج الذي أجاب فعلاً (الأساسي أو الاحتياطي). للسجلات والتشخيص فقط. */
+  model?: string;
+};
 
 export type LlmErrorCode =
   | "not_configured"
@@ -111,6 +123,11 @@ export function llmUserMessage(error: unknown, lang = "ar"): string {
 
 export function llmModel(): string {
   return (process.env.LLM_MODEL ?? "").trim();
+}
+
+/** نموذج احتياطي عند تعطل المزوّد (LLM_FALLBACK_MODEL)، أو "" إن لم يُضبط. */
+export function llmFallbackModel(): string {
+  return (process.env.LLM_FALLBACK_MODEL ?? "").trim();
 }
 
 export function isLlmConfigured(): boolean {
@@ -205,7 +222,7 @@ async function post(body: Body, opts: LlmOptions): Promise<Response> {
   let lastError: LlmError = new LlmError("unavailable");
 
   for (let attempt = 0; attempt <= retries; attempt++) {
-    if (attempt > 0) await sleep(600 * 2 ** (attempt - 1) + Math.random() * 300);
+    if (attempt > 0) await sleep(opts.retryDelayMs ?? 600 * 2 ** (attempt - 1) + Math.random() * 300);
     const signals = [AbortSignal.timeout(timeoutMs)];
     if (opts.signal) signals.push(opts.signal);
     try {
@@ -253,17 +270,58 @@ function toUsage(u: RawUsage): LlmUsage {
   };
 }
 
-async function complete(body: Body, opts: LlmOptions): Promise<LlmResult> {
+/** يمكن تجربة النموذج الاحتياطي بعد هذا الخطأ؟ (أعطال المزوّد، لا أخطاء الطلب نفسه) */
+function canFallback(error: unknown, body: Body, opts: LlmOptions): string | null {
+  const fallback = llmFallbackModel();
+  if (!fallback || opts.noFallback || opts.model || opts.signal?.aborted) return null;
+  if (fallback === body.model) return null;
+  if (!(error instanceof LlmError) || !error.retryable) return null;
+  return fallback;
+}
+
+/**
+ * محاولة واحدة كاملة: الطلب وقراءة الجواب تحت مهلة واحدة. انتهاء المهلة أثناء قراءة الجواب
+ * يُعدّ «timeout» (كان يظهر «invalid JSON response»: OpenRouter يرسل الترويسات أولاً ثم الجواب).
+ */
+async function completeOnce(body: Body, opts: LlmOptions): Promise<LlmResult> {
   const started = Date.now();
-  const res = await post(body, opts);
-  const json = (await res.json().catch(() => null)) as {
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const res = await post(body, { ...opts, retries: 0 });
+  let json: {
     choices?: { message?: { content?: string | null } }[];
     usage?: RawUsage;
-    error?: { message?: string };
-  } | null;
+    error?: { message?: string; code?: number };
+  } | null = null;
+  try {
+    json = await res.json();
+  } catch (error) {
+    if (opts.signal?.aborted) throw new LlmError("timeout", "aborted by caller");
+    const name = (error as Error)?.name;
+    if (name === "TimeoutError" || name === "AbortError") throw new LlmError("timeout", `no complete response in ${timeoutMs}ms`);
+    throw new LlmError("unavailable", "invalid JSON response");
+  }
   if (!json || json.error) throw new LlmError("unavailable", json?.error?.message ?? "invalid JSON response");
   const text = json.choices?.[0]?.message?.content ?? "";
-  return { text, usage: toUsage(json.usage), latencyMs: Date.now() - started };
+  return { text, usage: toUsage(json.usage), latencyMs: Date.now() - started, model: String(body.model) };
+}
+
+/** المحاولة وإعادتها (للأعطال المؤقتة)، ثم النموذج الاحتياطي مرة واحدة إن ضُبط. */
+async function complete(body: Body, opts: LlmOptions): Promise<LlmResult> {
+  const retries = opts.retries ?? DEFAULT_RETRIES;
+  let lastError: unknown = new LlmError("unavailable");
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (attempt > 0) await sleep(opts.retryDelayMs ?? 600 * 2 ** (attempt - 1) + Math.random() * 300);
+    try {
+      return await completeOnce(body, opts);
+    } catch (error) {
+      lastError = error;
+      if (!(error instanceof LlmError) || !error.retryable || opts.signal?.aborted) break;
+    }
+  }
+  const fallback = canFallback(lastError, body, opts);
+  if (!fallback) throw lastError;
+  console.warn(`llm: primary failed (${(lastError as LlmError).code}), trying fallback model`);
+  return completeOnce({ ...body, model: fallback }, opts);
 }
 
 // ---------------------------------------------------------------------------
@@ -289,7 +347,17 @@ export async function* chatStream(
 ): AsyncGenerator<string, StreamDone, void> {
   await consumeDailyQuota();
   const started = Date.now();
-  const res = await post({ ...baseBody(messages, opts), stream: true }, opts);
+  const body = { ...baseBody(messages, opts), stream: true };
+  let res: Response;
+  try {
+    res = await post(body, opts);
+  } catch (error) {
+    // قبل أول جزء فقط: النموذج الاحتياطي إن ضُبط.
+    const fallback = canFallback(error, body, opts);
+    if (!fallback) throw error;
+    console.warn(`llm: primary stream failed (${(error as LlmError).code}), trying fallback model`);
+    res = await post({ ...body, model: fallback }, { ...opts, retries: 0 });
+  }
   if (!res.body) throw new LlmError("unavailable", "empty stream");
 
   const reader = res.body.getReader();

@@ -7,7 +7,7 @@
     "generatedMax": 6,
     "rulingMin": 2,
     "rulingMax": 4,
-    "extraMin": 1,
+    "extraMin": 0,
     "extraMax": 2
   },
   "generationRules": {
@@ -224,7 +224,11 @@
           "en": "Necessity or dire need"
         }
       ],
-      "required": false
+      "required": false,
+      "hideIf": [
+        "missed_reason",
+        "talaq_anger"
+      ]
     },
     {
       "key": "asked_before",
@@ -1350,7 +1354,13 @@
               "en": "Improvement or investment"
             }
           ],
-          "required": false
+          "required": false,
+          "showIf": {
+            "key": "finance_type",
+            "notIn": [
+              "work_income"
+            ]
+          }
         },
         {
           "key": "work_tasks",
