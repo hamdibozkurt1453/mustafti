@@ -44,9 +44,10 @@
 
 ### 3.4 روابط الموقع
 1. **Authentication** ← **URL Configuration**.
-2. **Site URL:** اكتب `https://mustafti.com` ← **Save**.
+2. **Site URL:** اكتب `https://mustafti.vercel.app` ← **Save** (وبعد ربط النطاق غيّره إلى `https://mustafti.com`).
 3. **Redirect URLs** ← **Add URL**، وأضف هذه واحداً واحداً:
-   - `https://mustafti.com/**`
+   - `https://mustafti.vercel.app/**`
+   - `https://mustafti.com/**` (للنطاق بعد ربطه)
    - `http://localhost:3000/**` (للتشغيل على جهازك)
    - رابط معاينات Vercel: افتح أي نشر معاينة في Vercel وانسخ أوله. إن كان مثلاً `https://mustafti-abc123-hamdis-projects.vercel.app` فأضف `https://mustafti-*-hamdis-projects.vercel.app/**` (ضع اسم فريقك الحقيقي مكان `hamdis-projects`).
 
@@ -77,18 +78,18 @@
 
 ## 5) جرّب
 
-1. افتح `https://mustafti.com/ar/register` وأنشئ حساباً **ببريدك نفسه الذي وضعته في `ADMIN_EMAILS`**، بكلمة مرور قوية.
+1. افتح `https://mustafti.vercel.app/ar/register` وأنشئ حساباً **ببريدك نفسه الذي وضعته في `ADMIN_EMAILS`**، بكلمة مرور قوية.
 2. افتح بريدك واضغط رابط التأكيد (قد يكون في Spam). ستدخل تلقائياً إلى صفحة «حسابك».
    - إن لم تصل الرسالة: Supabase ← **Authentication** ← **Users** ← بريدك ← **⋯** ← **Send magic link**، أو انتظر قليلاً (حد البريد المجاني).
-3. افتح `https://mustafti.com/ar/<ADMIN_PATH>` (الكلمة السرية التي اخترتها).
+3. افتح `https://mustafti.vercel.app/ar/<ADMIN_PATH>` (الكلمة السرية التي اخترتها).
 4. سيظهر رمز QR: افتح تطبيق المصادقة ← **+** ← **Scan QR code** ← امسح الرمز، ثم اكتب الأرقام الستة ← **تحقّق**.
 5. تظهر «لوحة المشرف» ودورك: **مشرف أعلى**. ✅
 6. في كل دخول لاحق للوحة يطلب الرمز من التطبيق فقط.
 
 **اختبارات الحماية:**
-- افتح `https://mustafti.com/ar/<ADMIN_PATH>` من نافذة متخفية (بلا دخول) ← يجب أن تظهر **الصفحة غير موجودة**.
+- افتح `https://mustafti.vercel.app/ar/<ADMIN_PATH>` من نافذة متخفية (بلا دخول) ← يجب أن تظهر **الصفحة غير موجودة**.
 - أنشئ حساباً ثانياً ببريد آخر وافتح الرابط نفسه ← **الصفحة غير موجودة**.
-- `https://mustafti.com/ar/me` بلا دخول ← يحوّلك إلى صفحة الدخول.
+- `https://mustafti.vercel.app/ar/me` بلا دخول ← يحوّلك إلى صفحة الدخول.
 
 ## مشكلات شائعة
 

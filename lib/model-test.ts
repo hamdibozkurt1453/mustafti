@@ -15,9 +15,10 @@ import { chatJson, chatStream, LlmError, type ChatMessage } from "@/lib/llm";
  */
 
 export const CANDIDATE_MODELS = [
-  { id: "qwen/qwen3.8-omni-flash", role: "الأساسي (المرشح الأول)" },
+  { id: "google/gemma-4-31b-it", role: "الأساسي (المرشح الأول)" },
+  { id: "qwen/qwen3.8-omni-flash", role: "للمقارنة" },
   { id: "google/gemini-3.8-flash", role: "الأقوى (للمقارنة)" },
-  { id: "xiaomi/mimo-v2.6-flash", role: "بديل رخيص" },
+  { id: "xiaomi/mimo-v2.6-flash", role: "بديل رخيص (للمقارنة)" },
 ] as const;
 
 type Level = "A" | "B" | "C" | "D";
@@ -177,7 +178,7 @@ export async function runModel(model: string, role: string): Promise<ModelReport
   };
 }
 
-/** يشغّل الاختبار على النماذج الثلاثة بالتوازي (كل نموذج يمر على الأسئلة بالتتابع). */
+/** يشغّل الاختبار على النماذج المرشحة الأربعة بالتوازي (كل نموذج يمر على الأسئلة بالتتابع). */
 export async function runModelTest(models = CANDIDATE_MODELS.map((m) => ({ id: m.id as string, role: m.role as string }))) {
   const reports = await Promise.all(models.map((m) => runModel(m.id, m.role)));
   return { ranAt: new Date().toISOString(), reports, recommendation: recommend(reports) };
