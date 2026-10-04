@@ -4,7 +4,7 @@ import type { Locale } from "@/i18n/locales";
 
 export type PageKey =
   | "case" | "me" | "prayer" | "adhkar" | "newMuslim" | "about"
-  | "privacy" | "eval" | "login" | "expertsJoin" | "expert" | "admin";
+  | "privacy" | "eval" | "login" | "register" | "expertsJoin" | "expert" | "admin";
 
 /** هيكل صفحة بعنوانها ووصفها، يُملأ في الجلسات اللاحقة. */
 export async function PagePlaceholder({ page }: { page: PageKey }) {

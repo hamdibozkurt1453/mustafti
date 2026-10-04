@@ -10,18 +10,18 @@ import { safeNext } from "@/lib/auth/safe-next";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  return { ...(await placeholderMetadata(locale, "login")), robots: { index: false } };
+  return { ...(await placeholderMetadata(locale, "register")), robots: { index: false } };
 }
 
-/** `/login` — الدخول بالبريد وكلمة المرور، أو برابط على البريد. */
-export default async function LoginPage({ params, searchParams }: Props) {
+/** `/register` — إنشاء حساب بالبريد وكلمة المرور. */
+export default async function RegisterPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { next, error } = await searchParams;
+  const { next } = await searchParams;
   setRequestLocale(locale as Locale); // اللغة متحقق منها في layout
 
   const target = next ? safeNext(next, locale) : "";
@@ -29,8 +29,8 @@ export default async function LoginPage({ params, searchParams }: Props) {
 
   const t = await getTranslations("auth");
   return (
-    <AuthShell title={t("loginTitle")} lead={t("loginLead")}>
-      <AuthForm mode="login" next={target} initialError={error === "link" ? "link" : undefined} />
+    <AuthShell title={t("registerTitle")} lead={t("registerLead")}>
+      <AuthForm mode="register" next={target} />
     </AuthShell>
   );
 }

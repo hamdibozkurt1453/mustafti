@@ -152,6 +152,10 @@
     "admin": {
       "title": "Admin dashboard",
       "description": "Scholar applications, cases, admins and statistics."
+    },
+    "register": {
+      "title": "Create an account",
+      "description": "Register to keep your questions and cases. You don't need an account to ask."
     }
   },
   "notFound": {
@@ -231,5 +235,62 @@
     "thinking": "Typing…",
     "newChat": "New chat",
     "label": "Conversation"
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "loginLead": "Sign in to keep your questions and cases in one place. You don't need an account to ask.",
+    "registerTitle": "Create an account",
+    "registerLead": "Free and open to everyone. We never ask for your identity.",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least 8 characters",
+    "displayName": "Name (optional)",
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "sending": "Please wait…",
+    "methodPassword": "Password",
+    "methodMagic": "Email link",
+    "magicHint": "We'll email you a sign-in link — no password needed.",
+    "sendMagic": "Email me a link",
+    "noAccount": "No account yet?",
+    "haveAccount": "Already have an account?",
+    "toRegister": "Create one",
+    "toLogin": "Sign in",
+    "sentMagic": "Check your inbox: we sent you a sign-in link.",
+    "sentConfirm": "Check your inbox: we sent you a link to confirm your account.",
+    "errors": {
+      "invalid": "Incorrect email or password.",
+      "unconfirmed": "Please confirm your email first, using the link we sent you.",
+      "weakPassword": "Choose a password of at least 8 characters.",
+      "exists": "An account with this email already exists. Sign in instead.",
+      "rateLimited": "Too many attempts. Please wait a little and try again.",
+      "notConfigured": "Accounts are being set up and will be available soon.",
+      "generic": "Something went wrong. Please try again.",
+      "link": "This link is invalid or has expired. Request a new one."
+    },
+    "account": "Your account",
+    "signedInAs": "Signed in as",
+    "roleLabel": "Account type",
+    "roles": {
+      "user": "User",
+      "expert": "Scholar",
+      "super_admin": "Super admin",
+      "reviewer": "Reviewer",
+      "moderator": "Moderator",
+      "visitor": "Visitor"
+    },
+    "signOut": "Sign out"
+  },
+  "admin": {
+    "mfaTitle": "Two-step verification",
+    "mfaEnrollLead": "The admin dashboard requires two-step verification. Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…), then enter the 6-digit code.",
+    "mfaChallengeLead": "Enter the 6-digit code from your authenticator app.",
+    "mfaSecret": "Or enter this key manually:",
+    "mfaCode": "6-digit code",
+    "mfaVerify": "Verify",
+    "mfaError": "Incorrect code. Try again.",
+    "mfaLoading": "Loading…",
+    "dashboardLead": "You are signed in with two-step verification. The dashboard sections arrive in a later stage.",
+    "roleLabel": "Your role"
   }
 }
