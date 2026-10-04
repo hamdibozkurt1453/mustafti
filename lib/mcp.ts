@@ -3,21 +3,21 @@ import "server-only";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { cached, DAY, HOUR } from "@/lib/cache";
-import { createLimiter, RATE_LIMITED, retryingFetch, withRetry } from "@/lib/limiter";
+import { createLimiter, RATE_LIMITED, retryingFetch, TRANSIENT, withRetry } from "@/lib/limiter";
 
 /**
  * عميل خادم MCP الرسمي للجمعية (MCP_URL، بلا مفتاح) عبر Streamable HTTP.
  * - اتصال واحد يُعاد استعماله داخل نسخة الخادم، ويُعاد إنشاؤه تلقائياً عند انقطاعه.
  * - مهلة لكل طلب، وذاكرة مؤقتة: قائمة الأدوات ساعة، ونتائج الأدوات 24 ساعة.
  * - حماية الخادم من الضغط: 3 طلبات متزامنة على الأكثر في كل نسخة (والباقي ينتظر دوره)، وإعادة
- *   المحاولة مرتين عند 429 (Retry-After، وإلا 1 ثم 2 ثانية).
+ *   المحاولة عند 429 في HTTP (Retry-After)، وإعادة واحدة للاستدعاء عند 429 أو المهلة أو الانقطاع.
  */
 
 const DEFAULT_URL = "https://mcp.islamiccontent.org/mcp";
 const CONNECT_TIMEOUT_MS = 8_000;
-/** حد أعلى لكل استدعاء في المسار الحي (بعد الحصول على دور في الطابور). */
-export const CALL_TIMEOUT_MS = 4_000;
-const LIST_TIMEOUT_MS = 10_000;
+/** حد أعلى لكل استدعاء (بعد الحصول على دور في الطابور): الانتظار أفضل من الامتناع. */
+export const CALL_TIMEOUT_MS = 12_000;
+const LIST_TIMEOUT_MS = 12_000;
 /** أقصى عدد للطلبات المتزامنة إلى الخادم في كل نسخة. */
 export const MAX_CONCURRENT = 3;
 const limit = createLimiter(MAX_CONCURRENT);
@@ -144,8 +144,8 @@ export async function callTool(
     if (res.isError) throw new Error(`mcp tool ${name} error: ${toolText(res).slice(0, 200)}`);
     return res;
   };
-  // 429 داخل رد الأداة (لا في HTTP): إعادة المحاولة مرتين خارج الطابور (1s ثم 2s).
-  const run = () => withRetry(once);
+  // إعادة واحدة عند 429 أو تجاوز المهلة أو انقطاع الشبكة (بعد ثانية، خارج الطابور).
+  const run = () => withRetry(once, { retries: 1, match: TRANSIENT });
   const ttl = options.cacheTtlMs ?? DAY;
   if (ttl <= 0) return run();
   return cached(`mcp:call:${name}:${JSON.stringify(args)}`, ttl, run);

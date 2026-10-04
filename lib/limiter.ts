@@ -43,18 +43,20 @@ export function retryDelayMs(attempt: number, retryAfter?: string | null, now = 
 }
 
 export const RATE_LIMITED = /\b429\b|rate.?limit|too many requests/i;
+/** أخطاء عابرة تستحق إعادة واحدة: 429، وتجاوز المهلة، وانقطاع الشبكة. */
+export const TRANSIENT = /\b429\b|rate.?limit|too many requests|timed? ?out|timeout|ECONNRESET|ETIMEDOUT|fetch failed|socket|network|not connected/i;
 
-/** ينفذ job ويعيده حتى retries مرات إن كان الخطأ «429 / rate limit». */
+/** ينفذ job ويعيده حتى retries مرات إن طابق الخطأ match (افتراضياً «429 / rate limit»). */
 export async function withRetry<T>(
   job: () => Promise<T>,
-  { retries = 2, sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) } = {},
+  { retries = 2, match = RATE_LIMITED, sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) }: { retries?: number; match?: RegExp; sleep?: (ms: number) => Promise<void> } = {},
 ): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     try {
       return await job();
     } catch (error) {
       const msg = String((error as Error)?.message ?? error);
-      if (attempt >= retries || !RATE_LIMITED.test(msg)) throw error;
+      if (attempt >= retries || !match.test(msg)) throw error;
       await sleep(retryDelayMs(attempt + 1, (error as { retryAfter?: string }).retryAfter));
     }
   }

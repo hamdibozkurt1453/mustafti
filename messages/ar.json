@@ -238,8 +238,9 @@
     "label": "المحادثة",
     "stage": {
       "understanding": "يقرأ سؤالك…",
-      "searching": "يبحث في المصادر…",
-      "writing": "يصوغ الجواب من النصوص…"
+      "searching": "أبحث في المصادر…",
+      "writing": "أصوغ الجواب…",
+      "verifying": "أتحقق من الأدلة…"
     },
     "badgeOwn": "صياغة مُستفتي",
     "badgeQuoted": "نص منقول",

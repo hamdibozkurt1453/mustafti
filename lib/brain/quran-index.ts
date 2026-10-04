@@ -116,3 +116,97 @@ export function cleanForDisplay(text: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
+// ---------------------------------------------------------------------------
+// الآية المذكورة صراحةً في السؤال: «سورة يونس آية 2»، «السورة رقم 10 الآية 2»،
+// «الآية الثانية من سورة يونس»، «2:255»، «Surah 10 verse 2»، «Al-Baqarah 255».
+// ---------------------------------------------------------------------------
+
+/** توحيد عربي للمطابقة: بلا تشكيل، والألفات ألفاً، والتاء المربوطة هاءً، والألف المقصورة ياءً. */
+function normAr(text: string): string {
+  return text
+    .replace(/[ً-ٰٟـ]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, " ");
+}
+
+const normEn = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "").replace(/^(al|an|at|ad|ar|as|ash|az|az)(?=[a-z]{3})/, "");
+
+/** الأعداد الترتيبية 1–10 (مذكراً ومؤنثاً) بعد التوحيد. */
+const ORDINALS: [RegExp, number][] = [
+  [/^ال(?:اولي|اول)$/, 1],
+  [/^الثاني(?:ه)?$/, 2],
+  [/^الثالث(?:ه)?$/, 3],
+  [/^الرابع(?:ه)?$/, 4],
+  [/^الخامس(?:ه)?$/, 5],
+  [/^السادس(?:ه)?$/, 6],
+  [/^السابع(?:ه)?$/, 7],
+  [/^الثامن(?:ه)?$/, 8],
+  [/^التاسع(?:ه)?$/, 9],
+  [/^العاشر(?:ه)?$/, 10],
+];
+
+function ordinal(word: string | undefined): number | undefined {
+  return word ? ORDINALS.find(([re]) => re.test(word))?.[1] : undefined;
+}
+
+const AR_NAMES = SURAHS.map((s) => ({ n: s.n, key: normAr(s.ar).replace(/^ال/, "") }));
+const EN_NAMES = SURAHS.map((s) => ({ n: s.n, key: normEn(s.en) }));
+
+/** رقم السورة من الاسم بعد «سورة» (كلمتان أو كلمة). */
+function surahByArName(words: string[]): number | undefined {
+  for (const take of [2, 1]) {
+    const key = words.slice(0, take).join(" ").replace(/^ال/, "");
+    const hit = AR_NAMES.find((x) => x.key === key);
+    if (hit) return hit.n;
+  }
+  return undefined;
+}
+
+/** رقم السورة المذكورة في السؤال (رقماً، أو ترتيباً، أو اسماً عربياً أو إنجليزياً). */
+function surahInText(ar: string, raw: string): number | undefined {
+  const num = ar.match(/(?:^|\s)(?:ال)?سوره\s*(?:رقم\s*)?(\d{1,3})(?!\d)/)?.[1];
+  if (num) return Number(num);
+  const after = ar.match(/(?:^|\s)(?:ال)?سوره\s+(\S+)(?:\s+(\S+))?/);
+  if (after) {
+    const ord = ordinal(after[1]);
+    if (ord) return ord;
+    const byName = surahByArName([after[1], after[2] ?? ""].filter(Boolean));
+    if (byName) return byName;
+  }
+  const en = raw.match(/\bsurah?\s*(?:no\.?|number|#)?\s*(\d{1,3})\b/i)?.[1];
+  if (en) return Number(en);
+  const enName = raw.match(/\b(?:surah?|sura)\s+([a-z'\- ]{2,20}?)(?=\s*(?:,|:|verse|ayah|ayat|\d|$))/i)?.[1];
+  if (enName) return EN_NAMES.find((x) => x.key === normEn(enName))?.n;
+  return undefined;
+}
+
+/** رقم الآية المذكورة في السؤال (رقماً أو ترتيباً). */
+function ayahInText(ar: string, raw: string): number | undefined {
+  const num = ar.match(/(?:^|\s)(?:ال)?ايه\s*(?:رقم\s*)?(\d{1,3})(?!\d)/)?.[1];
+  if (num) return Number(num);
+  const ord = ordinal(ar.match(/(?:^|\s)(?:ال)?ايه\s+(\S+)/)?.[1]);
+  if (ord) return ord;
+  const en = raw.match(/\b(?:verse|ayah|ayat|aya|āyah)\s*(?:no\.?|number|#)?\s*(\d{1,3})\b/i)?.[1];
+  return en ? Number(en) : undefined;
+}
+
+/**
+ * الآية المذكورة صراحةً في السؤال (رقم السورة أو اسمها أو ترتيبها + رقم الآية أو ترتيبها).
+ * لا شيء إن لم تُذكر السورة والآية معاً، أو كانت الآية خارج عدد آيات سورتها.
+ */
+export function explicitVerseRef(text: string): { surah: number; ayah: number } | null {
+  const ar = normAr(text);
+  const surah = surahInText(ar, text);
+  const ayah = ayahInText(ar, text);
+  if (surah && ayah && isValidVerse(surah, ayah)) return { surah, ayah };
+  // «Al-Baqarah 255» أو «البقرة 255» بلا كلمة «آية».
+  const nameNum = ar.match(/(?:^|\s)(?:سوره\s+)?(\S+(?:\s\S+)?)\s+(\d{1,3})(?!\s*[:：\d])/);
+  if (nameNum && !surah) {
+    const n = surahByArName(nameNum[1].split(" ").slice(-2)) ?? surahByArName(nameNum[1].split(" ").slice(-1));
+    if (n && isValidVerse(n, Number(nameNum[2]))) return { surah: n, ayah: Number(nameNum[2]) };
+  }
+  return null;
+}

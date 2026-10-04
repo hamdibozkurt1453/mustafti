@@ -1,11 +1,12 @@
 import "server-only";
 
+import { cacheGet, cacheSet, DAY } from "@/lib/cache";
 import { chat, type ChatMessage } from "@/lib/llm";
 import { classify, type Classification } from "./classify";
 import { checkOutput, guardAndLog, matchKey, type GuardResult } from "./guard";
 import { looksPersonal, looksUrgent } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
-import { answerFormatIssues } from "./format";
+import { answerFormatIssues, unquoteReferenceOnly } from "./format";
 import { message } from "./messages";
 import { planCitations, type CitationPlan } from "./planner";
 import { retrieve, type RetrievalDiag } from "./retrieval";
@@ -119,13 +120,24 @@ async function generate(question: string, c: Classification, mode: AnswerMode, p
 }
 
 /** مراحل الرد (لمؤشر «يبحث في المصادر…» في المحادثة). */
-export type BrainStage = "understanding" | "searching" | "writing";
+export type BrainStage = "understanding" | "searching" | "verifying" | "writing";
+
+/** ميزانية السؤال كله: لا امتناع بسبب البطء قبلها (الاسترجاع حتى 32 ث، ثم الصياغة). */
+export const QUESTION_BUDGET_MS = 40_000;
+const RETRIEVAL_SHARE_MS = 32_000;
 
 export type RespondOptions = {
   history?: ChatMessage[];
   /** يُستدعى عند بدء كل مرحلة (للبث فقط؛ لا يغيّر شيئاً في الرد). */
   onStage?: (stage: BrainStage) => void;
+  /**
+   * ذاكرة الأجوبة (المحادثة): السؤال نفسه بلغته يأخذ الجواب نفسه بمصادره فوراً، 24 ساعة.
+   * لا تُخزَّن إلا الأجوبة (لا امتناع ولا رفض ولا خطأ)، ولا يُستعمل مع سياق محادثة سابق.
+   */
+  cache?: boolean;
 };
+
+const answerKey = (question: string) => `brain:answer:v1:${guessLang(question)}:${matchKey(question).slice(0, 400)}`;
 
 export async function respond(question: string, options: RespondOptions = {}): Promise<BrainReply> {
   const started = Date.now();
@@ -146,6 +158,12 @@ export async function respond(question: string, options: RespondOptions = {}): P
     ...r,
     timings: { ...r.timings, totalMs: Date.now() - started },
   });
+
+  const useCache = Boolean(options.cache) && !options.history?.length;
+  if (useCache) {
+    const hit = cacheGet<BrainReply>(answerKey(question));
+    if (hit) return { ...hit, timings: { totalMs: Date.now() - started } };
+  }
 
   // 1) «من أنت؟» و«ما النموذج؟»: رد ثابت بلا نموذج.
   if (probe === "who" || probe === "model") {
@@ -191,7 +209,11 @@ export async function respond(question: string, options: RespondOptions = {}): P
   // 4) A / B / C: الاسترجاع.
   stage("searching");
   const t0 = Date.now();
-  const found = await retrieve(c, question, plan, undefined, plan ? (failed) => planCitations(question, failed) : undefined);
+  const found = await retrieve(c, question, plan, {
+    replan: plan ? (failed) => planCitations(question, failed) : undefined,
+    deadline: started + RETRIEVAL_SHARE_MS,
+    onVerify: () => stage("verifying"),
+  });
   timings.searchMs = Date.now() - t0;
   diag.retrieval = found.diag;
   const passages = found.passages;
@@ -216,8 +238,12 @@ export async function respond(question: string, options: RespondOptions = {}): P
     const text = withPrefix(`${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`);
     return done({ ...common, ...extra, kind: "abstain", text });
   }
-  const body = c.level === "C" ? `${gen.text}\n\n${message("khilaf", c.lang)}` : gen.text;
-  return done({ ...common, ...extra, kind: "answer", text: withPrefix(body) });
+  // نص الفهرس والقاموس مرجع يُحال إليه، لا اقتباس: يُزال من «» (والسطر المكرر يُحذف).
+  const answer = unquoteReferenceOnly(gen.text, passages);
+  const body = c.level === "C" ? `${answer}\n\n${message("khilaf", c.lang)}` : answer;
+  const reply = done({ ...common, ...extra, kind: "answer", text: withPrefix(body) });
+  if (useCache && !prefix) cacheSet(answerKey(question), reply, DAY);
+  return reply;
 }
 
 /** فحص نهائي لما يُعرض (للاختبار): صياغة الأداة كلها، مع النصوص المسترجعة. */

@@ -3,6 +3,7 @@
  * لا اقتباس ولا ﴿ ولا مرجع مجرد («البقرة 127: ﴿…﴾»). يستعمله respond.ts (إعادة صياغة مرة
  * واحدة إن خالف) وbrain-test (فحص format).
  */
+import { matchKey } from "./guard";
 
 /** الجملة الأولى مع إشارات [n] التي تليها مباشرة. */
 export function firstSentence(text: string): string {
@@ -26,4 +27,33 @@ export function answerFormatIssues(text: string): FormatIssue[] {
   }
   if (!/\[\s*\d{1,2}\s*\]/.test(fs)) issues.push("no_citation");
   return issues;
+}
+
+/** مصادر مرجعية تُحال إليها ولا تُقتبس: فهرس سور المصحف، وقاموس المرجعية. */
+const REFERENCE_ONLY = /^(?:فهرس سور المصحف|المرجعية العلمية — قاموس)/;
+
+/**
+ * قسم الاقتباس للآية والحديث و«بيّنات» فقط: «…» الذي نصه من الفهرس أو القاموس وحدهما
+ * تُزال أقواسه، والسطر الذي لا يبقى فيه إلا ذلك الاقتباس وإشاراته (تكرار للجملة الأولى) يُحذف.
+ */
+export function unquoteReferenceOnly(text: string, passages: { text: string; source: string }[]): string {
+  const refs = passages.filter((p) => REFERENCE_ONLY.test(p.source)).map((p) => matchKey(p.text));
+  const evidence = passages.filter((p) => !REFERENCE_ONLY.test(p.source)).map((p) => matchKey(p.text));
+  if (!refs.length) return text;
+  const isRefOnly = (quote: string) => {
+    const k = matchKey(quote);
+    return k.length >= 6 && refs.some((r) => r.includes(k)) && !evidence.some((e) => e.includes(k));
+  };
+  return text
+    .split("\n")
+    .flatMap((line) => {
+      const quotes = [...line.matchAll(/«([^«»]+)»/g)].filter((m) => isRefOnly(m[1]));
+      if (!quotes.length) return [line];
+      const rest = quotes.reduce((l, m) => l.replace(m[0], ""), line);
+      if (!rest.replace(/\[\s*\d{1,2}\s*\]|[\s.,،:؛()\-—]/g, "")) return [];
+      return [quotes.reduce((l, m) => l.replace(m[0], m[1]), line)];
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }

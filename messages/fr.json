@@ -233,6 +233,12 @@
     "newChat": "",
     "label": "",
     "noteTafsir": "Tafsir Al-Muyassar",
-    "noteTranslation": "Traduction du sens"
+    "noteTranslation": "Traduction du sens",
+    "stage": {
+      "understanding": "Je lis votre question…",
+      "searching": "Je cherche dans les sources…",
+      "verifying": "Je vérifie les preuves…",
+      "writing": "Je rédige la réponse…"
+    }
   }
 }

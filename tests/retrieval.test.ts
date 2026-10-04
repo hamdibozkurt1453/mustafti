@@ -128,7 +128,7 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
 
   it("retrieve: المرشح نفسه في مدخلات التقييم، ويُحسب «بلغ التقييم» ويُقبل", async () => {
     scoringInputs.length = 0;
-    const { passages, diag } = await mod.retrieve(C, "من قام ببناء الكعبة", PLAN({ quran: [{ surah: 2, ayah: 127 }] }), deps());
+    const { passages, diag } = await mod.retrieve(C, "من قام ببناء الكعبة", PLAN({ quran: [{ surah: 2, ayah: 127 }] }), { deps: deps() });
     assert.ok(scoringInputs.some((x) => /يَرۡفَعُ إِبۡرَٰهِـۧمُ/.test(x) && /التفسير الميسر/.test(x)), "نص الآية والتفسير في مدخلات التقييم");
     assert.equal(diag.pinned, 1);
     assert.ok(passages.some((p) => /يَرۡفَعُ إِبۡرَٰهِـۧمُ/.test(p.text)));
@@ -270,17 +270,19 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
         C,
         "من قام ببناء الكعبة",
         PLAN({ quran: [{ surah: 96, ayah: 12 }] }),
-        deps({
+        {
+          deps: deps({
           quranRange: async (surah, ayah) =>
             surah === 96
               ? [{ title: "x", text: "[96:12]\nأَوۡ أَمَرَ بِٱلتَّقۡوَىٰٓ\nأو أمر غيره بالتقوى", url: "https://quranenc.com/ar/browse/arabic_moyassar/96#12" }]
               : surah === 2 && ayah === 127
                 ? [{ title: "x", text: VERSE_2_127, url: "u" }]
                 : [],
-        }),
-        async (failed) => {
-          failedSeen.push(failed);
-          return { quran: [{ surah: 2, ayah: 127 }], surahInfo: [], quranIndex: false, quranQueries: [], hadithQueries: [], bayyinatQueries: [] };
+          }),
+          replan: async (failed) => {
+            failedSeen.push(failed);
+            return { quran: [{ surah: 2, ayah: 127 }], surahInfo: [], quranIndex: false, quranQueries: [], hadithQueries: [], bayyinatQueries: [] };
+          },
         },
       );
       assert.deepEqual(failedSeen, [["quran 96:12"]]);
@@ -290,5 +292,37 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
     } finally {
       globalThis.fetch = prev;
     }
+  });
+
+  it("«ماهو تفسير الآية الثانية من السورة رقم 10» ← يونس 2 بالتفسير الميسر، ولو كانت الخطة فارغة", async () => {
+    const asked: string[] = [];
+    const pinned = await mod.pinnedCandidates(
+      C,
+      "ماهو تفسير الآية الثانية من السورة رقم 10",
+      emptyDiag(),
+      PLAN({}),
+      deps({
+        quranRange: async (surah, ayah) => {
+          asked.push(`${surah}:${ayah}`);
+          return surah === 10 && ayah === 2
+            ? [{ title: "x", text: "[10:2]\nأَكَانَ لِلنَّاسِ عَجَبًا\nأكان أمرًا عجبًا للناس", url: "u" }]
+            : [];
+        },
+      }),
+    );
+    assert.deepEqual(asked, ["10:2"]);
+    assert.equal(pinned.length, 1);
+    assert.equal(pinned[0].title, "سورة يونس — الآية 2");
+    assert.match(pinned[0].text, /التفسير الميسر: أكان أمرًا عجبًا للناس/);
+  });
+
+  it("بحث القرآن بالكلمات لا يؤخِّر الجواب إن بلغ مرجع محدد درجة 2", async () => {
+    const t0 = Date.now();
+    const { passages } = await mod.retrieve(C, "من قام ببناء الكعبة", PLAN({ quran: [{ surah: 2, ayah: 127 }], quranQueries: ["يرفع إبراهيم القواعد"] }), {
+      deps: deps({ searchCorpus: () => new Promise((r) => setTimeout(() => r([]), 3_000)) }),
+      deadline: Date.now() + 20_000,
+    });
+    assert.ok(Date.now() - t0 < 2_000, `${Date.now() - t0}ms`);
+    assert.ok(passages.some((p) => p.title === "سورة البقرة — الآية 127"));
   });
 });

@@ -233,6 +233,12 @@
     "newChat": "",
     "label": "",
     "noteTafsir": "Muyesser Tefsiri",
-    "noteTranslation": "Meal (anlamın tercümesi)"
+    "noteTranslation": "Meal (anlamın tercümesi)",
+    "stage": {
+      "understanding": "Sorunuzu okuyorum…",
+      "searching": "Kaynaklarda arıyorum…",
+      "verifying": "Delilleri doğruluyorum…",
+      "writing": "Cevabı yazıyorum…"
+    }
   }
 }

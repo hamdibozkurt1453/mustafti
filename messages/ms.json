@@ -233,6 +233,12 @@
     "newChat": "",
     "label": "",
     "noteTafsir": "Tafsir Al-Muyassar",
-    "noteTranslation": "Terjemahan makna"
+    "noteTranslation": "Terjemahan makna",
+    "stage": {
+      "understanding": "Membaca soalan anda…",
+      "searching": "Mencari dalam sumber…",
+      "verifying": "Menyemak dalil…",
+      "writing": "Menyusun jawapan…"
+    }
   }
 }

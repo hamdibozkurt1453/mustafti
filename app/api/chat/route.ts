@@ -34,6 +34,8 @@ function wordDelay(words: number): number {
 }
 
 /** بطاقات المصادر للجواب فقط: المشار إليها بـ [n] إن وُجدت، وإلا كل النصوص المسترجعة. */
+const MAX_CARDS = 4;
+
 function sourcesOf(reply: BrainReply): ChatSource[] {
   if (reply.kind !== "answer") return [];
   // النص للعرض بلا علامات الخادم («[Surah 3, …]»، «[3:1]»، «[EXACT]»، «Source: …»).
@@ -47,9 +49,12 @@ function sourcesOf(reply: BrainReply): ChatSource[] {
     ...(p.lang ? { lang: p.lang } : {}),
     ...(p.verse ? { verse: cleanForDisplay(p.verse), note: p.note ? cleanForDisplay(p.note) : undefined, noteKind: p.noteKind } : {}),
   }));
-  const cited = new Set([...reply.text.matchAll(/[\[(（]\s*(\d{1,2})\s*[\])）]/g)].map((m) => Number(m[1])));
-  const picked = cards.filter((c) => cited.has(c.n));
-  return picked.length ? picked : cards;
+  // المصادر المذكورة في الجواب فقط، بترتيب أول ذكر لها، وأربعة على الأكثر.
+  const order = [...new Set([...reply.text.matchAll(/[\[(（]\s*(\d{1,2})\s*[\])）]/g)].map((m) => Number(m[1])))];
+  return order
+    .map((n) => cards.find((c) => c.n === n))
+    .filter((c): c is (typeof cards)[number] => Boolean(c))
+    .slice(0, MAX_CARDS);
 }
 
 /** إحصاء فقط (اللغة، والمستوى، وعدد المصادر، وهل امتنع)، بلا نص السؤال. */
@@ -113,6 +118,7 @@ export async function POST(request: Request) {
         const reply = await respond(message, {
           history: history.slice(-MAX_HISTORY).map((h) => ({ role: h.role, content: h.content.slice(0, 1500) })),
           onStage: (stage) => send({ type: "stage", stage }),
+          cache: true,
         });
         logQuery(reply);
 

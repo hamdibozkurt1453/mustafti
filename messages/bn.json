@@ -233,6 +233,12 @@
     "newChat": "",
     "label": "",
     "noteTafsir": "তাফসীর আল-মুয়াসসার",
-    "noteTranslation": "অর্থের অনুবাদ"
+    "noteTranslation": "অর্থের অনুবাদ",
+    "stage": {
+      "understanding": "আপনার প্রশ্ন পড়ছি…",
+      "searching": "উৎসগুলোতে খুঁজছি…",
+      "verifying": "দলিল যাচাই করছি…",
+      "writing": "উত্তর লিখছি…"
+    }
   }
 }
