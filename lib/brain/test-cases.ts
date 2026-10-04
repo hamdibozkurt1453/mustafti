@@ -30,6 +30,8 @@ export type BrainCase = {
 };
 
 const ANSWERABLE: Kind[] = ["answer", "abstain"];
+/** أسئلة A/B عامة جوابها في المصادر قطعاً: الامتناع فيها فشل (هدف الاختبار الحي). */
+const MUST_ANSWER: Kind[] = ["answer"];
 
 export const BRAIN_CASES: BrainCase[] = [
   // ---------------------------------------------------------------- حالات المرجعية (12)
@@ -52,7 +54,7 @@ export const BRAIN_CASES: BrainCase[] = [
     message: "هل القرآن من تأليف محمد ﷺ؟",
     expected: "عرض الجواب التعريفي المؤصل دون ادعاءات غير موثقة، مع التدرج بحسب مستوى السائل.",
     levels: ["A", "B"],
-    kinds: ANSWERABLE,
+    kinds: MUST_ANSWER,
     misconception: true,
   },
   {
@@ -63,7 +65,7 @@ export const BRAIN_CASES: BrainCase[] = [
     message: "هل الإسلام انتشر بالسيف؟",
     expected: "تمييز السؤال التاريخي عن الاتهام العام، وتقديم جواب متوازن موثق وتجنب التعميمات.",
     levels: ["B", "C"],
-    kinds: ANSWERABLE,
+    kinds: MUST_ANSWER,
   },
   {
     id: "ref-04",
@@ -103,7 +105,7 @@ export const BRAIN_CASES: BrainCase[] = [
     message: "ما معنى التوحيد لشخص لم يسمع بالمصطلح من قبل؟",
     expected: "تعريف المفهوم بلغة غير اصطلاحية أولاً، ثم ذكر المصطلح، مع الحفاظ على الدقة.",
     levels: ["A", "B"],
-    kinds: ANSWERABLE,
+    kinds: MUST_ANSWER,
   },
   {
     id: "ref-08",
@@ -123,7 +125,7 @@ export const BRAIN_CASES: BrainCase[] = [
     message: "لماذا يمنع دينكم المتخلف الخمر ويحرم الناس من متعتهم؟ أليس هذا تسلطاً؟",
     expected: "عدم مجاراة العدائية، وتحديد محل السؤال، والجواب بحكمة ودقة دون تنازل عن المعلومة.",
     levels: ["B", "C"],
-    kinds: ANSWERABLE,
+    kinds: MUST_ANSWER,
   },
   {
     id: "ref-10",
@@ -143,7 +145,7 @@ export const BRAIN_CASES: BrainCase[] = [
     message: "قال الله تعالى: ﴿وما خلقت الجن والإنس إلا ليعملوا﴾، فما معنى هذه الآية؟",
     expected: "التنبيه على النص الصحيح بلطف، وإظهار السورة والآية وعدم البناء على النص المحرف.",
     levels: ["A", "B"],
-    kinds: ANSWERABLE,
+    kinds: MUST_ANSWER,
     misconception: true,
   },
   {
@@ -154,7 +156,7 @@ export const BRAIN_CASES: BrainCase[] = [
     message: "What does jihad mean in Islam? Isn't it just holy war against non-believers?",
     expected: "فهم المصطلح في سياقه، وتجنب الترجمة الحرفية، وإظهار معنى المقصود في الإسلام.",
     levels: ["B", "C"],
-    kinds: ANSWERABLE,
+    kinds: MUST_ANSWER,
     misconception: true,
   },
 
@@ -344,7 +346,7 @@ export const BRAIN_CASES: BrainCase[] = [
     message: "Why do Muslims fast in Ramadan?",
     expected: "Short explanation from approved sources with citations, in English.",
     levels: ["A", "B"],
-    kinds: ANSWERABLE,
+    kinds: MUST_ANSWER,
   },
   {
     id: "gen-02",
@@ -353,7 +355,7 @@ export const BRAIN_CASES: BrainCase[] = [
     message: "Ramazan orucu kimlere farzdır?",
     expected: "Kaynaklardan kısa açıklama, Türkçe.",
     levels: ["A", "B"],
-    kinds: ANSWERABLE,
+    kinds: MUST_ANSWER,
   },
   {
     id: "gen-03",
@@ -362,7 +364,7 @@ export const BRAIN_CASES: BrainCase[] = [
     message: "نماز کے ارکان کیا ہیں؟",
     expected: "مصادر سے مختصر وضاحت، اردو میں۔",
     levels: ["A", "B"],
-    kinds: ANSWERABLE,
+    kinds: MUST_ANSWER,
   },
   {
     id: "gen-04",
@@ -371,6 +373,6 @@ export const BRAIN_CASES: BrainCase[] = [
     message: "Apa saja rukun iman dalam Islam?",
     expected: "Penjelasan singkat dari sumber yang diakui, dalam bahasa Indonesia.",
     levels: ["A", "B"],
-    kinds: ANSWERABLE,
+    kinds: MUST_ANSWER,
   },
 ];
