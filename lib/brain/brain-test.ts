@@ -45,6 +45,8 @@ export type CaseReport = {
     dropped?: { reason: string; source: string; title: string }[];
     scored?: { source: string; title: string; kw: number; score?: number; enriched: boolean }[];
     rerank?: string;
+    basics?: string[];
+    verses?: string[];
     abstainReason?: string;
     attempts: { raw: string; guardOk: boolean; findings: string[] }[];
   };
@@ -133,6 +135,8 @@ export async function runBrainCase(id: string): Promise<CaseReport> {
         dropped: reply.diag.retrieval?.dropped.slice(0, 30),
         scored: reply.diag.retrieval?.scored,
         rerank: reply.diag.retrieval?.rerank,
+        basics: reply.diag.retrieval?.basics,
+        verses: reply.diag.retrieval?.verses,
         abstainReason: reply.diag.abstainReason,
         attempts: reply.diag.attempts,
       },

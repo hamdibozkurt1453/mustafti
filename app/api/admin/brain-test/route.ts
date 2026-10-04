@@ -98,6 +98,7 @@ function render(c,r){
   const d=r.diag;
   const diag=d?'<div class="diag">'
    +(d.abstainReason?'<div class="no">سبب الامتناع: '+esc(REASON[d.abstainReason]||d.abstainReason)+"</div>":"")
+   +((d.basics&&d.basics.length)||(d.verses&&d.verses.length)?"<div>الأساسيات: "+esc((d.basics||[]).join("، ")||"—")+" · الآيات: "+esc((d.verses||[]).join("، ")||"—")+"</div>":"")
    +(d.queries.length?"<div>كلمات البحث: "+d.queries.map(q=>"«"+esc(q.q)+"» ("+q.lang+")").join("، ")+"</div>":"")
    +(d.counts?"<div>المراحل: خام "+d.counts.raw+" ← بعد التنظيف "+d.counts.cleaned+" ← للتقييم "+d.counts.ranked+" ← مقبول (≥2) "+d.counts.kept+" · الترتيب: "+(d.rerank==="llm"?"النموذج":"الكلمات")+"</div>":"")
    +(Object.keys(d.bySource).length?"<div>النتائج لكل مصدر: "+Object.entries(d.bySource).map(([k,v])=>'<span class="'+(v?"pass":"no")+'">'+k+": "+v+"</span>").join(" · ")+(d.retried?" · (أُعيد البحث)":"")+"</div>":"")
@@ -137,6 +138,7 @@ function markdown(){
     const d=r.diag;
     if(d&&d.queries.length){
       lines.push("- كلمات البحث: "+d.queries.map(q=>"«"+q.q+"» ("+q.lang+")").join("، "));
+      if((d.basics&&d.basics.length)||(d.verses&&d.verses.length))lines.push("- الأساسيات: "+((d.basics||[]).join("، ")||"—")+" · الآيات: "+((d.verses||[]).join("، ")||"—"));
       if(d.counts)lines.push("- المراحل: خام "+d.counts.raw+" ← تنظيف "+d.counts.cleaned+" ← تقييم "+d.counts.ranked+" ← مقبول "+d.counts.kept+" ("+d.rerank+")");
       if(d.scored)lines.push("- الدرجات: "+d.scored.map(x=>(x.score??"—")+"/"+x.kw+(x.enriched?"+":"")+" "+x.source+" — "+x.title.slice(0,50)).join(" ؛ "));
       lines.push("- النتائج لكل مصدر: "+Object.entries(d.bySource).map(([k,v])=>k+": "+v).join(" · ")+(d.retried?" (أُعيد البحث)":""));

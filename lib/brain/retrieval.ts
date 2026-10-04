@@ -6,8 +6,10 @@ import { chatJson } from "@/lib/llm";
 import { callTool, toolData, toolText } from "@/lib/mcp";
 import { search, SOURCE_DEADLINE_MS, type SourceId, type SourceResult } from "@/lib/sources";
 import { clip, htmlToText } from "@/lib/sources/html";
-import { findTool } from "@/lib/sources/mcp-search";
+import { findTool, mcpQuranVerses, mcpSearch } from "@/lib/sources/mcp-search";
+import { SOURCE_BY_ID } from "@/lib/sources/registry";
 import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin";
+import { matchBasics, parseVerseRef, quotedVerses, verseRefsInText, type VerseRef } from "./basics";
 import type { Classification } from "./classify";
 import { findTerms } from "./glossary";
 import { applyScores, clean, cleanToolText, keywords, prerank, rerankList, STOP, type Candidate as RankCandidate } from "./rank";
@@ -40,6 +42,9 @@ export type RetrievalDiag = {
   /** المرشحون بدرجاتهم (للتشخيص). */
   scored: { source: string; title: string; kw: number; score?: number; enriched: boolean }[];
   rerank: "llm" | "keywords";
+  /** «الأساسيات» المطابقة، والآيات المحددة (تُجلب بدرجة 3). */
+  basics?: string[];
+  verses?: string[];
 };
 
 /**
@@ -54,6 +59,8 @@ const RERANK_POOL = 14;
 const MAX_PASSAGES = 6;
 const MIN_SCORE = 2;
 const PASSAGE_CHARS = 1400;
+/** مهلة إثراء كل نص بشرحه (مستقلة عن البحث). */
+const ENRICH_MS = 7_000;
 const BAYYINAT_URL = "https://dawa.center/file/7937";
 
 // ---------------------------------------------------------------------------
@@ -105,14 +112,24 @@ function fromSource(r: SourceResult): Candidate {
 }
 
 async function searchSources(queries: { q: string; lang: string }[], diag: SearchDiag[]): Promise<Candidate[]> {
-  const jobs = queries.flatMap(({ q, lang }) =>
-    RETRIEVAL_SOURCES.map(async (source) => {
-      const t0 = Date.now();
-      const results = await search(source, q, lang, SEARCH_DEADLINE_MS).catch(() => []);
-      diag.push({ query: q, lang, source, results: results.length, ms: Date.now() - t0 });
-      return results.map(fromSource);
-    }),
-  );
+  const one = async (source: SourceId, q: string, lang: string) => {
+    const t0 = Date.now();
+    const results = await search(source, q, lang, SEARCH_DEADLINE_MS).catch(() => []);
+    diag.push({ query: q, lang, source, results: results.length, ms: Date.now() - t0 });
+    return results.map(fromSource);
+  };
+  const jobs = RETRIEVAL_SOURCES.map(async (source) => {
+    const run = () => Promise.all(queries.map(({ q, lang }) => one(source, q, lang))).then((r) => r.flat());
+    let found = await run();
+    // مصدر عاد فارغاً لأن بحثه تجاوز المهلة: البحث يكمل في الخلفية ويُخزَّن، فنعيده مرة بعد قليل
+    // (حالة الحديث التي كانت تعيد 0). المصدر الفارغ فعلاً لا يُعاد.
+    const slow = diag.filter((d) => d.source === source).some((d) => d.ms >= SEARCH_DEADLINE_MS - 50);
+    if (!found.length && slow) {
+      await new Promise((r) => setTimeout(r, RETRY_WAIT_MS));
+      found = await run();
+    }
+    return found;
+  });
   return (await Promise.all(jobs)).flat();
 }
 
@@ -124,29 +141,27 @@ export async function searchBayyinat(q: string, diag: SearchDiag[], n = 5): Prom
   if (!isAdminClientConfigured() || !q.trim()) return [];
   const t0 = Date.now();
   const { data, error } = await createAdminClient().rpc("search_bayyinat", { q: q.trim().slice(0, 300), n });
-  const rows = (Array.isArray(data) ? data : []) as {
-    number: number;
-    question: string;
-    answer: string;
-    page: number | null;
-    source_url: string | null;
-    score?: number;
-  }[];
+  const rows = (Array.isArray(data) ? data : []) as BayyinatRow[];
   diag.push({ query: q.slice(0, 80), lang: "ar", source: "bayyinat", results: rows.length, ms: Date.now() - t0 });
   if (error) console.warn("search_bayyinat:", error.message);
-  return rows.map((row) => {
-    const label = `بيّنات — السؤال رقم ${row.number}${row.page ? `، ص ${row.page}` : ""}`;
-    const question = String(row.question).replace(/﴿\s*﴾/g, "").trim();
-    return {
-      title: `${label}: ${question}`,
-      text: `${question}\n${String(row.answer)}`.replace(/﴿\s*﴾/g, "").replace(/[ \t]+/g, " ").trim(),
-      // علامة # برقم السؤال: الرابط نفسه لكل الأجوبة، فلا يحذفها التنظيف مكرراً.
-      url: `${row.source_url || BAYYINAT_URL}#${row.number}`,
-      source: label,
-      sourceId: "bayyinat" as const,
-      lang: "ar",
-    };
-  });
+  return rows.map(bayyinatCandidate);
+}
+
+type BayyinatRow = { number: number; question: string; answer: string; page: number | null; source_url: string | null; score?: number };
+
+/** صف «بيّنات» مرشحاً: «بيّنات — السؤال رقم N، ص P»، بلا الأقواس الفارغة ﴿ ﴾. */
+function bayyinatCandidate(row: BayyinatRow): Candidate {
+  const label = `بيّنات — السؤال رقم ${row.number}${row.page ? `، ص ${row.page}` : ""}`;
+  const question = String(row.question).replace(/﴿\s*﴾/g, "").trim();
+  return {
+    title: `${label}: ${question}`,
+    text: `${question}\n${String(row.answer)}`.replace(/﴿\s*﴾/g, "").replace(/[ \t]+/g, " ").trim(),
+    // علامة # برقم السؤال: الرابط نفسه لكل الأجوبة، فلا يحذفها التنظيف مكرراً.
+    url: `${row.source_url || BAYYINAT_URL}#${row.number}`,
+    source: label,
+    sourceId: "bayyinat",
+    lang: "ar",
+  };
 }
 
 /** قاموس المرجعية (ص 7) نصاً معتمداً للمصطلحات الواردة في السؤال (التوحيد، الشريعة…). */
@@ -187,6 +202,8 @@ function deepPick(node: unknown, keys: string[], depth = 0): string | undefined 
   return undefined;
 }
 
+type FetchDoc = { text?: string; segments?: { kind?: string; label?: string; text: string }[] };
+
 const GRADE_RE = /(?:Grade|Hadith grade|الدرجة|درجة الحديث|الحكم|Derecesi|Degré|درجہ|Derajat)\s*[:：]\s*([^\n|]{2,60})/i;
 
 /**
@@ -216,23 +233,29 @@ export function mcpDetail(ref: string, lang: string, kind: "hadith" | "library")
         if (result.isError) continue;
         const data = toolData(result);
         const raw = toolText(result);
-        const explanation = deepPick(data, ["explanation", "sharh", "explanation_text", "commentary"]);
-        // بلا شرح في البيانات المنظمة: النص الكامل بعد التنظيف (فيه الحديث والشرح والدرجة).
-        const body =
-          kind === "hadith"
-            ? explanation
-              ? [deepPick(data, ["hadeeth", "hadith", "text", "arabic_text", "content"]), explanation].filter(Boolean).join("\n")
-              : ""
-            : [deepPick(data, ["description", "summary", "content", "text", "body"])].filter(Boolean).join("\n");
-        const text = clip(htmlToText(body || cleanToolText(raw)), PASSAGE_CHARS);
-        const grade = deepPick(data, ["grade", "hadith_grade", "grade_ar", "hukm", "degree", "authenticity"]) ?? raw.match(GRADE_RE)?.[1]?.trim();
+        // fetch: {id, title, text, segments:[{kind, label, text}]} — text فيه الرواية والراوي والدرجة والشرح.
+        const doc = data && typeof data === "object" && !Array.isArray(data) ? (data as FetchDoc) : null;
+        const gradeSeg = doc?.segments?.find((x) => /^grade$/i.test(x.label ?? ""))?.text;
+        let body = "";
+        if (doc && typeof doc.text === "string" && doc.text.trim()) body = doc.text;
+        else if (kind === "hadith") {
+          const explanation = deepPick(data, ["explanation", "sharh", "explanation_text", "commentary"]);
+          if (explanation) body = [deepPick(data, ["hadeeth", "hadith", "arabic_text", "content"]), explanation].filter(Boolean).join("\n");
+        } else body = deepPick(data, ["description", "summary", "content", "body"]) ?? "";
+        // بلا بيانات منظمة: النص الكامل بعد تنظيف فواصل الخادم وتعليماته.
+        const text = clip(htmlToText(cleanToolText(body || raw).replace(/\n+/g, " \n ")), PASSAGE_CHARS);
+        const grade =
+          gradeSeg?.trim() ??
+          deepPick(data, ["grade", "hadith_grade", "grade_ar", "hukm", "degree", "authenticity"]) ??
+          (body || raw).match(GRADE_RE)?.[1]?.trim();
         if (text.length > 20) return { text, grade };
       } catch {
         /* الأداة التالية */
       }
     }
-    return null;
-  });
+    // لا يُخزَّن الفشل (انقطاع مؤقت مثلاً): يُرمى فلا يحفظه cached، ويعيد المتصل null.
+    throw new Error(`no detail for ${ref}`);
+  }).catch(() => null);
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -242,9 +265,12 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   );
 }
 
-/** يثري أعلى المرشحين بمحتواهم: 4 أحاديث (نص + شرح + درجة)، و3 مواد من IslamHouse. */
+/**
+ * يثري أعلى المرشحين بمحتواهم بالتوازي: 3 أحاديث (نص + شرح + درجة)، ومادتان من IslamHouse.
+ * لكل نص مهلته المستقلة؛ إن تأخر بقي المرشح بعنوانه ونصه المختصر ولا يضيع.
+ */
 async function enrich(cands: Candidate[], lang: string): Promise<Candidate[]> {
-  const quota: Partial<Record<Candidate["sourceId"], number>> = { hadeethenc: 4, islamhouse: 3 };
+  const quota: Partial<Record<Candidate["sourceId"], number>> = { hadeethenc: 3, islamhouse: 2 };
   const used: Partial<Record<Candidate["sourceId"], number>> = {};
   return Promise.all(
     cands.map(async (c) => {
@@ -254,12 +280,125 @@ async function enrich(cands: Candidate[], lang: string): Promise<Candidate[]> {
       if ((c.sourceId === "hadeethenc" || c.sourceId === "islamhouse") && (c.ref || c.url)) {
         const ref = c.ref ?? c.url.match(/\/(\d{3,})/)?.[1];
         if (!ref) return c;
-        const d = await withTimeout(mcpDetail(ref, c.lang ?? lang, c.sourceId === "hadeethenc" ? "hadith" : "library"), 6_000, null);
+        const d = await withTimeout(mcpDetail(ref, c.lang ?? lang, c.sourceId === "hadeethenc" ? "hadith" : "library"), ENRICH_MS, null);
         return d ? { ...c, text: d.text, grade: c.grade ?? d.grade, enriched: true } : c;
       }
       return c;
     }),
   );
+}
+
+// ---------------------------------------------------------------------------
+// «الأساسيات» والآيات: نصوص بمراجع محددة، تُجلب أولاً بدرجة 3
+// ---------------------------------------------------------------------------
+
+/** نص آية أو آيات بلغة السائل (get_quran_verses: النص العربي والترجمة المعتمدة). */
+async function verseCandidate(ref: VerseRef, lang: string): Promise<Candidate | null> {
+  const last = Math.min(ref.through ?? ref.ayah, ref.ayah + 4);
+  const ayahs = Array.from({ length: last - ref.ayah + 1 }, (_, i) => ref.ayah + i);
+  const items = (await Promise.all(ayahs.map((a) => mcpQuranVerses(ref.surah, a, lang).catch(() => [])))).flat();
+  if (!items.length) return null;
+  const label = `${ref.surah}:${ref.ayah}${last > ref.ayah ? `-${last}` : ""}`;
+  return {
+    title: `${SOURCE_BY_ID.quranenc.name} — ${label}`,
+    text: clip(items.map((i) => cleanToolText(i.text)).join(" \n "), PASSAGE_CHARS),
+    url: items[0].url,
+    source: `${SOURCE_BY_ID.quranenc.name} — ${label}`,
+    sourceId: "quranenc",
+    lang,
+    kw: 0,
+    score: 3,
+    enriched: true,
+  };
+}
+
+/** أفضل حديث لكلمات بحث دقيقة، بشرحه ودرجته، إن طابق عنوانه أغلب الكلمات (وإلا يُترك للتقييم). */
+async function hadithCandidate(q: string, lang: string): Promise<Candidate | null> {
+  const items = await mcpSearch(q, "ar", "hadith").catch(() => []);
+  const want = keywords(q);
+  const best = items
+    .map((it) => {
+      const have = new Set(keywords(`${it.title} ${it.text}`));
+      return { it, ratio: want.length ? want.filter((w) => have.has(w)).length / want.length : 0 };
+    })
+    .sort((a, b) => b.ratio - a.ratio)[0];
+  if (!best || best.ratio < 0.5) return null;
+  const { it } = best;
+  // بلغة السائل إن نشرتها الموسوعة بها (المعرّف hadith:ID:LANG)، وإلا العربية.
+  const refLang = it.ref && lang !== "ar" ? it.ref.replace(/:[a-z]{2,3}$/, `:${lang}`) : undefined;
+  const detail =
+    (refLang ? await withTimeout(mcpDetail(refLang, lang, "hadith"), ENRICH_MS, null) : null) ??
+    (it.ref ? await withTimeout(mcpDetail(it.ref, "ar", "hadith"), ENRICH_MS, null) : null);
+  return {
+    title: it.title,
+    text: detail?.text ?? it.text,
+    url: it.url,
+    source: SOURCE_BY_ID.hadeethenc.name,
+    sourceId: "hadeethenc",
+    grade: detail?.grade ?? it.grade,
+    lang: refLang && detail ? lang : "ar",
+    ref: it.ref,
+    kw: 0,
+    score: best.ratio >= 0.7 ? 3 : undefined,
+    enriched: Boolean(detail),
+  };
+}
+
+/** أسئلة «بيّنات» بأرقامها. */
+async function bayyinatByNumber(numbers: number[]): Promise<Candidate[]> {
+  if (!numbers.length || !isAdminClientConfigured()) return [];
+  const { data } = await createAdminClient()
+    .from("bayyinat")
+    .select("number, question, answer, page, source_url")
+    .in("number", numbers);
+  return ((data ?? []) as BayyinatRow[]).map((row) => ({ ...bayyinatCandidate(row), kw: 0, score: 3 }));
+}
+
+/**
+ * المراجع المحددة للسؤال: «الأساسيات» المطابقة، والآيات المذكورة برقمها أو بنصها
+ * (الآية المنقولة بخطأ تُحدَّد بالبحث في القرآن بنصها وبكلمات المصنّف، ثم يُجلب نصها الصحيح).
+ */
+export async function pinnedCandidates(
+  c: Classification,
+  question: string,
+  diag: RetrievalDiag,
+): Promise<Candidate[]> {
+  const entries = matchBasics(question);
+  diag.basics = entries.map((e) => e.id);
+  const refs: VerseRef[] = [
+    ...verseRefsInText(question),
+    ...entries.flatMap((e) => e.verses.map(parseVerseRef).filter((r): r is VerseRef => r !== null)),
+  ];
+  const quoted = quotedVerses(question);
+  if (quoted.length) {
+    const texts = [...quoted, ...c.searchQueries.ar.slice(0, 1)];
+    const located = await Promise.all(
+      texts.map(async (t) => {
+        const items = await mcpSearch(t, "ar", "quran").catch(() => []);
+        const want = keywords(t);
+        for (const it of items.slice(0, 3)) {
+          const m = `${it.title} ${it.url}`.match(/(\d{1,3}):(\d{1,3})|\/(\d{1,3})#(\d{1,3})/);
+          const surah = Number(m?.[1] ?? m?.[3]);
+          const ayah = Number(m?.[2] ?? m?.[4]);
+          const have = new Set(keywords(`${it.title} ${it.text}`));
+          const ratio = want.length ? want.filter((w) => have.has(w)).length / want.length : 0;
+          if (surah && ayah && ratio >= 0.5) return parseVerseRef(`${surah}:${ayah}`);
+        }
+        return null;
+      }),
+    );
+    refs.unshift(...located.filter((r): r is VerseRef => r !== null));
+  }
+  const unique = [...new Map(refs.map((r) => [`${r.surah}:${r.ayah}:${r.through ?? ""}`, r])).values()].slice(0, 4);
+  diag.verses = unique.map((r) => `${r.surah}:${r.ayah}${r.through ? `-${r.through}` : ""}`);
+
+  const jobs: Promise<Candidate | Candidate[] | null>[] = [
+    ...unique.map((r) => withTimeout(verseCandidate(r, c.lang), 9_000, null)),
+    ...entries.flatMap((e) => e.hadithQueries.slice(0, 2)).slice(0, 3).map((q) => withTimeout(hadithCandidate(q, c.lang), 10_000, null)),
+    withTimeout(bayyinatByNumber(entries.flatMap((e) => e.bayyinat).slice(0, 3)), 6_000, []),
+  ];
+  const out = (await Promise.all(jobs)).flat().filter((x): x is Candidate => x !== null);
+  return [...new Map(out.map((x) => [x.url, x])).values()];
 }
 
 // ---------------------------------------------------------------------------
@@ -327,6 +466,8 @@ export async function retrieve(
 
   // «بيّنات»: السؤال كما كتبه السائل إن كان عربياً، وإلا كلمات البحث العربية.
   const bayyinatQuery = /[\u0600-\u06FF]/.test(question) && c.lang === "ar" ? question : c.searchQueries.ar.join(" ");
+  // المراجع المحددة («الأساسيات» والآيات) بالتوازي مع البحث.
+  const pinnedJob = pinnedCandidates(c, question, diag).catch(() => [] as Candidate[]);
   const run = () =>
     Promise.all([searchSources(queries, diag.searches), searchBayyinat(bayyinatQuery, diag.searches).catch(() => [])]);
   let [found, bayyinat] = await run();
@@ -335,21 +476,25 @@ export async function retrieve(
     await new Promise((r) => setTimeout(r, RETRY_WAIT_MS));
     [found, bayyinat] = await run();
   }
+  const pinned = await pinnedJob;
+  const pinnedUrls = new Set(pinned.map((x) => x.url));
   // «بيّنات» أولاً لأسئلة الشبهات وغير المسلمين (مصدر أساسي للحلول الحوارية في الشبهات).
   const shubha = c.userType === "non_muslim" || Boolean(c.misconception) || c.level === "B";
-  const raw = [...(shubha ? bayyinat : []), ...found, ...(shubha ? [] : bayyinat)];
-  diag.counts.raw = raw.length + glossary.length;
+  const raw = [...(shubha ? bayyinat : []), ...found, ...(shubha ? [] : bayyinat)].filter((x) => !pinnedUrls.has(x.url));
+  diag.counts.raw = raw.length + glossary.length + pinned.length;
 
   const cleaned = clean(raw, diag.dropped);
-  diag.counts.cleaned = cleaned.length + glossary.length;
+  diag.counts.cleaned = cleaned.length + glossary.length + pinned.length;
   const pool = prerank(cleaned, terms, RERANK_POOL).map((x) => (x.sourceId === "bayyinat" && shubha ? { ...x, kw: x.kw! + 2 } : x));
   diag.counts.ranked = pool.length;
 
   const enriched = await enrich(pool, c.lang);
-  const reranked = await rerank(question, enriched);
+  // المرجع المحدد الذي لم تتأكد مطابقته (حديث بكلمات بحث) يدخل التقييم مع غيره.
+  const reranked = await rerank(question, [...pinned.filter((x) => x.score === undefined), ...enriched]);
+  const sure = pinned.filter((x) => x.score !== undefined);
   const mode = reranked.mode;
   // القاموس نص المرجعية نفسها: يُقبل دائماً للمصطلح الوارد في السؤال.
-  const cands = [...glossary.map((g) => ({ ...g, kw: 0 })), ...reranked.cands];
+  const cands = [...glossary.map((g) => ({ ...g, kw: 0 })), ...sure, ...reranked.cands];
   diag.rerank = mode;
   diag.scored = cands.map((x) => ({ source: x.source, title: clip(x.title, 100), kw: x.kw ?? 0, score: x.score, enriched: Boolean(x.enriched) }));
 
