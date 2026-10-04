@@ -1,6 +1,6 @@
 import pillars from "@/content/pillars.json";
 import { CHAPTERS } from "@/lib/brain/prompts";
-import { activeQuestions } from "./flow";
+import { activeQuestions, capPlan, shown } from "./flow";
 import type { AnswerType, Chapter, ShowIf } from "./types";
 
 /**
@@ -25,6 +25,8 @@ export type PillarQuestion = {
   why?: { ar: string; en: string };
   /** لا يُعرض إلا إن ناسب النوع الفرعي (flow.ts). */
   showIf?: ShowIf;
+  /** لا يُعرض إن عُرف أحد هذه الأركان. */
+  hideIf?: string[];
   type: AnswerType;
   options?: PillarOption[];
   required: boolean;
@@ -91,9 +93,10 @@ export function templateFor(chapter: Chapter, generated: PillarQuestion[] = []):
 }
 
 /**
- * كل الأسئلة المرشحة للخطة، بترتيبها، بلا الحد (يُطبَّق مع كل جواب في flow.ts):
+ * أسئلة الخطة بترتيب الأولوية، و8 كحد أقصى صارم (لا يتجاوز أي مسار من مسارات الشروط 8):
+ *   الإلزامية من القالب ← الإضافية المولّدة (extra_) ← الاختيارية (البلد، والمذهب، وسألت أحداً…).
  * - سؤال الحكم العام: المولّد (2–4)، أو الاحتياطي من 3 أسئلة.
- * - باب معدّ: القالب ثم 1–2 أسئلة خاصة بنص السؤال (extras)، بلا ما ذكره السائل، وبلا ما لا يناسب شروطه.
+ * - باب معدّ: القالب ثم 1–2 أسئلة خاصة بنص السؤال، بلا ما ذكره السائل، وبلا ما لا يناسب شروطه.
  * - باب آخر: الأركان العامة والمولّد.
  */
 export function planPool(
@@ -102,20 +105,24 @@ export function planPool(
   generated: PillarQuestion[] = [],
   kind: "personal" | "ruling" = "personal",
   extras: PillarQuestion[] = [],
+  max = MAX_QUESTIONS,
 ): PillarQuestion[] {
   const skip = new Set(Object.keys(known));
   // «وقع» معروف من صيغة الفعل ⇒ لا «هل وقع أم تسأل قبل الفعل؟» في الاحتياطي.
   if (skip.has("occurred")) skip.add("occurred_before");
   if (kind === "ruling") {
     const base = generated.length ? generated.slice(0, RULING_MAX) : fallbackQuestions();
-    return base.filter((q) => !skip.has(q.key));
+    return capPlan(base.filter((q) => !skip.has(q.key)), max);
   }
   const all = chapter === "other" ? templateFor(chapter, generated) : [...templateFor(chapter), ...extras];
-  return all.filter((q) => !skip.has(q.key)).filter((q) => {
-    const c = q.showIf;
-    const v = c ? known[c.key] : undefined;
-    return !c || v === undefined || ((!c.in || c.in.includes(v)) && (!c.notIn || !c.notIn.includes(v)));
-  });
+  const pool = all.filter((q) => !skip.has(q.key) && shown(q, known));
+  const isExtra = (q: PillarQuestion) => q.key.startsWith("extra_");
+  const ordered = [
+    ...pool.filter((q) => q.required && !isExtra(q)),
+    ...pool.filter(isExtra),
+    ...pool.filter((q) => !q.required && !isExtra(q)),
+  ];
+  return capPlan(ordered, max);
 }
 
 /** معاينة الأسئلة الفعلية قبل أي جواب (8 كحد أقصى، الإلزامي أولاً). */
@@ -314,4 +321,58 @@ export function allQuestionsByKey(): Map<string, PillarQuestion> {
   const map = new Map(PILLARS.general.map((q) => [q.key, q]));
   for (const t of Object.values(PILLARS.chapters)) for (const q of t.questions) map.set(q.key, q);
   return map;
+}
+
+// ---------------------------------------------------------------------------
+// التكرار: هل السؤال الإضافي يعيد سؤالاً في القالب أو ركناً معروفاً؟ (مقارنة كلمات بالكود)
+// ---------------------------------------------------------------------------
+
+const STOP = new Set(
+  (
+    "ما ماذا هل هي هو هم من في على عن إلى الى أو او ثم أن ان إن كان كانت كنت تكون يكون أثناء اثناء عند بعد قبل هذه هذا ذلك تلك التي الذي " +
+    "مع كل أي اي لك لكم له لها فيه فيها به بها منها منه قد لم لا نعم وهل فهل أم ام إذا اذا لو كم كيف متى أين اين لماذا " +
+    "what which who is are was were do does did the a an of in on at to for with by your you yours his her their it this that these those " +
+    "how when where why any there have has had be been being and or if"
+  ).split(" "),
+);
+
+/** كلمات المحتوى بعد التوحيد: بلا تشكيل ولا «ال» ولا ضمائر متصلة، والهمزات والتاء المربوطة موحدة. */
+export function contentWords(text: string): Set<string> {
+  const norm = text
+    .normalize("NFC")
+    .replace(/[ً-ٰٟـ]/g, "")
+    .replace(/[إأآٱ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .toLowerCase();
+  const out = new Set<string>();
+  for (let w of norm.split(/[^\p{L}\p{N}]+/u)) {
+    if (!w || STOP.has(w)) continue;
+    w = w.replace(/^(?:وال|بال|فال|كال|لل|ال)(?=\p{L}{3,})/u, "");
+    if (w.length > 4) w = w.replace(/(?:كم|هم|ها|نا|ك|ه|ي)$/u, "");
+    if (/^[a-z]+$/.test(w) && w.length > 4) w = w.replace(/(?:ing|ed|es|s)$/, "");
+    if (w.length >= 3 && !STOP.has(w)) out.add(w);
+  }
+  return out;
+}
+
+/**
+ * كلمات الباب الشائعة: ما يتكرر في سؤالين من أسئلة القالب فأكثر («الطلاق» في أسئلة الطلاق)،
+ * فلا تكفي وحدها للحكم بالتكرار.
+ */
+export function commonWords(texts: string[]): Set<string> {
+  const count = new Map<string, number>();
+  for (const t of texts) for (const w of contentWords(t)) count.set(w, (count.get(w) ?? 0) + 1);
+  return new Set([...count].filter(([, n]) => n >= 2).map(([w]) => w));
+}
+
+/** سؤالان بالمعنى نفسه تقريباً: نصف كلمات الأقصر منهما على الأقل مشتركة (بلا كلمات الباب الشائعة). */
+export function similarQuestion(a: string, b: string, common: Set<string> = new Set()): boolean {
+  const x = new Set([...contentWords(a)].filter((w) => !common.has(w)));
+  const y = new Set([...contentWords(b)].filter((w) => !common.has(w)));
+  const small = Math.min(x.size, y.size);
+  if (!small) return false;
+  let shared = 0;
+  for (const w of x) if (y.has(w)) shared++;
+  return shared >= 1 && shared / small >= 0.5;
 }

@@ -17,6 +17,8 @@ import {
   RULING_MAX,
   RULING_MIN,
   planPool,
+  commonWords,
+  similarQuestion,
   templateFor,
   type PillarQuestion,
 } from "./pillars";
@@ -98,7 +100,8 @@ async function logFailure(reason: string) {
   }
 }
 
-const GEN_TIMEOUT_MS = 20_000;
+/** مهلة كل طلب استيضاح (ثم إعادة فورية، ثم النموذج الاحتياطي). */
+const GEN_TIMEOUT_MS = 10_000;
 
 // ---------------------------------------------------------------------------
 // 1) الباب
@@ -131,7 +134,7 @@ Example: {"chapter": "talaq_khul", "confidence": 0.95}`,
       { role: "user", content: `"""${redactText(question).slice(0, 1500)}"""` },
     ],
     ChapterPickSchema,
-    { timeoutMs: 12_000, maxTokens: 80 },
+    { timeoutMs: GEN_TIMEOUT_MS, maxTokens: 80 },
   );
   trace.chapter.attempts = res.attempts;
   trace.chapter.ms = Date.now() - started;
@@ -279,7 +282,7 @@ ${
   kind === "ruling"
     ? "This is a GENERAL question about a ruling, not the asker's own case: ask ONLY about the conditions that decide the ruling."
     : kind === "extra"
-      ? `This is the asker's own case. A prepared template ALREADY asks these questions:\n${covered.map((c) => `- ${c}`).join("\n")}\nAdd ONLY ${min} to ${max} questions specific to THIS message that the template does not cover and that change the ruling. Never repeat or rephrase a template question. If nothing important is missing, return the single most useful one.`
+      ? `This is the asker's own case. A prepared template ALREADY asks these questions (or their answer is already known from the message):\n${covered.map((c) => `- ${c}`).join("\n")}\nAdd ONLY ${min} to ${max} questions specific to THIS message that the template does not cover, that the message does not already answer, and that change the ruling. Never repeat, rephrase or narrow a template question. These are DUPLICATES and forbidden: «What is the nature of the technical tasks?» = «What is the nature of your tasks?»; «Why did you forget these prayers?» = «Why were they missed?»; «Were you aware during the anger?» = «How intense was the anger?». If nothing important is missing, return an empty list.`
       : "This is the asker's own case in a chapter without a prepared template: ask ONLY about the facts that change the ruling. Do not ask whether it happened, when, or the exact act in general terms (asked separately)."
 }
 
@@ -337,6 +340,8 @@ async function generate(
     if (!res.ok) {
       rec.error = res.error;
       void logFailure(`generate:${res.error.slice(0, 60)}`);
+      // الطلب نفسه فشل بعد الإعادة والنموذج الاحتياطي: جولة أخرى لن تفيد، والوقت محدود.
+      if (res.attempts.every((a) => a.error?.startsWith("request failed"))) break;
       feedback = `Your previous reply could not be used (${res.error.slice(0, 200)}). Write the questions again, short, as ONE JSON object.`;
       continue;
     }
@@ -348,10 +353,19 @@ async function generate(
     if (report.kept.length >= min) {
       // أسئلة القالب الإضافية: مفاتيح خاصة، وتمر على فحص التكرار مع أسئلة القالب.
       if (kind !== "extra") return report.kept;
-      const coveredKeys = new Set(covered.map((q) => q.ar.replace(/[^\p{L}]/gu, "")));
-      return report.kept
-        .filter((q) => !coveredKeys.has(q.ar.replace(/[^\p{L}]/gu, "")))
-        .map((q, i) => ({ ...q, key: `extra_${i + 1}` }));
+      // لا يعيد سؤالاً في القالب (ومنه الأركان المعروفة) ولا سؤالاً إضافياً قبله: مقارنة كلمات بالكود.
+      const kept: PillarQuestion[] = [];
+      const commonAr = commonWords(covered.map((c) => c.ar));
+      const commonEn = commonWords(covered.map((c) => c.en));
+      for (const q of report.kept) {
+        const twin = [...covered, ...kept].find(
+          (c) => similarQuestion(q.ar, c.ar, commonAr) || (q.en !== q.ar && similarQuestion(q.en, c.en, commonEn)),
+        );
+        if (twin) rec.dropped.push({ ar: q.ar, reason: `duplicate_of:${twin.key}` });
+        else kept.push({ ...q, key: `extra_${kept.length + 1}` });
+      }
+      rec.kept = kept.length;
+      return kept;
     }
     void logFailure(`${kind === "extra" ? "extra-" : ""}filtered:${report.kept.length}/${candidates.length}`);
     feedback = `Only ${report.kept.length} of your questions could be used. Dropped: ${
@@ -395,6 +409,7 @@ function toPlanQuestion(q: PillarQuestion, lang: string, t: TemplateJson): PlanQ
     required: q.required,
     ...(q.generated ? { generated: true } : {}),
     ...(q.showIf ? { showIf: q.showIf } : {}),
+    ...(q.hideIf?.length ? { hideIf: q.hideIf } : {}),
   };
 }
 

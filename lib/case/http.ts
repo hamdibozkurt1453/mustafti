@@ -67,6 +67,7 @@ export const PlanSchema = z.object({
         showIf: z
           .object({ key: s(40), in: z.array(s(60)).max(12).optional(), notIn: z.array(s(60)).max(12).optional() })
           .optional(),
+        hideIf: z.array(s(40)).max(12).optional(),
       }),
     )
     .max(CASE_LIMITS.planQuestions),
