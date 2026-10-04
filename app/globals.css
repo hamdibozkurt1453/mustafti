@@ -37,6 +37,7 @@
   --color-alert-600: var(--mf-alert-600);
 
   --font-sans: var(--mf-font);
+  --font-display: var(--font-reem), var(--mf-font);
   --radius-mf: var(--mf-radius);
 }
 
@@ -54,4 +55,93 @@ body {
 :focus-visible {
   outline: 2px solid var(--mf-gold-500);
   outline-offset: 2px;
+}
+
+/* ───────────── الحركة (CSS للحركات الأولى حتى لا تنتظر JavaScript) ───────────── */
+
+/* ظهور العنوان كلمة بكلمة */
+@keyframes mf-word-in {
+  from { opacity: 0; transform: translateY(0.45em); filter: blur(10px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+.mf-word {
+  display: inline-block;
+  opacity: 0;
+  animation: mf-word-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ظهور ناعم عام */
+@keyframes mf-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+.mf-rise {
+  opacity: 0;
+  animation: mf-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* رسم خطوط النقش */
+@keyframes mf-draw { to { stroke-dashoffset: 0; } }
+.mf-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: mf-draw 2.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+/* تنفّس الفقاعة */
+@keyframes mf-breathe {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgb(255 184 0 / 0)); }
+  50%      { transform: scale(1.045); filter: drop-shadow(0 0 22px rgb(255 184 0 / 0.35)); }
+}
+.mf-breathe {
+  transform-origin: 50% 47%;
+  animation: mf-breathe 5s ease-in-out infinite;
+}
+
+/* النقاط الثلاث داخل الفقاعة */
+@keyframes mf-dot {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(var(--mf-dot-lift, -26px)); }
+}
+.mf-dot { animation: mf-dot 2.6s ease-in-out infinite; transform-box: fill-box; }
+
+/* الشريط المتحرك */
+@keyframes mf-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes mf-marquee-rtl {
+  from { transform: translateX(0); }
+  to   { transform: translateX(50%); }
+}
+.mf-marquee { animation: mf-marquee 48s linear infinite; }
+[dir="rtl"] .mf-marquee { animation-name: mf-marquee-rtl; }
+.mf-marquee-wrap:hover .mf-marquee { animation-play-state: paused; }
+
+/* مؤشر الكتابة */
+@keyframes mf-caret { 50% { opacity: 0; } }
+.mf-caret { animation: mf-caret 1s steps(1) infinite; }
+
+/* حبيبات دقيقة فوق الأخضر */
+.mf-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  mix-blend-mode: overlay;
+}
+
+.mf-no-scrollbar { scrollbar-width: none; }
+.mf-no-scrollbar::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mf-word, .mf-rise { animation: none; opacity: 1; }
+  .mf-draw { animation: none; stroke-dashoffset: 0; }
+  .mf-breathe, .mf-dot, .mf-caret { animation: none; }
+  .mf-marquee { animation: none; }
+  html { scroll-behavior: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* بلا حركة تلقائية: الشريط يُمرَّر باليد */
+  .mf-marquee-wrap { overflow-x: auto; scrollbar-width: none; }
+  .mf-marquee-dup { display: none; }
 }
