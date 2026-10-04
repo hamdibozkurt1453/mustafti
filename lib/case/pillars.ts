@@ -5,8 +5,11 @@ import type { AnswerType, Chapter } from "./types";
 /**
  * قوالب الأركان (content/pillars.json) واختيار أسئلة الاستيضاح.
  *
- * - باب معدّ (14 باباً): ترتيب القالب كما هو، بعد حذف ما ذكره السائل، والإلزامي أولاً حتى 8 أسئلة.
- * - باب آخر (other): الأركان العامة + 3 إلى 6 أسئلة يولّدها النموذج، تمر على isSafeQuestion.
+ * - الباب: يختاره النموذج بدرجة ثقة، والكود يقرر (chooseChapter): الجنايات وما لا يطابق بثقة عالية ⇒ other.
+ * - حالة شخصية في باب معدّ: ترتيب القالب، بعد حذف ما ذكره السائل، والإلزامي أولاً حتى 8 أسئلة.
+ * - حالة شخصية في باب آخر: أركان عامة قليلة + 3 إلى 6 أسئلة يولّدها النموذج من نص السؤال.
+ * - سؤال حكم عام: 2 إلى 4 أسئلة مولّدة عن الشروط المؤثرة في الحكم فقط.
+ * - كل سؤال مولّد يمر على isSafeQuestion: لا حكم، ولا هوية (من فعل؟ من هو؟ أين يسكن؟)، ولا تفاصيل جنسية.
  *
  * الملف نقي (بلا نموذج ولا شبكة) ليُختبر محلياً: tests/case.test.ts.
  */
@@ -17,6 +20,8 @@ export type PillarQuestion = {
   key: string;
   ar: string;
   en: string;
+  /** «لماذا نسأل؟»: أثر الجواب في الحكم. */
+  why?: { ar: string; en: string };
   type: AnswerType;
   options?: PillarOption[];
   required: boolean;
@@ -27,7 +32,7 @@ type ChapterTemplate = { ar: string; en: string; ref: string; order: string[]; q
 
 export const PILLARS = pillars as unknown as {
   version: number;
-  limits: { maxQuestions: number; generatedMin: number; generatedMax: number };
+  limits: { maxQuestions: number; generatedMin: number; generatedMax: number; rulingMin: number; rulingMax: number };
   generationRules: { ar: string[]; en: string[] };
   general: PillarQuestion[];
   chapters: Record<Exclude<Chapter, "other">, ChapterTemplate>;
@@ -36,9 +41,11 @@ export const PILLARS = pillars as unknown as {
 export const MAX_QUESTIONS = PILLARS.limits.maxQuestions;
 export const GENERATED_MIN = PILLARS.limits.generatedMin;
 export const GENERATED_MAX = PILLARS.limits.generatedMax;
+export const RULING_MIN = PILLARS.limits.rulingMin;
+export const RULING_MAX = PILLARS.limits.rulingMax;
 
 /** ترتيب الأركان العامة لباب غير معدّ؛ «generated» موضع الأسئلة المولّدة. */
-const OTHER_ORDER = ["occurred", "who", "what_exactly", "generated", "when", "country", "state_intent", "asked_before", "madhhab"];
+const OTHER_ORDER = ["occurred", "what_exactly", "generated", "when", "state_intent", "asked_before", "madhhab"];
 
 export function isChapter(value: unknown): value is Chapter {
   return typeof value === "string" && (CHAPTERS as readonly string[]).includes(value);
@@ -72,7 +79,10 @@ export function selectQuestions(
   known: Iterable<string> = [],
   generated: PillarQuestion[] = [],
   max = MAX_QUESTIONS,
+  kind: "personal" | "ruling" = "personal",
 ): PillarQuestion[] {
+  // سؤال الحكم العام: الشروط المؤثرة فقط (2–4)، لا قالب ولا أركان عامة. بلا نموذج: سؤال الظروف وحده.
+  if (kind === "ruling") return generated.length ? generated.slice(0, RULING_MAX) : [GENERAL_BY_KEY.get("circumstances")!];
   const skip = new Set(known);
   const pool = templateFor(chapter, generated).filter((q) => !skip.has(q.key));
   const chosen = new Set<string>();
@@ -92,7 +102,25 @@ const PRIVATE: RegExp[] = [
   // التفاصيل الجنسية
   /(جماع|الجماع|جنس|جنسي|وطء|وطئ|إنزال|عورة|قبلة|مداعبة|استمناء|زنا)/u,
   /\b(sex|sexual|intercourse|ejaculat\w*|masturbat\w*|foreplay|orgasm|aroused|naked)\b/i,
+  // أسلوب المحقق: من فعل؟ من هو؟ أين يسكن؟
+  /(^|[\s«"(])(من|مَن)\s+(الذي|الذى|التي|هو|هي|هم|هما|فعل|فعلت|سرق|سرقت|قام|قامت|ارتكب|ارتكبت|أخذ|أخذت|قتل|ضرب|السارق|الفاعل|الجاني|الشخص)(?![\p{L}])/u,
+  /(أين|اين)\s+(يسكن|تسكن|يسكنون|يقيم|تقيم|يعيش|تعيش|يعمل|تعمل)/u,
+  /(ما|ماذا)\s+(اسمه|اسمها|اسمهم|هويته|هويتها|جنسيته|جنسيتها|عنوانه|عنوانها)/u,
+  /\bwho\s+(did|was|is|are|were|stole|took|committed|hit|killed|exactly|the\s+(person|thief|culprit))\b/i,
+  /\bwhere\s+(does|do|did)\s+(he|she|they|the\s+\w+)\s+(live|reside|stay|work)\b/i,
+  /\b(kim|kimdi|kimin)\b|\bnerede\s+(oturuyor|yaşıyor)\b|\bqui\s+(a|est|était)\b|\bsiapa\s+(yang|dia|pelaku)\b/iu,
 ];
+
+/** السؤال عن عمل شخص أو وظيفته: ممنوع إلا إن كان العمل نفسه موضوع المسألة. */
+const JOB: RegExp[] = [
+  /(ما|ماذا)\s+(عمله|عملها|عملهم|عملك|وظيفته|وظيفتها|وظيفتك|مهنته|مهنتها|مهنتك)|(أين|اين)\s+(يعمل|تعمل)/u,
+  /\bwhat\s+(is|was|are)\s+(his|her|their|your)\s+(job|occupation|work|profession)\b|\bwhere\s+(does|do)\s+(he|she|they|you)\s+work\b/i,
+];
+
+/** هل موضوع المسألة العمل نفسه (فيُسمح بسؤال العمل)؟ */
+export function isAboutWork(text: string): boolean {
+  return /(عمل|وظيف|مهن|راتب|دخل|شغل|تجار)|\b(job|work|salary|income|career|employ\w*|business|iş|maaş|travail|emploi|salaire|pekerjaan|gaji)\b/iu.test(text);
+}
 
 const RULING: RegExp[] = [
   // الأحكام والآراء
@@ -105,25 +133,93 @@ export function asksPrivate(text: string): boolean {
   return PRIVATE.some((r) => r.test(text));
 }
 
-/** نص بلا هوية ولا تفاصيل جنسية ولا حكم. */
-export function isSafeText(text: string): boolean {
-  return !asksPrivate(text) && !RULING.some((r) => r.test(text));
+/** نص بلا هوية ولا تفاصيل جنسية ولا حكم (وبلا سؤال عن العمل إلا إن كان موضوع المسألة). */
+export function isSafeText(text: string, allowJob = false): boolean {
+  return !asksPrivate(text) && !RULING.some((r) => r.test(text)) && (allowJob || !JOB.some((r) => r.test(text)));
 }
 
 /** هل السؤال المولّد آمن: قصير، عن وقائع فقط، بلا هوية ولا تفاصيل جنسية ولا حكم؟ */
-export function isSafeQuestion(text: string): boolean {
+export function isSafeQuestion(text: string, allowJob = false): boolean {
   const t = text.trim();
-  return t.length >= 4 && t.length <= 240 && isSafeText(t);
+  return t.length >= 4 && t.length <= 240 && isSafeText(t, allowJob);
 }
 
-/** يتحقق من كل الأسئلة المولّدة: يُسقط غير الآمن، ويُبقي 3–6 وإلا لا شيء (فتُكفى الأركان العامة). */
-export function safeGenerated(questions: PillarQuestion[]): PillarQuestion[] {
+export type GeneratedLimits = { min: number; max: number; allowJob?: boolean };
+
+/**
+ * يتحقق من الأسئلة المولّدة: يُسقط غير الآمن (وما بلا «لماذا نسأل؟») والمكرر، ويُبقي بين min وmax،
+ * وإلا لا شيء (فيُكتفى بالأركان العامة أو بسؤال الظروف).
+ */
+export function safeGenerated(
+  questions: PillarQuestion[],
+  limits: GeneratedLimits = { min: GENERATED_MIN, max: GENERATED_MAX },
+): PillarQuestion[] {
+  const job = Boolean(limits.allowJob);
+  const seen = new Set<string>();
   const safe = questions
-    .filter((q) => isSafeQuestion(q.ar) && isSafeQuestion(q.en))
-    .filter((q) => (q.options ?? []).every((o) => isSafeText(o.ar) && isSafeText(o.en)))
-    .slice(0, GENERATED_MAX)
+    .filter((q) => isSafeQuestion(q.ar, job) && isSafeQuestion(q.en, job))
+    .filter((q) => !q.why || (isSafeText(q.why.ar, job) && isSafeText(q.why.en, job)))
+    .filter((q) => (q.options ?? []).every((o) => isSafeText(o.ar, job) && isSafeText(o.en, job)))
+    .filter((q) => {
+      const k = q.ar.replace(/[^\p{L}]/gu, "");
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .slice(0, limits.max)
     .map((q, i) => ({ ...q, key: `gen_${i + 1}`, required: true, generated: true }));
-  return safe.length >= GENERATED_MIN ? safe : [];
+  return safe.length >= limits.min ? safe : [];
+}
+
+// ---------------------------------------------------------------------------
+// اختيار الباب: النموذج بدرجة ثقة، والكود يقرر.
+// ---------------------------------------------------------------------------
+
+/** الثقة الدنيا لاستعمال قالب باب معدّ؛ وإلا تُولَّد الأسئلة من نص السؤال. */
+export const CHAPTER_MIN_CONFIDENCE = 0.75;
+
+/** الجنايات والدماء والحدود: لا قالب لها بين الأبواب الأربعة عشر، فتُولَّد أسئلتها دائماً. */
+const CRIMES =
+  /(?<![\p{L}])(?:[وفبل]|ال)?(?:سرق|يسرق|تسرق|سرقت|سرقة|السارق|اختلس|قتل|يقتل|قتلت|جناية|جنايات|اعتداء|اغتصاب|زنا|خمر|سكر|رشوة|غصب|اختطاف|ضرب|يضرب|جرح|يجرح)(?:ه|ها|هم|ة|ني|ك|نا|ت|وا)?(?![\p{L}])|\b(steal\w*|stole|theft|thief|robb\w*|murder\w*|kill\w*|assault\w*|bribe\w*|rape|hırsız\w*|çaldı\w*|cinayet|rüşvet|vol(?:er|é\w*)|meurtre|mencuri|pencurian|membunuh|suap)\b|چوری|قتل/iu;
+
+/** كلمات صريحة لكل باب (احتياط إن تعذّر النموذج، وفي الاختبارات). */
+const CHAPTER_WORDS: [Exclude<Chapter, "other">, RegExp][] = [
+  ["talaq_khul", /طل[ّ]?ق|طلاق|خلع|\b(divorc\w*|talaq|khul\w*|boşan\w*|cerai|talak)\b|طلاق/iu],
+  ["inheritance_wills", /ور[ّ]?ث|ميراث|تركة|وصية|\b(inherit\w*|heirs?|estate|last\s+will|testament|miras|vasiyet|héritage|warisan)\b|وراثت/iu],
+  ["siyam", /صيام|صوم|أفطرت|افطرت|رمضان|\b(fast(ing)?|ramadan|oruç|jeûne|puasa)\b/iu],
+  ["salah", /صلاة|صليت|ركعة|سجود|\b(prayer|pray(ed)?|salah|namaz|prière|shalat|salat)\b|نماز/iu],
+  ["zakah", /زكاة|نصاب|\b(zakat|zakah|nisab|zekat)\b/iu],
+  ["hajj_umrah", /(?<![\p{L}])(?:[وفبل]|ال|وال)?(?:حج|حجة|حجي|عمرة|عمرتي)(?![\p{L}])|إحرام|احرام|\b(hajj|umrah|ihram|hac|umre)\b/iu],
+  ["taharah", /وضوء|غسل|تيمم|نجاسة|حيض|طهارة|\b(wudu|ghusl|ablution|tayammum|abdest|gusül)\b/iu],
+  ["nikah", /زواج|نكاح|مهر|خطبة|\b(marri\w*|nikah|mahr|wedding|evlilik|mariage|pernikahan)\b/iu],
+  ["finance", /قرض|ربا|فائدة|بنك|تقسيط|أسهم|تأمين|\b(loan|mortgage|interest|riba|bank|insurance|shares|crypto|kredi|faiz|prêt|pinjaman)\b/iu],
+  ["food_slaughter", /ذبيحة|ذبح|لحم|طعام|أكل|جيلاتين|\b(meat|slaughter\w*|gelatin|food|eat|viande|daging)\b/iu],
+  ["dress_adornment", /حجاب|لباس|وشم|(?<![\p{L}])(?:ال|بال)ذهب(?![\p{L}])|حرير|لحية|\b(hijab|tattoo|beard|dress|clothing|gold|silk|dövme|tatouage|jilbab)\b/iu],
+  ["oaths_vows_expiations", /حلفت|يمين|نذر|كفارة|\b(oath|vow|swore|kaffara\w*|yemin|adak|serment|sumpah|nazar)\b/iu],
+  ["non_muslim_relations", /غير\s+المسلمين|النصارى|اليهود|كافر|مسيحي|الكنيسة|\b(non-?muslims?|christians?|church|christmas|noël|natal)\b/iu],
+  ["new_muslim", /أسلمت|اسلمت|مسلم\s+جديد|حديث\s+الإسلام|\b(convert(ed)?|revert(ed)?|new\s+muslim|became\s+muslim|müslüman\s+oldum|mualaf)\b/iu],
+];
+
+/** أول باب تطابقه كلمة صريحة في السؤال، أو null. */
+export function keywordChapter(text: string): Exclude<Chapter, "other"> | null {
+  return CHAPTER_WORDS.find(([, re]) => re.test(text))?.[0] ?? null;
+}
+
+export function looksCrime(text: string): boolean {
+  return CRIMES.test(text);
+}
+
+/**
+ * الباب النهائي للاستيضاح:
+ * 1) الجنايات والدماء ⇒ other دائماً (أسئلة مولّدة من نص السؤال، لا قالب المعاملات).
+ * 2) اختيار النموذج إن كانت ثقته عالية (0.75 فأكثر).
+ * 3) إن تعذّر النموذج: كلمة صريحة في السؤال، وإلا other.
+ * ثقة النموذج المنخفضة ⇒ other.
+ */
+export function chooseChapter(question: string, model: { chapter: string; confidence: number } | null): Chapter {
+  if (looksCrime(question)) return "other";
+  if (model) return isChapter(model.chapter) && model.confidence >= CHAPTER_MIN_CONFIDENCE ? model.chapter : "other";
+  return keywordChapter(question) ?? "other";
 }
 
 

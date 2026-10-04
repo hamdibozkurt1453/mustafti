@@ -274,7 +274,12 @@
     "sentLinked": "",
     "copy": "",
     "copied": "",
-    "open": ""
+    "open": "",
+    "why": "",
+    "reviewStep": "",
+    "notSentYet": "",
+    "edit": "",
+    "doneEditing": ""
   },
   "caseFile": {
     "notFoundTitle": "",

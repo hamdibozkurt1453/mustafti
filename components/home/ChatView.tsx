@@ -36,6 +36,8 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, 
 
   // التمرير مع الجواب: عند كل رسالة جديدة، ومع البث ما دام السائل قريباً من الأسفل.
   useEffect(() => {
+    // بطاقة ملف المسألة تمرّر نفسها إلى أولها (CaseFlow.tsx)، فلا ننزل إلى زر الإرسال.
+    if (last?.role === "bot" && last.kind === "caseFile" && last.status === "done") return;
     const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 320;
     if (nearBottom || last?.role === "user" || (last?.role === "bot" && last.status === "pending")) {
       endRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "end" });

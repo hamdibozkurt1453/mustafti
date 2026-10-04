@@ -58,6 +58,8 @@ export const PlanSchema = z.object({
         key: s(40),
         text: s(400),
         textAr: s(400),
+        why: s(400).default(""),
+        whyAr: s(400).default(""),
         type: z.enum(["choice", "number", "text", "yesno"]),
         options: z.array(z.object({ value: s(60), label: s(200) })).max(8),
         required: z.boolean(),

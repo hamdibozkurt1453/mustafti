@@ -20,6 +20,11 @@ import { arabicValue, fallbackDraft, rowsOf, unknownsOf } from "../lib/case/draf
 import {
   asksPrivate,
   chapterName,
+  chooseChapter,
+  isSafeText,
+  keywordChapter,
+  looksCrime,
+  RULING_MAX,
   isSafeQuestion,
   MAX_QUESTIONS,
   PILLARS,
@@ -47,10 +52,10 @@ describe("قوالب الأركان (content/pillars.json)", () => {
     assert.deepEqual(chapters, CHAPTERS.filter((c) => c !== "other").sort());
   });
 
-  it("الأركان العامة الثمانية", () => {
+  it("الأركان العامة (وسؤال الظروف لسؤال الحكم العام)", () => {
     assert.deepEqual(
       PILLARS.general.map((q) => q.key),
-      ["occurred", "who", "what_exactly", "when", "country", "state_intent", "asked_before", "madhhab"],
+      ["occurred", "who", "what_exactly", "circumstances", "when", "country", "state_intent", "asked_before", "madhhab"],
     );
     assert.equal(PILLARS.general.find((q) => q.key === "madhhab")?.required, false);
   });
@@ -128,7 +133,8 @@ describe("اختيار أسئلة الاستيضاح", () => {
     assert.equal(gen.length, 3);
     assert.deepEqual(gen.map((q) => q.key), ["gen_1", "gen_2", "gen_3"]);
     const qs = selectQuestions("other", ["occurred"], gen).map((q) => q.key);
-    assert.ok(qs.includes("gen_1") && qs.includes("who") && !qs.includes("occurred"));
+    assert.ok(qs.includes("gen_1") && qs.includes("what_exactly") && !qs.includes("occurred"));
+    assert.ok(!qs.includes("who") && !qs.includes("country"), "لا «من المعني؟» ولا البلد في باب آخر");
     assert.ok(qs.length <= 8);
   });
 });
@@ -159,7 +165,8 @@ describe("الأسئلة المولّدة: فحص الكود", () => {
   it("أقل من 3 أسئلة آمنة ⇒ لا مولّد، وأكثر من 6 ⇒ 6", () => {
     const q = (ar: string): PillarQuestion => ({ key: "g", ar, en: ar, type: "text", required: true });
     assert.equal(safeGenerated([q("متى حدث ذلك؟"), q("ما اسمك؟"), q("هل هو حرام؟")]).length, 0);
-    assert.equal(safeGenerated(Array.from({ length: 9 }, (_, i) => q(`كم مرة حدث ذلك ${i}؟`))).length, 6);
+    const distinct = ["متى حدث", "كم مرة", "ما المقدار", "هل تكرر", "هل كان مسافرا", "ما السبب", "هل كان ناسيا", "هل طال الوقت", "هل أعاده"];
+    assert.equal(safeGenerated(distinct.map((x) => q(`${x}؟`))).length, 6);
   });
 });
 
@@ -272,11 +279,13 @@ describe("ملف المسألة بلا نموذج", () => {
     lang: "ar",
     known: [{ key: "occurred", text: "هل وقع؟", textAr: "هل وقع؟", value: "وقع فعلاً", option: "happened" }],
     questions: [
-      { key: "talaq_words", text: "ما الصيغة؟", textAr: "ما الصيغة؟", type: "text", options: [], required: true },
+      { key: "talaq_words", text: "ما الصيغة؟", textAr: "ما الصيغة؟", why: "", whyAr: "", type: "text", options: [], required: true },
       {
         key: "talaq_count",
         text: "كم طلقة سبقت؟",
         textAr: "كم طلقة سبقت؟",
+        why: "",
+        whyAr: "",
         type: "choice",
         options: [
           { value: "0", label: "لا شيء، هذه الأولى" },
@@ -284,7 +293,7 @@ describe("ملف المسألة بلا نموذج", () => {
         ],
         required: true,
       },
-      { key: "talaq_after", text: "ماذا حدث بعد؟", textAr: "ماذا حدث بعد؟", type: "text", options: [], required: false },
+      { key: "talaq_after", text: "ماذا حدث بعد؟", textAr: "ماذا حدث بعد؟", why: "", whyAr: "", type: "text", options: [], required: false },
     ],
   };
   const answers = [
@@ -326,5 +335,95 @@ describe("الرمز السري", () => {
     assert.ok(isCaseTokenShape(a));
     assert.match(hashCaseToken(a), /^[0-9a-f]{64}$/);
     assert.equal(isCaseTokenShape("short"), false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("الخصوصية أولاً: كالطبيب لا كالمحقق", () => {
+  it("لكل سؤال في القوالب سطر «لماذا نسأل؟» بالعربية والإنجليزية", () => {
+    for (const q of allTemplateQuestions()) assert.ok(q.why?.ar && q.why?.en, q.key);
+  });
+
+  it("لا «من المعني؟» في أي قالب، والبلد في الطلاق والمواريث والمعاملات والعلاقة بغير المسلمين فقط، واختياري", () => {
+    const withCountry = new Set(["talaq_khul", "inheritance_wills", "finance", "non_muslim_relations"]);
+    for (const [name, t] of Object.entries(PILLARS.chapters)) {
+      assert.ok(!t.order.includes("who"), name);
+      assert.equal(t.order.includes("country"), withCountry.has(name), name);
+    }
+    assert.equal(PILLARS.general.find((q) => q.key === "country")?.required, false);
+  });
+
+  it("قائمة المنع للمولّد: من فعل؟ ما اسمه؟ من هو؟ أين يسكن؟ ما عمله؟", () => {
+    for (const bad of [
+      "من الذي سرق؟",
+      "من سرق الطعام؟",
+      "من هو الشخص؟",
+      "ما اسمه؟",
+      "أين يسكن؟",
+      "ما عمله؟",
+      "Who stole the food?",
+      "Who is he?",
+      "Where does he live?",
+      "What is his job?",
+    ]) {
+      assert.equal(isSafeQuestion(bad), false, bad);
+    }
+  });
+
+  it("السؤال عن العمل مسموح إن كان العمل نفسه موضوع المسألة", () => {
+    assert.equal(isSafeText("ما عملك؟", false), false);
+    assert.equal(isSafeText("ما عملك؟", true), true);
+  });
+
+  it("سؤال الحكم العام: من 2 إلى 4 أسئلة مولّدة فقط، بلا أركان عامة ولا بلد", () => {
+    const q = (ar: string): PillarQuestion => ({ key: "g", ar, en: ar, why: { ar: "لأن الحكم يختلف.", en: "x" }, type: "text", required: true });
+    const gen = safeGenerated(
+      [q("ما درجة الجوع أو الاضطرار؟"), q("هل كان هناك بديل مشروع؟"), q("ما المأخوذ وما قدره؟"), q("هل طلب المساعدة؟"), q("كم مرة؟")],
+      { min: 2, max: RULING_MAX },
+    );
+    assert.equal(gen.length, 4);
+    const qs = selectQuestions("other", [], gen, undefined, "ruling").map((x) => x.key);
+    assert.deepEqual(qs, ["gen_1", "gen_2", "gen_3", "gen_4"]);
+    // بلا نموذج: سؤال الظروف وحده
+    assert.deepEqual(selectQuestions("other", [], [], undefined, "ruling").map((x) => x.key), ["circumstances"]);
+  });
+
+  it("المولّد المكرر يُحذف", () => {
+    const q = (ar: string): PillarQuestion => ({ key: "g", ar, en: ar, type: "text", required: true });
+    assert.equal(safeGenerated([q("ما المأخوذ؟"), q("ما المأخوذ؟"), q("هل كان بديل؟")], { min: 2, max: 4 }).length, 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("اختيار الباب بدرجة ثقة", () => {
+  const theft = "ما حكم من يسرق وهو مضطر لأنه جوعان";
+
+  it("السرقة والجنايات تُولَّد أسئلتها ولا تأخذ قالب المعاملات، حتى لو اقترحه النموذج بثقة", () => {
+    assert.equal(looksCrime(theft), true);
+    assert.equal(chooseChapter(theft, { chapter: "finance", confidence: 0.95 }), "other");
+    assert.equal(chooseChapter(theft, null), "other");
+    assert.equal(chooseChapter("ضربني جاري وجرحني، ماذا أفعل؟", { chapter: "non_muslim_relations", confidence: 0.9 }), "other");
+    assert.equal(chooseChapter("Is stealing food allowed if I'm starving?", null), "other");
+  });
+
+  it("«طلقت زوجتي» يأخذ قالب الطلاق", () => {
+    assert.equal(chooseChapter("طلقت زوجتي وأنا غاضب، هل وقع؟", null), "talaq_khul");
+    assert.equal(chooseChapter("طلقت زوجتي وأنا غاضب، هل وقع؟", { chapter: "talaq_khul", confidence: 0.97 }), "talaq_khul");
+  });
+
+  it("«ورث أبي بيتاً» يأخذ قالب المواريث", () => {
+    assert.equal(chooseChapter("ورث أبي بيتاً، كيف نقسمه؟", null), "inheritance_wills");
+    assert.equal(keywordChapter("ورث أبي بيتاً"), "inheritance_wills");
+  });
+
+  it("ثقة النموذج المنخفضة أو باب غير معروف ⇒ أسئلة مولّدة من نص السؤال", () => {
+    assert.equal(chooseChapter("سؤال عن الطلاق", { chapter: "talaq_khul", confidence: 0.4 }), "other");
+    assert.equal(chooseChapter("سؤال", { chapter: "astrology", confidence: 0.99 }), "other");
+  });
+
+  it("الكلمات الصريحة لا تخلط: «الحجاب» ليس حجاً، و«ذهبت» ليست ذهباً", () => {
+    assert.equal(keywordChapter("هل يجب علي الحجاب في العمل؟"), "dress_adornment");
+    assert.equal(keywordChapter("ذهبت إلى السوق"), null);
+    assert.equal(keywordChapter("I will go"), null);
   });
 });

@@ -21,6 +21,9 @@ export type PlanQuestion = {
   text: string;
   /** نص السؤال بالعربية (للملف الذي يقرؤه المفتي). */
   textAr: string;
+  /** «لماذا نسأل؟» بلغة السائل وبالعربية. */
+  why: string;
+  whyAr: string;
   type: AnswerType;
   options: PlanOption[];
   required: boolean;

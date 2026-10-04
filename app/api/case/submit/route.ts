@@ -6,7 +6,7 @@ import { saveCase } from "@/lib/case/store";
 import { isAdminClientConfigured } from "@/lib/supabase/admin";
 
 /**
- * POST /api/case/submit — «أوافق وأرسل»: الملف كما عدّله السائل، بعد حذف الهوية بالأنماط ثانيةً
+ * POST /api/case/submit — «أوافق وأرسل» فقط (approved: true إلزامي؛ لا يُحفظ شيء قبله): الملف كما عدّله السائل، بعد حذف الهوية بالأنماط ثانيةً
  * (قد يضيف السائل اسمه أثناء التعديل)، وترجمة ما عدّله بلغته إلى العربية للمفتي.
  * يُحفظ في cases وcase_files، ويُعاد الرمز السري مرة واحدة لرابط /case/[الرمز].
  * إن كان السائل مسجّلاً يُربط الملف بحسابه (owner_id) فيظهر في /me.
@@ -15,6 +15,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const Body = z.object({
+  /** موافقة السائل الصريحة على الملف بعد مراجعته. */
+  approved: z.literal(true),
   lang: LangSchema,
   chapter: ChapterSchema,
   userType: z.string().max(20).nullish(),

@@ -58,14 +58,12 @@ export function unknownsOf(plan: CasePlan, answers: CaseAnswer[]): CaseUnknown[]
     .map((q) => ({ key: q.key, labelAr: q.textAr, label: q.text }));
 }
 
-/** ملخص بلا نموذج: السؤال كما كتبه السائل، ثم الوقائع سطراً سطراً. */
+/** ملخص بلا نموذج: سؤال السائل كما كتبه (والوقائع في جدول الأركان، فلا تتكرر). */
 export function fallbackDraft(question: string, plan: CasePlan, answers: CaseAnswer[]): CaseDraft {
   const rows = rowsOf(plan, answers);
   const q = question.trim();
-  const factsAr = rows.map((r) => `- ${r.labelAr} ${r.valueAr}`).join("\n");
-  const factsUser = rows.map((r) => `- ${r.label} ${r.value}`).join("\n");
-  const summaryAr = `يسأل السائل: «${q}»${factsAr ? `\n\nالوقائع:\n${factsAr}` : ""}`;
-  const summaryUser = plan.lang === "ar" ? summaryAr : `«${q}»${factsUser ? `\n\n${factsUser}` : ""}`;
+  const summaryAr = `يسأل السائل: «${q}»`;
+  const summaryUser = plan.lang === "ar" ? summaryAr : `«${q}»`;
   return redactDraft({ question: q, summaryAr, summaryUser, rows, unknowns: unknownsOf(plan, answers) });
 }
 
