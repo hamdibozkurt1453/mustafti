@@ -19,8 +19,8 @@ export type SourceResult = {
   ref?: string;
 };
 
-/** طرق الوصول بالترتيب المعتمد (الخطة 0.1 البند 4)، و«db» لفهرس محلي في Supabase (مثل «بيّنات»). */
-export type AccessKind = "mcp" | "api" | "site" | "db";
+/** طرق الوصول بالترتيب المعتمد (الخطة 0.1 البند 4). */
+export type AccessKind = "mcp" | "api" | "site";
 
 export type SourceId =
   | "quranenc"
@@ -32,7 +32,6 @@ export type SourceId =
   | "icadb"
   | "risala"
   | "dawa_center"
-  | "bayyinat"
   | "jamhara"
   | "quranpedia"
   | "qurancomplex"

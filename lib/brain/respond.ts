@@ -1,13 +1,12 @@
 import "server-only";
 
 import { chat, type ChatMessage } from "@/lib/llm";
-import { search, SOURCE_DEADLINE_MS, type SourceId, type SourceResult } from "@/lib/sources";
 import { classify, type Classification } from "./classify";
 import { checkOutput, guardAndLog, matchKey, type GuardResult } from "./guard";
-import { findTerms } from "./glossary";
 import { looksPersonal, looksUrgent } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
 import { message } from "./messages";
+import { retrieve, warmSearch, type RetrievalDiag } from "./retrieval";
 import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } from "./prompts";
 
 /**
@@ -19,25 +18,10 @@ import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } f
  * و diag للمشرف فقط (لتشخيص الامتناع: هل البحث فارغ، أم امتنع النموذج، أم رُفضت الصياغة).
  */
 
-/**
- * مصادر الاسترجاع: منصات الجمعية عبر MCP (القرآن، والحديث، وIslamHouse)، وبيان الإسلام،
- * ورسالة الحرمين، والإسلام سؤال وجواب (للشرح العام فقط؛ الحالة الشخصية لا تُسترجع لها نصوص)،
- * و«بيّنات» من فهرسها المحلي (يُتجاهل بصمت ما دام الجدول فارغاً).
- */
-export const CORE_SOURCES: SourceId[] = ["islamhouse", "hadeethenc", "quranenc", "byenah", "risala", "islamqa", "bayyinat"];
-const MAX_PASSAGES = 6;
-const PASSAGE_CHARS = 900;
-/** مهلة كل مصدر في المحادثة: المهلة الموحدة 6 ثوانٍ (S5، طلب حمدي للسرعة). */
-const SEARCH_DEADLINE_MS = SOURCE_DEADLINE_MS;
-/** إن لم يصل شيء: انتظار قصير ثم إعادة البحث نفسه، فتجد الطلبات التي اكتملت في الخلفية في الذاكرة. */
-const RETRY_WAIT_MS = 2_500;
-
 export type ReplyKind = "identity" | "urgent" | "out_of_scope" | "referral" | "answer" | "abstain" | "refused";
 
 /** سبب الامتناع (للتشخيص). */
-export type AbstainReason = "no_passages" | "model_abstained" | "no_citation" | "guard";
-
-export type SearchDiag = { query: string; lang: string; source: SourceId; results: number; ms: number };
+export type AbstainReason = "no_passages" | "no_relevant" | "model_abstained" | "no_citation" | "guard";
 
 export type BrainReply = {
   kind: ReplyKind;
@@ -54,9 +38,7 @@ export type BrainReply = {
   /** تجاوز الكود لقرار المصنّف (رفع المستوى أو العاجل). */
   overrides: string[];
   diag: {
-    queries: { q: string; lang: string }[];
-    searches: SearchDiag[];
-    retried: boolean;
+    retrieval?: RetrievalDiag;
     abstainReason?: AbstainReason;
     /** محاولات الصياغة (الثانية بعد اعتراض الحارس). */
     attempts: { raw: string; guardOk: boolean; findings: string[] }[];
@@ -64,107 +46,6 @@ export type BrainReply = {
   timings: { classifyMs?: number; searchMs?: number; generateMs?: number; totalMs: number };
   costUsd: number;
 };
-
-function toPassage(r: SourceResult): Passage {
-  return {
-    title: r.title,
-    text: r.text.length > PASSAGE_CHARS ? `${r.text.slice(0, PASSAGE_CHARS)}…` : r.text,
-    url: r.url,
-    source: r.source,
-    grade: r.grade,
-    lang: r.lang,
-  };
-}
-
-/** كلمات السؤال المفيدة للبحث (بلا أدوات الاستفهام). */
-const STOP =
-  /^(ما|ماذا|لماذا|هل|كيف|من|متى|أين|اين|معنى|هي|هو|في|عن|على|إلى|الى|أن|ان|لا|او|أو|هذا|هذه|ذلك|التي|الذي|كل|بين|مع|لم|لن|قد|يا|the|a|an|is|are|do|does|did|what|why|how|who|in|of|to|and|or|it|its|isn't|just|for|on|with|apa|saja|dalam|yang|dan|ne|nedir|kimlere|mi|mı|le|la|les|des|un|une|est|ce|que|qui|کے|کی|کا|کیا|ہیں|ہے)$/i;
-
-/** للمطابقة (موحّدة). */
-function keywords(text: string): string[] {
-  return matchKey(text)
-    .split(" ")
-    .filter((w) => w.length > 2 && !STOP.test(w));
-}
-
-/** للبحث (بالحروف الأصلية، فلا تتحول التاء المربوطة إلى هاء). */
-function queryWords(text: string): string[] {
-  return text.split(/[^\p{L}\p{N}\p{M}]+/u).filter((w) => w.length > 2 && !STOP.test(w) && !STOP.test(matchKey(w)));
-}
-
-/**
- * كلمات البحث: ما اقترحه المصنّف بالعربية وبلغة السائل، ثم احتياط بالكود:
- * مصطلحات القاموس الواردة، وسؤال السائل نفسه مختصراً.
- */
-export function buildQueries(c: Classification, question: string): { q: string; lang: string }[] {
-  const out: { q: string; lang: string }[] = [];
-  const add = (q: string, lang: string) => {
-    const t = q.trim().slice(0, 120);
-    if (t && !out.some((x) => x.q === t && x.lang === lang)) out.push({ q: t, lang });
-  };
-  c.searchQueries.ar.slice(0, 3).forEach((q) => add(q, "ar"));
-  if (c.lang !== "ar") c.searchQueries.userLang.slice(0, 2).forEach((q) => add(q, c.lang));
-  for (const t of findTerms(question).slice(0, 2)) add(t.term_ar, "ar");
-  const kw = queryWords(question).slice(0, 6).join(" ");
-  if (kw) add(kw, c.lang);
-  return out.slice(0, 5);
-}
-
-/** درجة صلة بسيطة: كلمات البحث والسؤال الموجودة في عنوان النص ومقتطفه. */
-function relevance(r: SourceResult, terms: string[]): number {
-  const hay = matchKey(`${r.title} ${r.text}`);
-  return terms.reduce((s, t) => s + (hay.includes(t) ? 1 : 0), 0);
-}
-
-async function searchAll(queries: { q: string; lang: string }[], diag: SearchDiag[]): Promise<SourceResult[]> {
-  const jobs = queries.flatMap(({ q, lang }) =>
-    CORE_SOURCES.map(async (source) => {
-      const t0 = Date.now();
-      const results = await search(source, q, lang, SEARCH_DEADLINE_MS).catch(() => []);
-      diag.push({ query: q, lang, source, results: results.length, ms: Date.now() - t0 });
-      return results;
-    }),
-  );
-  return (await Promise.all(jobs)).flat();
-}
-
-/** البحث بالعربية وبلغة السائل في كل المصادر، ثم إزالة المكرر، وترتيب بالصلة مع تنويع المصادر. */
-export async function retrieve(
-  c: Classification,
-  question: string,
-): Promise<{ passages: Passage[]; queries: { q: string; lang: string }[]; searches: SearchDiag[]; retried: boolean }> {
-  const queries = buildQueries(c, question);
-  const searches: SearchDiag[] = [];
-  if (!queries.length) return { passages: [], queries, searches, retried: false };
-
-  let results = await searchAll(queries, searches);
-  let retried = false;
-  if (!results.length) {
-    retried = true;
-    await new Promise((r) => setTimeout(r, RETRY_WAIT_MS));
-    results = await searchAll(queries, searches);
-  }
-
-  const terms = [...new Set(queries.flatMap((q) => keywords(q.q)).concat(keywords(question)))];
-  const seen = new Set<string>();
-  const unique = results.filter((r) => {
-    if (!r.text?.trim() || seen.has(r.url)) return false;
-    seen.add(r.url);
-    return true;
-  });
-  const scored = unique.map((r) => ({ r, s: relevance(r, terms) })).sort((a, b) => b.s - a.s);
-  // تنويع: لا يزيد مصدر واحد على 3 نصوص.
-  const perSource = new Map<string, number>();
-  const picked: SourceResult[] = [];
-  for (const { r } of scored) {
-    if (picked.length >= MAX_PASSAGES) break;
-    const n = perSource.get(r.sourceId) ?? 0;
-    if (n >= 3) continue;
-    perSource.set(r.sourceId, n + 1);
-    picked.push(r);
-  }
-  return { passages: picked.map(toPassage), queries, searches, retried };
-}
 
 function isAbstention(text: string, lang: string): boolean {
   const key = matchKey(text);
@@ -246,24 +127,6 @@ export type RespondOptions = {
   onStage?: (stage: BrainStage) => void;
 };
 
-/**
- * تسخين البحث بالتوازي مع المصنّف: كلمات البحث التي لا تحتاج المصنّف (مصطلحات القاموس الواردة
- * وكلمات السؤال نفسه، كما في buildQueries) تُطلب الآن، فتجدها retrieve() جاهزة أو قيد الطلب
- * (lib/cache يضم الطلبات المتزامنة). لا يُعرض منها شيء؛ ولا تسخين لحالة شخصية أو عاجلة.
- */
-function warmSearch(question: string): void {
-  if (looksPersonal(question) || looksUrgent(question)) return;
-  const lang = guessLang(question);
-  const queries: { q: string; lang: string }[] = findTerms(question)
-    .slice(0, 2)
-    .map((t) => ({ q: t.term_ar.trim().slice(0, 120), lang: "ar" }));
-  const kw = queryWords(question).slice(0, 6).join(" ").trim().slice(0, 120);
-  if (kw) queries.push({ q: kw, lang });
-  for (const { q, lang: l } of queries) {
-    for (const source of CORE_SOURCES) void search(source, q, l, SEARCH_DEADLINE_MS).catch(() => []);
-  }
-}
-
 export async function respond(question: string, options: RespondOptions = {}): Promise<BrainReply> {
   const started = Date.now();
   const stage = (s: BrainStage) => {
@@ -275,7 +138,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
   };
   const overrides: string[] = [];
   const probe = detectIdentityProbe(question);
-  const diag: BrainReply["diag"] = { queries: [], searches: [], retried: false, attempts: [] };
+  const diag: BrainReply["diag"] = { attempts: [] };
   const base = { identityProbe: probe, passages: [] as Passage[], overrides, costUsd: 0, diag };
   type Draft = Pick<BrainReply, "kind" | "text" | "lang"> & Partial<BrainReply>;
   const done = (r: Draft): BrainReply => ({
@@ -292,9 +155,9 @@ export async function respond(question: string, options: RespondOptions = {}): P
   const prefix = probe === "manipulation" ? identityReply("manipulation", guessLang(question)) : "";
   const withPrefix = (text: string) => (prefix ? `${prefix}\n\n${text}` : text);
 
-  // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض)، والبحث يُسخَّن بالتوازي.
+  // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض)، والبحث يُسخَّن بالتوازي (لا لحالة شخصية أو عاجلة).
   stage("understanding");
-  warmSearch(question);
+  if (!looksPersonal(question) && !looksUrgent(question)) warmSearch(question, guessLang(question));
   const cls = await classify(question, { history: options.history });
   const c = { ...cls.classification };
   base.costUsd += cls.costUsd ?? 0;
@@ -326,11 +189,11 @@ export async function respond(question: string, options: RespondOptions = {}): P
   const t0 = Date.now();
   const found = await retrieve(c, question);
   timings.searchMs = Date.now() - t0;
-  Object.assign(diag, { queries: found.queries, searches: found.searches, retried: found.retried });
+  diag.retrieval = found.diag;
   const passages = found.passages;
 
   if (!passages.length) {
-    diag.abstainReason = "no_passages";
+    diag.abstainReason = found.diag.counts.cleaned ? "no_relevant" : "no_passages";
     const text = withPrefix(`${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`);
     return done({ ...common, kind: "abstain", text, passages, timings });
   }

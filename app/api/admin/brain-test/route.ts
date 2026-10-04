@@ -1,5 +1,5 @@
 import { authzResponse, requireRole } from "@/lib/auth/roles";
-import { runBrainCase } from "@/lib/brain/brain-test";
+import { mcpSamples, runBrainCase } from "@/lib/brain/brain-test";
 import { BRAIN_CASES } from "@/lib/brain/test-cases";
 import { isLlmConfigured } from "@/lib/llm";
 
@@ -43,7 +43,8 @@ export async function POST(request: Request) {
   }
   if (!isLlmConfigured()) return Response.json({ error: "OPENROUTER_API_KEY / LLM_MODEL is not set" }, { status: 503 });
 
-  const body = (await request.json().catch(() => null)) as { id?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { id?: unknown; debug?: unknown } | null;
+  if (body?.debug === "mcp") return Response.json(await mcpSamples(), { headers: { "Cache-Control": "no-store" } });
   const id = typeof body?.id === "string" ? body.id : "";
   if (!BRAIN_CASES.some((c) => c.id === id)) return Response.json({ error: "unknown case" }, { status: 400 });
 
@@ -75,12 +76,13 @@ a{color:var(--mid)}
 <body>
 <h1>اختبار «عقل» مُستفتي — 36 رسالة</h1>
 <p>حالات المرجعية الاثنتا عشرة، و8 محاولات إلحاح، و3 عاجلة، و3 خارج النطاق، و6 هوية وتلاعب، و4 أسئلة عامة. كل حالة: المصنّف ← المصادر ← الصياغة ← الحارس. الفحص الإلزامي لكل حالة: لا حكم في الرد. يُحسب من الحد اليومي (نحو 70 طلباً).</p>
-<button id="run">شغّل الاختبار</button> <button id="copy" disabled>انسخ التقرير</button>
+<button id="run">شغّل الاختبار</button> <button id="copy" disabled>انسخ التقرير</button> <button id="mcp">عيّنات MCP الخام</button>
+<pre id="mcpout" hidden style="white-space:pre-wrap;direction:ltr;background:#fff;border-radius:12px;padding:10px;font-size:.75rem;max-height:60vh;overflow:auto"></pre>
 <div id="summary"></div>
 <div id="list"></div>
 <script>
 const CASES=${casesJson};
-const REASON={no_passages:"البحث لم يُرجع نصوصاً",model_abstained:"النصوص موجودة لكن النموذج امتنع",no_citation:"جواب بلا إحالة [n] ولا اقتباس موثّق",guard:"اعترض الحارس"};
+const REASON={no_passages:"البحث لم يُرجع نصوصاً",no_relevant:"نصوص لكن لا شيء منها ذو صلة (درجة ≥2)",model_abstained:"النصوص موجودة لكن النموذج امتنع",no_citation:"جواب بلا إحالة [n] ولا اقتباس موثّق",guard:"اعترض الحارس"};
 const CAT={reference:"المرجعية",insistence:"إلحاح",urgent:"عاجل",out_of_scope:"خارج النطاق",identity:"هوية وتلاعب",general:"عام"};
 const results={};
 const list=document.getElementById("list"),run=document.getElementById("run"),copy=document.getElementById("copy"),summary=document.getElementById("summary");
@@ -97,6 +99,7 @@ function render(c,r){
   const diag=d?'<div class="diag">'
    +(d.abstainReason?'<div class="no">سبب الامتناع: '+esc(REASON[d.abstainReason]||d.abstainReason)+"</div>":"")
    +(d.queries.length?"<div>كلمات البحث: "+d.queries.map(q=>"«"+esc(q.q)+"» ("+q.lang+")").join("، ")+"</div>":"")
+   +(d.counts?"<div>المراحل: خام "+d.counts.raw+" ← بعد التنظيف "+d.counts.cleaned+" ← للتقييم "+d.counts.ranked+" ← مقبول (≥2) "+d.counts.kept+" · الترتيب: "+(d.rerank==="llm"?"النموذج":"الكلمات")+"</div>":"")
    +(Object.keys(d.bySource).length?"<div>النتائج لكل مصدر: "+Object.entries(d.bySource).map(([k,v])=>'<span class="'+(v?"pass":"no")+'">'+k+": "+v+"</span>").join(" · ")+(d.retried?" · (أُعيد البحث)":"")+"</div>":"")
    +"</div>":"";
   el.innerHTML='<div class="meta">'+r.id+" · "+CAT[r.category]+" · "+(r.ok?"نجح":"فشل")+(r.totalMs?" · "+(r.totalMs/1000).toFixed(1)+" ث":"")+(r.overrides&&r.overrides.length?" · تجاوز الكود: "+esc(r.overrides.join(", ")):"")+'</div>'
@@ -108,6 +111,8 @@ function render(c,r){
    +(r.guardIntervened?'<div class="meta no">تدخّل الحارس: '+esc((r.guardFindings||[]).join(" | "))+"</div>":"")
    +diag
    +(src?"<details open><summary>النصوص المسترجعة ("+r.sources.length+")</summary>"+src+"</details>":(d&&d.queries.length?'<div class="meta no">لا نصوص مسترجعة</div>':""))
+   +(d&&d.scored&&d.scored.length?"<details><summary>درجات المرشحين ("+d.scored.length+")</summary>"+d.scored.map(x=>'<div class="ex">'+(x.score??"—")+" · kw "+x.kw+(x.enriched?" · أُثري":"")+" · "+esc(x.source+" — "+x.title)+"</div>").join("")+"</details>":"")
+   +(d&&d.dropped&&d.dropped.length?"<details><summary>المستبعد ("+d.dropped.length+")</summary>"+d.dropped.map(x=>'<div class="ex">'+esc(x.reason+" · "+x.source+" — "+x.title)+"</div>").join("")+"</details>":"")
    +(d&&d.attempts.length>1?'<details><summary>المحاولة الأولى (اعترض الحارس)</summary><div class="out">'+esc(d.attempts[0].raw)+'</div><div class="meta">'+esc(d.attempts[0].findings.join(" | "))+"</div></details>":"")
    +(r.raw&&r.raw!==r.text?'<details><summary>الصياغة الخام قبل الحارس</summary><div class="out">'+esc(r.raw)+"</div></details>":"");
 }
@@ -132,6 +137,8 @@ function markdown(){
     const d=r.diag;
     if(d&&d.queries.length){
       lines.push("- كلمات البحث: "+d.queries.map(q=>"«"+q.q+"» ("+q.lang+")").join("، "));
+      if(d.counts)lines.push("- المراحل: خام "+d.counts.raw+" ← تنظيف "+d.counts.cleaned+" ← تقييم "+d.counts.ranked+" ← مقبول "+d.counts.kept+" ("+d.rerank+")");
+      if(d.scored)lines.push("- الدرجات: "+d.scored.map(x=>(x.score??"—")+"/"+x.kw+(x.enriched?"+":"")+" "+x.source+" — "+x.title.slice(0,50)).join(" ؛ "));
       lines.push("- النتائج لكل مصدر: "+Object.entries(d.bySource).map(([k,v])=>k+": "+v).join(" · ")+(d.retried?" (أُعيد البحث)":""));
       for(const [i,x] of (r.sources||[]).entries())lines.push("  - ["+(i+1)+"] "+x.source+" — "+x.title+": "+x.excerpt.replace(/\\s+/g," "));
       if(d.attempts.length>1)lines.push("- المحاولة الأولى (اعترض الحارس: "+d.attempts[0].findings.join(" | ")+"): "+d.attempts[0].raw.replace(/\\s+/g," "));
@@ -149,7 +156,15 @@ async function one(c){
   render(c,results[c.id]);tally();
 }
 CASES.forEach(c=>render(c));
-run.onclick=async()=>{run.disabled=true;copy.disabled=true;for(const k in results)delete results[k];CASES.forEach(c=>render(c));tally();
+const mcpBtn=document.getElementById("mcp"),mcpOut=document.getElementById("mcpout");
+mcpBtn.onclick=async()=>{mcpBtn.disabled=true;mcpOut.hidden=false;mcpOut.textContent="جارٍ…";
+  try{const r=await fetch(location.pathname,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({debug:"mcp"})});mcpOut.textContent=JSON.stringify(await r.json(),null,2)}
+  catch(e){mcpOut.textContent=String(e)}finally{mcpBtn.disabled=false}};
+run.onclick=async()=>{run.disabled=true;copy.disabled=true;for(const k in results)delete results[k];CASES.forEach(c=>render(c));
+const mcpBtn=document.getElementById("mcp"),mcpOut=document.getElementById("mcpout");
+mcpBtn.onclick=async()=>{mcpBtn.disabled=true;mcpOut.hidden=false;mcpOut.textContent="جارٍ…";
+  try{const r=await fetch(location.pathname,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({debug:"mcp"})});mcpOut.textContent=JSON.stringify(await r.json(),null,2)}
+  catch(e){mcpOut.textContent=String(e)}finally{mcpBtn.disabled=false}};tally();
   const queue=[...CASES];await Promise.all([0,1,2].map(async()=>{while(queue.length)await one(queue.shift())}));
   run.disabled=false;copy.disabled=false};
 copy.onclick=async()=>{const md=markdown();try{await navigator.clipboard.writeText(md);copy.textContent="نُسخ ✔"}catch{const t=document.createElement("textarea");t.value=md;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();copy.textContent="نُسخ ✔"}setTimeout(()=>copy.textContent="انسخ التقرير",2000)};

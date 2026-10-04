@@ -3,7 +3,6 @@ import "server-only";
 import { after } from "next/server";
 import { cached, DAY } from "@/lib/cache";
 import { clip, embeddedJson, extractResultLinks, linksFromJson, openSearchHref, searchForms, type ExtractedLink } from "./html";
-import { searchBayyinat } from "./bayyinat";
 import { collectItems, mcpFetchHadith, mcpLibrary, mcpQuranVerses, mcpSearch, type McpCorpus, type McpItem } from "./mcp-search";
 import { politeFetch, politeJson } from "./polite-fetch";
 import { QURANENC_TRANSLATIONS } from "./quran";
@@ -92,13 +91,6 @@ const hadithWithGrade: AccessMethod = {
     );
     return toResults("hadeethenc", full.filter((x): x is McpItem & { grade: string } => x !== null), lang);
   },
-};
-
-/** «بيّنات»: فهرس محلي في Supabase (بحث نصي)، ويُتجاهل بصمت إن كان الجدول فارغاً. */
-const bayyinatDb: AccessMethod = {
-  kind: "db",
-  via: "Supabase: bayyinat (fts)",
-  search: (query, lang) => searchBayyinat(query, lang),
 };
 
 // ---------------------------------------------------------------------------
@@ -273,7 +265,6 @@ const mp3quranApi: AccessMethod = {
 export const CONNECTORS: Partial<Record<SourceId, AccessMethod[]>> = {
   quranenc: [quranVerses, mcpCorpus("quranenc", "quran"), quranencApi],
   hadeethenc: [hadithWithGrade],
-  bayyinat: [bayyinatDb],
   islamhouse: [libraryTitles, mcpCorpus("islamhouse", "library")],
   byenah: [site("byenah", (s, l) => `https://byenah.com/${l}/search?q=${q(s)}`, NUMERIC_PATH)],
   risala: [risalaApi],
