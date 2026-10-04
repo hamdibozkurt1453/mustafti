@@ -3,7 +3,9 @@ import "server-only";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { localeNames, type Locale } from "@/i18n/locales";
-import { EXPERT_BUCKET, type Tazkiya } from "@/lib/experts/types";
+import { ExpertAvatar } from "@/components/experts/ExpertAvatar";
+import { avatarUrl, EXPERT_BUCKET, SOCIAL_KEYS, type Socials, type Tazkiya } from "@/lib/experts/types";
+import { SUPABASE_URL } from "@/lib/supabase/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ExpertDecision } from "./ExpertDecision";
 
@@ -32,6 +34,11 @@ type ExpertRow = {
   decided_at: string | null;
   reject_reason: string | null;
   created_at: string;
+  bio: string | null;
+  avatar_path: string | null;
+  contact: { phone?: string; email?: string } | null;
+  socials: Socials | null;
+  slug: string | null;
   profiles: { display_name: string | null; email: string | null } | null;
 };
 
@@ -46,6 +53,7 @@ export async function ExpertApplications({
 }) {
   const t = await getTranslations("experts.review");
   const tj = await getTranslations("experts.join");
+  const tp = await getTranslations("experts.profile");
   const format = await getFormatter();
   const db = createAdminClient();
   const filter = (STATUSES as readonly string[]).includes(status ?? "") ? status! : "pending";
@@ -74,6 +82,8 @@ export async function ExpertApplications({
         [t("gradYear"), e.grad_year ? String(e.grad_year) : "—"],
         [t("submittedAt"), date(e.created_at)],
         [t("pledgeAt"), date(e.pledge_at)],
+        [t("phone"), e.contact?.phone || "—"],
+        [t("contactEmail"), e.contact?.email || "—"],
       ];
       if (e.status !== "pending") rows.push([t("decidedAt"), date(e.decided_at)]);
       if (e.reject_reason) rows.push([t("rejectReason"), e.reject_reason]);
@@ -83,6 +93,19 @@ export async function ExpertApplications({
           <Link href={`${base}?tab=experts&status=${filter}`} className="text-sm font-semibold text-green-600 underline underline-offset-4">
             {t("back")}
           </Link>
+          <div className="flex items-center gap-4">
+            <ExpertAvatar url={avatarUrl(e.avatar_path, SUPABASE_URL)} name={e.profiles?.display_name ?? ""} size={96} />
+            <div className="space-y-1">
+              <p dir="auto" className="text-lg font-bold text-green-900">
+                {e.profiles?.display_name ?? "—"}
+              </p>
+              {e.status === "approved" && e.slug && (
+                <Link href={`/experts/${e.slug}`} className="text-sm font-semibold text-green-600 underline">
+                  {t("publicProfile")}
+                </Link>
+              )}
+            </div>
+          </div>
           <dl className="divide-y divide-sand-200 rounded-xl border border-sand-200 bg-white">
             {rows.map(([k, v]) => (
               <div key={k} className="grid gap-1 px-3 py-2 sm:grid-cols-3">
@@ -93,6 +116,31 @@ export async function ExpertApplications({
               </div>
             ))}
           </dl>
+
+          <section>
+            <h3 className="mb-1 font-semibold text-green-900">{t("bio")}</h3>
+            <p dir="auto" className="whitespace-pre-wrap text-sm text-green-900">
+              {e.bio || "—"}
+            </p>
+          </section>
+
+          <section>
+            <h3 className="mb-1 font-semibold text-green-900">{t("socials")}</h3>
+            {SOCIAL_KEYS.some((k) => e.socials?.[k]) ? (
+              <ul className="space-y-0.5 text-sm">
+                {SOCIAL_KEYS.filter((k) => e.socials?.[k]).map((k) => (
+                  <li key={k}>
+                    <span className="text-ink-600">{tp(`socials.${k}`)}: </span>
+                    <a href={e.socials![k]} target="_blank" rel="noopener noreferrer nofollow" dir="ltr" className="break-all text-green-600 underline">
+                      {e.socials![k]}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-ink-600">—</p>
+            )}
+          </section>
 
           <section>
             <h3 className="mb-1 font-semibold text-green-900">{t("tazkiyat")}</h3>

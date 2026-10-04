@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { MfaGate } from "@/components/admin/MfaGate";
+import { CountBadge } from "@/components/AccountButton";
 import { ExpertApplications } from "@/components/admin/ExpertApplications";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { ADMIN_ROLES, getAuthContext, requireRole } from "@/lib/auth/roles";
+import { pendingApplicationsCount } from "@/lib/experts/store";
 
 type Props = {
   params: Promise<{ locale: string; adminPath: string }>;
@@ -49,8 +51,10 @@ export default async function AdminPage({ params, searchParams }: Props) {
   const canReview = admin.role === "super_admin" || admin.role === "reviewer";
   const tab = canReview && sp.tab === "experts" ? "experts" : "home";
   const tabs = [
-    { key: "home", href: base, label: t("experts.review.tabHome") },
-    ...(canReview ? [{ key: "experts", href: `${base}?tab=experts`, label: t("experts.review.tab") }] : []),
+    { key: "home", href: base, label: t("experts.review.tabHome"), count: 0 },
+    ...(canReview
+      ? [{ key: "experts", href: `${base}?tab=experts`, label: t("experts.review.tab"), count: await pendingApplicationsCount() }]
+      : []),
   ];
 
   return (
@@ -68,11 +72,12 @@ export default async function AdminPage({ params, searchParams }: Props) {
               key={x.key}
               href={x.href}
               aria-current={x.key === tab ? "page" : undefined}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${
+              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold ${
                 x.key === tab ? "bg-green-900 text-ivory-50" : "text-green-900 hover:bg-green-900/5"
               }`}
             >
               {x.label}
+              <CountBadge count={x.count} label={t("experts.review.pendingBadge", { count: x.count })} />
             </Link>
           ))}
         </nav>
