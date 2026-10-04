@@ -160,3 +160,8 @@ vite.config.ts.timestamp-*
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# --- ملفات محلية لا تُرفع (مثل ملف «بيّنات» المنزَّل يدوياً للفهرسة) ---
+/private-data/
+bayyinat*.pdf
+bayyinat*.txt

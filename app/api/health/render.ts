@@ -14,6 +14,7 @@ export type HealthReport = {
   model: string | null;
   viewerIsAdmin: boolean;
   debug?: { id: string; page: SiteDebug }[];
+  quranSamples?: { tool: string; args: Record<string, unknown>; structured: string; text: string; error?: string }[];
 };
 
 const esc = (value: unknown) =>
@@ -102,8 +103,18 @@ export function renderHealthPage(r: HealthReport): string {
             ? `<div class="err">${esc(d.error)}</div>`
             : `<div class="muted">${esc(d.title)} · ${d.bytes ?? 0} بايت · ${d.anchors ?? 0} رابطاً · __NEXT_DATA__: ${d.nextData ? "نعم" : "لا"} · JSON: ${d.jsonBlocks ?? 0}</div>`;
           const forms = [...(d.forms ?? []).map((f) => `${f.action} [${f.field}]`), ...(d.openSearch ? [`OpenSearch: ${d.openSearch}`] : [])];
-          return `<tr><td>${esc(id)}</td><td class="ltr">${esc(d.url)}${meta}</td><td class="ltr"><code>${list(d.numericLinks)}</code></td><td class="ltr"><code>${list(forms)}</code></td><td class="ltr"><code>${list(d.apiHints)}</code></td></tr>`;
+          const bundles = (d.bundleHints ?? []).flatMap((b) => [`[${b.src.split("/").pop()}]${b.error ? ` ${b.error}` : ""}`, ...b.hints]);
+          return `<tr><td>${esc(id)}</td><td class="ltr">${esc(d.url)}${meta}</td><td class="ltr"><code>${list(d.numericLinks)}</code></td><td class="ltr"><code>${list(forms)}</code></td><td class="ltr"><code>${list([...(d.apiHints ?? []), ...bundles])}</code></td></tr>`;
         })
+        .join("")}</tbody></table></div>`
+    : "";
+
+  const quranSamples = r.quranSamples?.length
+    ? `<h2>عيّنة خام من ردود أدوات القرآن في خادم MCP</h2><div class="table-wrap"><table><thead><tr><th>الأداة والمعطيات</th><th>structuredContent</th><th>النص</th></tr></thead><tbody>${r.quranSamples
+        .map(
+          (q) =>
+            `<tr><td class="ltr"><code>${esc(q.tool)} ${esc(JSON.stringify(q.args))}</code>${q.error ? `<div class="err">${esc(q.error)}</div>` : ""}</td><td class="ltr"><code>${esc(q.structured || "—")}</code></td><td class="ltr" style="white-space:pre-wrap"><code>${esc(q.text || "—")}</code></td></tr>`,
+        )
         .join("")}</tbody></table></div>`
     : "";
 
@@ -202,6 +213,7 @@ export function renderHealthPage(r: HealthReport): string {
   </table></div>
   ${bayyinat}
   ${debug}
+  ${quranSamples}
 </main>
 </body>
 </html>`;

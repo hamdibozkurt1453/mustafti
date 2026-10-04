@@ -1,7 +1,7 @@
 import "server-only";
 
 import { methodsFor, withDeadline } from "./connectors";
-import { inspectPage } from "./html";
+import { apiHintsInScript, inspectPage } from "./html";
 import { politeFetch } from "./polite-fetch";
 import { SOURCES, type SourceDef } from "./registry";
 import { BlockedError, type AccessKind, type SourceId, type SourceResult, type SourceStatus } from "./types";
@@ -168,7 +168,9 @@ export function allSourcesHealth(): Promise<SourceHealth[]> {
 }
 
 
-export type SiteDebug = { url: string; error?: string } & Partial<ReturnType<typeof inspectPage>>;
+export type SiteDebug = { url: string; error?: string; bundleHints?: { src: string; hints: string[]; error?: string }[] } & Partial<
+  ReturnType<typeof inspectPage>
+>;
 
 /**
  * تشخيص صفحة البحث (/api/health?debug=1): حجمها وعنوانها، والروابط ذات المعرّف الرقمي،
@@ -182,7 +184,22 @@ export async function debugSiteSearch(id: SourceId): Promise<SiteDebug | null> {
   const url = method.pageUrl(query, lang);
   try {
     const { text, finalUrl } = await politeFetch(url, { respectRobots: true });
-    return { url: finalUrl, ...inspectPage(text, finalUrl) };
+    const page = inspectPage(text, finalUrl);
+    // لا روابط نتائج ولا بيانات مضمّنة: النتائج تُجلب بـ JavaScript، فنبحث عن واجهتها في ملفات السكربت
+    // (باحترام robots.txt، وأربعة ملفات على الأكثر، ولا يُحفظ شيء منها).
+    const bundleHints: NonNullable<SiteDebug["bundleHints"]> = [];
+    if (!page.numericLinks.length && !page.jsonBlocks) {
+      for (const src of page.scriptSrcs.slice(0, 4)) {
+        try {
+          const js = await politeFetch(src, { respectRobots: true, accept: "*/*" });
+          const hints = apiHintsInScript(js.text);
+          if (hints.length) bundleHints.push({ src, hints });
+        } catch (error) {
+          bundleHints.push({ src, hints: [], error: String((error as Error).message).slice(0, 100) });
+        }
+      }
+    }
+    return { url: finalUrl, ...page, bundleHints };
   } catch (error) {
     return { url, error: String((error as Error)?.message ?? error).slice(0, 160) };
   }

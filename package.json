@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "model-test": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/model-test.ts"
+    "model-test": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/model-test.ts",
+    "index-bayyinat": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/index-bayyinat.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
@@ -31,6 +32,7 @@
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "unpdf": "^1.8.1"
   }
 }
