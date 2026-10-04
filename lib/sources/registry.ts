@@ -25,6 +25,11 @@ export type SourceDef = {
   /** لغات بحث الموقع (إن كان البحث المباشر لا يدعم لغة السائل نبحث بالعربية). */
   langs?: string[];
   note?: string;
+  /**
+   * سبب «رابط فقط» لموقع يحجب طلباتنا (403) أو يمنع robots.txt بحثه. لا نحاول تجاوزه،
+   * ولا نرسل إليه أي طلب آلي؛ يُستشهد برابطه فقط (فحص 4 أكتوبر 2026 من Vercel).
+   */
+  blocked?: string;
 };
 
 const TRANSLATION_RULE =
@@ -52,7 +57,7 @@ export const SOURCES: SourceDef[] = [
     url: "https://hadeethenc.com",
     domain: "الحديث النبوي وشروحه",
     rule: "لا يُنسب حديث دون مصدر وحكم معتمد في البيانات.",
-    access: ["mcp", "site"],
+    access: ["mcp"],
     group: "association",
   },
   {
@@ -62,7 +67,7 @@ export const SOURCES: SourceDef[] = [
     url: "https://byenah.com",
     domain: "التعريف بالإسلام وتعليمه للمسلمين وغير المسلمين",
     rule: "الالتزام بما عليه المسلمون خصوصاً الصحابة والتابعون ومن تبعهم.",
-    access: ["mcp", "site"],
+    access: ["site"],
     group: "association",
   },
   {
@@ -72,7 +77,7 @@ export const SOURCES: SourceDef[] = [
     url: "https://islamhouse.com",
     domain: "كتب ومقالات وفتاوى منشورة وصوتيات ومرئيات بأكثر من 130 لغة",
     rule: "الالتزام بما عليه المسلمون خصوصاً الصحابة والتابعون ومن تبعهم. " + TRANSLATION_RULE,
-    access: ["mcp", "site"],
+    access: ["mcp"],
     group: "association",
   },
   {
@@ -82,8 +87,9 @@ export const SOURCES: SourceDef[] = [
     url: "https://islamenc.com/ar",
     domain: "أسئلة وأجوبة، وأسماء حسنى، ومصطلحات، وأعلام، بأكثر من 100 لغة",
     rule: TRANSLATION_RULE,
-    access: ["mcp", "site"],
+    access: [],
     group: "association",
+    blocked: "robots.txt يمنع صفحة البحث للزواحف؛ نحترمه ولا نبحث فيه آلياً. وخادم MCP لا يغطيه (يغطي القرآن والحديث وIslamHouse فقط).",
   },
   {
     id: "terminologyenc",
@@ -92,8 +98,9 @@ export const SOURCES: SourceDef[] = [
     url: "https://terminologyenc.com",
     domain: "الترجمة والمصطلحات",
     rule: "يُقدَّم على الترجمة التلقائية في المصطلحات الشرعية الحساسة.",
-    access: ["mcp", "site"],
+    access: [],
     group: "association",
+    note: "خادم MCP لا يغطيه، وصفحة البحث في الموقع غير معروفة الصيغة (404)؛ يُستشهد به في القاموس (S4).",
   },
   {
     id: "icadb",
@@ -125,9 +132,10 @@ export const SOURCES: SourceDef[] = [
     url: "https://dawa.center",
     domain: "الموضوعات الدعوية، والشبهات والأسئلة المتكررة",
     rule: "«بيّنات» مصدر أساسي للحلول الحوارية في الشبهات (dawa.center/file/7937)؛ ويُرجع إلى المستودع في الدعوة حسب البلدان والأديان واللغات والفئات.",
-    access: ["site"],
+    access: [],
     group: "core",
     note: "«بيّنات» تُفهرس محلياً في جلسة لاحقة.",
+    blocked: "robots.txt يمنع صفحة البحث للزواحف؛ نحترمه ولا نبحث فيه آلياً.",
   },
   {
     id: "jamhara",
@@ -136,8 +144,9 @@ export const SOURCES: SourceDef[] = [
     url: "https://islamic-content.com",
     domain: "الترجمة والمصطلحات، والموضوعات الدعوية",
     rule: "يُقدَّم على الترجمة التلقائية في المصطلحات الشرعية الحساسة (islamic-content.com/dictionary).",
-    access: ["site"],
+    access: [],
     group: "core",
+    blocked: "الموقع يرد على طلبات خادمنا بـ 403 (حماية من الزواحف)؛ لا نحاول تجاوزها.",
   },
   {
     id: "quranpedia",
@@ -146,8 +155,9 @@ export const SOURCES: SourceDef[] = [
     url: "https://quranpedia.net",
     domain: "القرآن الكريم",
     rule: "أهمية التأكد من موثوقية نقل الآيات.",
-    access: ["site"],
+    access: [],
     group: "core",
+    blocked: "robots.txt يمنع صفحة البحث للزواحف؛ نحترمه ولا نبحث فيه آلياً.",
   },
   {
     id: "qurancomplex",
@@ -167,10 +177,10 @@ export const SOURCES: SourceDef[] = [
     url: "https://dorar.net/hadith",
     domain: "الحديث النبوي",
     rule: "لا يُنسب حديث دون مصدر وحكم معتمد في البيانات.",
-    access: ["api"],
+    access: [],
     group: "core",
     langs: ["ar"],
-    note: "واجهة البحث الحديثي JSON (dorar.net/article/389)، وتعيد حكم المحدث مع كل حديث.",
+    blocked: "الموقع يرد على طلبات خادمنا بـ 403 (حماية من الزواحف)؛ لا نحاول تجاوزها. الحديث يأتي من موسوعة الأحاديث (hadeethenc) عبر MCP بدرجته.",
   },
   {
     id: "dorar_tafseer",
@@ -179,9 +189,10 @@ export const SOURCES: SourceDef[] = [
     url: "https://dorar.net/tafseer",
     domain: "التفسير",
     rule: "يُستخدم لشرح الآية مع تمييز كلام المفسر عن النص القرآني.",
-    access: ["site"],
+    access: [],
     group: "core",
     langs: ["ar"],
+    blocked: "الموقع يرد على طلبات خادمنا بـ 403 (حماية من الزواحف)؛ لا نحاول تجاوزها.",
   },
   {
     id: "dorar_aqeeda",
@@ -190,9 +201,10 @@ export const SOURCES: SourceDef[] = [
     url: "https://dorar.net/aqeeda",
     domain: "العقيدة والتعريف بالإسلام",
     rule: "الالتزام بما عليه المسلمون خصوصاً الصحابة والتابعون ومن تبعهم.",
-    access: ["site"],
+    access: [],
     group: "core",
     langs: ["ar"],
+    blocked: "الموقع يرد على طلبات خادمنا بـ 403 (حماية من الزواحف)؛ لا نحاول تجاوزها.",
   },
   {
     id: "dorar_feqhia",
@@ -201,9 +213,10 @@ export const SOURCES: SourceDef[] = [
     url: "https://dorar.net/feqhia",
     domain: "الفقه العام",
     rule: "لا تتحول إلى فتوى شخصية أو ترجيح آلي مستقل.",
-    access: ["site"],
+    access: [],
     group: "core",
     langs: ["ar"],
+    blocked: "الموقع يرد على طلبات خادمنا بـ 403 (حماية من الزواحف)؛ لا نحاول تجاوزها.",
   },
   {
     id: "dorar_history",
@@ -212,9 +225,10 @@ export const SOURCES: SourceDef[] = [
     url: "https://dorar.net/history",
     domain: "السيرة والتاريخ",
     rule: "تعتمد الوقائع الثابتة وتحدد درجة ما يحتاج إلى احتراز.",
-    access: ["site"],
+    access: [],
     group: "core",
     langs: ["ar"],
+    blocked: "الموقع يرد على طلبات خادمنا بـ 403 (حماية من الزواحف)؛ لا نحاول تجاوزها.",
   },
   {
     id: "shamela",
@@ -223,9 +237,10 @@ export const SOURCES: SourceDef[] = [
     url: "https://shamela.ws",
     domain: "كتب السنة والتراث (الطبعات المعتمدة)",
     rule: "لا يُنسب حديث دون مصدر وحكم معتمد في البيانات؛ يُرجع إلى الطبعات المعتمدة لكتب السنة.",
-    access: ["site"],
+    access: [],
     group: "core",
     langs: ["ar"],
+    blocked: "الموقع يرد على طلبات خادمنا بـ 403 (حماية من الزواحف)؛ لا نحاول تجاوزها.",
   },
   // ---------------------------------------------------------------- منصات متخصصة خارج الجمعية
   {

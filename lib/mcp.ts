@@ -12,7 +12,8 @@ import { cached, DAY, HOUR } from "@/lib/cache";
 
 const DEFAULT_URL = "https://mcp.islamiccontent.org/mcp";
 const CONNECT_TIMEOUT_MS = 8_000;
-const CALL_TIMEOUT_MS = 12_000;
+/** بحث الخادم قد يستغرق أكثر من 10 ثوانٍ؛ المهلة القصوى لكل مصدر (6 ثوانٍ) تُطبَّق في lib/sources. */
+const CALL_TIMEOUT_MS = 20_000;
 
 export type McpTool = {
   name: string;
@@ -66,11 +67,15 @@ async function getClient(): Promise<Client> {
   return clientPromise;
 }
 
-/** ينفذ عملية على العميل، ويعيد الاتصال مرة واحدة إن انتهت الجلسة أو انقطع الاتصال. */
+/**
+ * ينفذ عملية على العميل، ويعيد الاتصال مرة واحدة إن انتهت الجلسة أو انقطع الاتصال.
+ * انتهاء المهلة لا يُعاد (إعادته تضاعف الانتظار فقط).
+ */
 async function withClient<T>(run: (client: Client) => Promise<T>): Promise<T> {
   try {
     return await run(await getClient());
-  } catch {
+  } catch (error) {
+    if (/timed? ?out|timeout/i.test(String((error as Error)?.message ?? error))) throw error;
     reset();
     return run(await getClient());
   }

@@ -1,8 +1,9 @@
 import "server-only";
 
+import { after } from "next/server";
 import { cached, DAY } from "@/lib/cache";
-import { clip, extractResultLinks, htmlToText } from "./html";
-import { collectItems, mcpSearchHost, type McpItem } from "./mcp-search";
+import { clip, embeddedJson, extractResultLinks, linksFromJson, openSearchHref, searchForms, type ExtractedLink } from "./html";
+import { collectItems, mcpLibrary, mcpQuranVerses, mcpSearch, type McpCorpus, type McpItem } from "./mcp-search";
 import { politeFetch, politeJson } from "./polite-fetch";
 import { SOURCE_BY_ID } from "./registry";
 import type { AccessMethod, SourceId, SourceResult } from "./types";
@@ -11,6 +12,7 @@ import type { AccessMethod, SourceId, SourceResult } from "./types";
  * موصّلات المصادر: لكل مصدر قائمة طرق وصول بالترتيب (MCP ← API ← الموقع).
  * كل طريقة تعيد SourceResult[] أو ترمي خطأ. نتائج API والموقع تُخزَّن 24 ساعة
  * (المقتطفات والروابط فقط)، ونتائج MCP تُخزَّن في lib/mcp.ts.
+ * المواقع التي تحجبنا (403) أو يمنعنا robots.txt من بحثها ليست هنا: هي «رابط فقط» في registry.ts.
  */
 
 const MAX_RESULTS = 5;
@@ -29,21 +31,92 @@ function toResults(id: SourceId, items: McpItem[], lang: string): SourceResult[]
     source: SOURCE_BY_ID[id].name,
     sourceId: id,
     ...(item.grade ? { grade: item.grade } : {}),
+    ...(item.ref ? { ref: item.ref } : {}),
     lang: item.lang ?? lang,
   }));
 }
 
+/** رقم آية مذكور في السؤال (مثل 2:255). */
+export function verseRef(query: string): { surah: number; ayah: number } | null {
+  const m = query.match(/(\d{1,3})\s*[:：]\s*(\d{1,3})/);
+  if (!m) return null;
+  const [surah, ayah] = [Number(m[1]), Number(m[2])];
+  return surah >= 1 && surah <= 114 && ayah >= 1 ? { surah, ayah } : null;
+}
+
 // ---------------------------------------------------------------------------
-// قوالب الطرق
+// خادم MCP: الأدوات المتخصصة أولاً (أسرع)، ثم البحث في مجموعة واحدة
 // ---------------------------------------------------------------------------
 
-/** نتائج أداة search في خادم MCP التي يقع رابطها على نطاق المصدر. */
-function mcp(id: SourceId, hosts: string[]): AccessMethod {
+function mcpCorpus(id: SourceId, corpus: McpCorpus): AccessMethod {
   return {
     kind: "mcp",
-    via: "MCP: search",
-    search: async (query, lang) => toResults(id, await mcpSearchHost(query, lang, hosts), lang),
+    via: `MCP: search (sources=${corpus})`,
+    search: async (query, lang) => toResults(id, await mcpSearch(query, lang, corpus), lang),
   };
+}
+
+const quranVerses: AccessMethod = {
+  kind: "mcp",
+  via: "MCP: get_quran_verses",
+  search: async (query, lang) => {
+    const ref = verseRef(query);
+    return ref ? toResults("quranenc", await mcpQuranVerses(ref.surah, ref.ayah, lang), lang) : [];
+  },
+};
+
+const libraryTitles: AccessMethod = {
+  kind: "mcp",
+  via: "MCP: browse_library (name)",
+  search: async (query, lang) => toResults("islamhouse", await mcpLibrary(query, lang), lang),
+};
+
+// ---------------------------------------------------------------------------
+// البحث المباشر في الموقع
+// ---------------------------------------------------------------------------
+
+type SiteOptions = {
+  /** رابط صفحة المادة من معرّفها، لنتائج مضمّنة في الصفحة بصيغة JSON بلا رابط. */
+  idUrl?: (id: string, lang: string) => string;
+  /** الصفحة التي يُكتشف منها نموذج البحث (الصفحة الرئيسية للغة). */
+  home?: (lang: string) => string;
+};
+
+/**
+ * يكتشف صيغة البحث الصحيحة من الموقع نفسه: وصف OpenSearch إن أعلنه، وإلا نموذج البحث
+ * في الصفحة الرئيسية. يُخزَّن 24 ساعة. يعيد قالباً فيه {q} أو null.
+ */
+function discoverTemplate(homeUrl: string): Promise<string | null> {
+  return cached(`discover:${homeUrl}`, DAY, async () => {
+    const { text, finalUrl } = await politeFetch(homeUrl, { respectRobots: true });
+    const osd = openSearchHref(text, finalUrl);
+    if (osd) {
+      try {
+        const xml = (await politeFetch(osd, { respectRobots: true, accept: "application/opensearchdescription+xml" })).text;
+        const tpl = xml.match(/<Url\b[^>]*type=["']text\/html["'][^>]*template=["']([^"']+)["']/i)?.[1]
+          ?? xml.match(/<Url\b[^>]*template=["']([^"']+)["'][^>]*type=["']text\/html["']/i)?.[1];
+        if (tpl) return tpl.replace(/&amp;/g, "&").replace("{searchTerms}", "{q}").replace(/\{[^}]+\?\}/g, "");
+      } catch {
+        /* نكمل بنموذج الصفحة */
+      }
+    }
+    const form = searchForms(text, finalUrl)[0];
+    if (!form) return null;
+    const url = new URL(form.action);
+    url.searchParams.set(form.field, "QUERY");
+    return url.toString().replace("QUERY", "{q}");
+  });
+}
+
+/** النتائج من HTML الصفحة: الروابط المطابقة، وإلا البيانات المضمّنة (للصفحات التي تُرسم بـ JavaScript). */
+function extract(html: string, finalUrl: string, pattern: RegExp, idUrl?: (id: string) => string): ExtractedLink[] {
+  const links = extractResultLinks(html, finalUrl, pattern, { limit: MAX_RESULTS });
+  if (links.length) return links;
+  for (const block of embeddedJson(html)) {
+    const found = linksFromJson(block, finalUrl, idUrl, MAX_RESULTS).filter((l) => pattern.test(new URL(l.url).pathname));
+    if (found.length) return found;
+  }
+  return [];
 }
 
 /** البحث المباشر في صفحة بحث الموقع، مع robots.txt وإيقاع طلب في الثانية. */
@@ -51,6 +124,7 @@ function site(
   id: SourceId,
   searchUrl: (query: string, lang: string) => string,
   linkPattern: RegExp,
+  options: SiteOptions = {},
 ): AccessMethod {
   return {
     kind: "site",
@@ -59,9 +133,19 @@ function site(
     search: (query, lang) => {
       const l = siteLang(id, lang);
       const url = searchUrl(query, l);
+      const idUrl = options.idUrl ? (x: string) => options.idUrl!(x, l) : undefined;
       return cached(`site:${url}`, DAY, async () => {
-        const { text, finalUrl } = await politeFetch(url, { respectRobots: true });
-        const links = extractResultLinks(text, finalUrl, linkPattern, { limit: MAX_RESULTS });
+        const page = await politeFetch(url, { respectRobots: true });
+        let links = extract(page.text, page.finalUrl, linkPattern, idUrl);
+        // لا نتائج: نجرب صيغة البحث التي يعلنها الموقع نفسه (مرة في اليوم).
+        if (!links.length && options.home) {
+          const tpl = await discoverTemplate(options.home(l)).catch(() => null);
+          const alt = tpl?.replace("{q}", encodeURIComponent(query));
+          if (alt && alt !== url) {
+            const second = await politeFetch(alt, { respectRobots: true });
+            links = extract(second.text, second.finalUrl, linkPattern, idUrl);
+          }
+        }
         return links.map((link) => ({
           title: link.title,
           text: link.snippet,
@@ -80,7 +164,7 @@ const q = encodeURIComponent;
 const NUMERIC_PATH = /\/\d{2,}(?:\/|$|[-_])/;
 
 // ---------------------------------------------------------------------------
-// موصّلات خاصة (API)
+// واجهات API عامة بلا مفتاح
 // ---------------------------------------------------------------------------
 
 /** quranenc: ترجمة آية بعينها حين يذكر السؤال رقمها (مثل 2:255). */
@@ -103,10 +187,9 @@ const quranencApi: AccessMethod = {
   kind: "api",
   via: "quranenc.com/api/v1/translation/aya",
   search: async (query, lang) => {
-    const ref = query.match(/(\d{1,3})\s*[:：]\s*(\d{1,3})/);
+    const ref = verseRef(query);
     if (!ref) return [];
-    const [sura, aya] = [Number(ref[1]), Number(ref[2])];
-    if (sura < 1 || sura > 114 || aya < 1) return [];
+    const { surah: sura, ayah: aya } = ref;
     const key = QURANENC_TRANSLATIONS[lang] ?? QURANENC_TRANSLATIONS.en;
     return cached(`api:quranenc:${key}:${sura}:${aya}`, DAY, async () => {
       const data = await politeJson<{ result?: { arabic_text?: string; translation?: string; footnotes?: string } }>(
@@ -126,43 +209,6 @@ const quranencApi: AccessMethod = {
       ];
     });
   },
-};
-
-/** الدرر: واجهة البحث الحديثي العامة (dorar.net/article/389)، وتعيد حكم المحدث. */
-const dorarHadithApi: AccessMethod = {
-  kind: "api",
-  via: "dorar.net/dorar_api.json?skey=",
-  search: (query) =>
-    cached(`api:dorar:${query}`, DAY, async () => {
-      const data = await politeJson<{ ahadith?: { result?: string } }>(
-        `https://dorar.net/dorar_api.json?skey=${q(query)}`,
-      );
-      const html = data.ahadith?.result ?? "";
-      const searchUrl = `https://dorar.net/hadith/search?q=${q(query)}`;
-      const results: SourceResult[] = [];
-      for (const block of html.split(/<div[^>]*class="hadith"[^>]*>/i).slice(1)) {
-        const [hadithHtml, infoHtml = ""] = block.split(/<div[^>]*class="hadith-info"[^>]*>/i);
-        const text = htmlToText(hadithHtml).replace(/^\d+\s*-\s*/, "");
-        const info = htmlToText(infoHtml);
-        const field = (label: string) =>
-          info.match(new RegExp(`${label}\\s*:?\\s*(.+?)(?=\\s+(?:الراوي|المحدث|المصدر|الصفحة أو الرقم|خلاصة حكم المحدث)\\s*:|$)`))?.[1]?.trim();
-        const grade = field("خلاصة حكم المحدث")?.replace(/[[\]]/g, "");
-        const muhaddith = field("المحدث");
-        const book = field("المصدر");
-        if (!text) continue;
-        results.push({
-          title: [book, muhaddith].filter(Boolean).join(" — ") || SOURCE_BY_ID.dorar_hadith.name,
-          text: clip(text, 700),
-          url: searchUrl,
-          source: SOURCE_BY_ID.dorar_hadith.name,
-          sourceId: "dorar_hadith",
-          ...(grade ? { grade } : {}),
-          lang: "ar",
-        });
-        if (results.length >= MAX_RESULTS) break;
-      }
-      return results;
-    }),
 };
 
 /** رسالة الحرمين: واجهة البحث العامة. */
@@ -209,44 +255,58 @@ const mp3quranApi: AccessMethod = {
 // ---------------------------------------------------------------------------
 
 export const CONNECTORS: Partial<Record<SourceId, AccessMethod[]>> = {
-  quranenc: [mcp("quranenc", ["quranenc.com"]), quranencApi],
-  hadeethenc: [
-    mcp("hadeethenc", ["hadeethenc.com"]),
-    site("hadeethenc", (s, l) => `https://hadeethenc.com/${l}/search?q=${q(s)}`, /\/browse\/hadith\/\d+/),
-  ],
-  byenah: [
-    mcp("byenah", ["byenah.com"]),
-    site("byenah", (s, l) => `https://byenah.com/${l}/search?q=${q(s)}`, NUMERIC_PATH),
-  ],
-  islamhouse: [
-    mcp("islamhouse", ["islamhouse.com"]),
-    site("islamhouse", (s, l) => `https://islamhouse.com/${l}/search/?q=${q(s)}`, /\/(books|articles|fatwa|audios|videos|poster|khotab)\/\d+/),
-  ],
-  islamenc: [
-    mcp("islamenc", ["islamenc.com"]),
-    site("islamenc", (s, l) => `https://islamenc.com/${l}/search?q=${q(s)}`, NUMERIC_PATH),
-  ],
-  terminologyenc: [
-    mcp("terminologyenc", ["terminologyenc.com"]),
-    site("terminologyenc", (s, l) => `https://terminologyenc.com/${l}/search?q=${q(s)}`, /\/browse\/term\/\d+|\/\d{2,}/),
-  ],
+  quranenc: [quranVerses, mcpCorpus("quranenc", "quran"), quranencApi],
+  hadeethenc: [mcpCorpus("hadeethenc", "hadith")],
+  islamhouse: [libraryTitles, mcpCorpus("islamhouse", "library")],
+  byenah: [site("byenah", (s, l) => `https://byenah.com/${l}/search?q=${q(s)}`, NUMERIC_PATH)],
   risala: [risalaApi],
-  dawa_center: [site("dawa_center", (s) => `https://dawa.center/search?q=${q(s)}`, NUMERIC_PATH)],
-  jamhara: [site("jamhara", (s) => `https://islamic-content.com/search?q=${q(s)}`, NUMERIC_PATH)],
-  quranpedia: [site("quranpedia", (s) => `https://quranpedia.net/search?q=${q(s)}`, NUMERIC_PATH)],
-  dorar_hadith: [dorarHadithApi],
-  dorar_tafseer: [site("dorar_tafseer", (s) => `https://dorar.net/tafseer/search?q=${q(s)}`, /^\/tafseer\/\d+/)],
-  dorar_aqeeda: [site("dorar_aqeeda", (s) => `https://dorar.net/aqeeda/search?q=${q(s)}`, /^\/aqeeda\/\d+/)],
-  dorar_feqhia: [site("dorar_feqhia", (s) => `https://dorar.net/feqhia/search?q=${q(s)}`, /^\/feqhia\/\d+/)],
-  dorar_history: [site("dorar_history", (s) => `https://dorar.net/history/search?q=${q(s)}`, /^\/history\/(event\/)?\d+/)],
-  shamela: [site("shamela", (s) => `https://shamela.ws/search?q=${q(s)}`, /^\/book\/\d+/)],
   tafsir_net: [site("tafsir_net", (s) => `https://tafsir.net/search?q=${q(s)}`, NUMERIC_PATH)],
   mp3quran: [mp3quranApi],
-  islamqa: [site("islamqa", (s, l) => `https://islamqa.info/${l}/search?q=${q(s)}`, /\/answers\/\d+/)],
-  binbaz: [site("binbaz", (s) => `https://binbaz.org.sa/search?q=${q(s)}`, /^\/(fatwas|articles|audios|books|discussions)\/\d+/)],
-  binothaimeen: [site("binothaimeen", (s) => `https://binothaimeen.net/site/search?q=${q(s)}`, /\/content\/\d+/)],
+  islamqa: [
+    site("islamqa", (s, l) => `https://islamqa.info/${l}/search?q=${q(s)}`, /\/answers\/\d+/, {
+      idUrl: (id, l) => `/${l}/answers/${id}`,
+      home: (l) => `https://islamqa.info/${l}`,
+    }),
+  ],
+  binbaz: [
+    site("binbaz", (s) => `https://binbaz.org.sa/search?q=${q(s)}`, /^\/(fatwas|articles|audios|books|discussions|speeches)\/\d+/, {
+      idUrl: (id) => `/fatwas/${id}`,
+      home: () => "https://binbaz.org.sa/",
+    }),
+  ],
+  binothaimeen: [
+    site("binothaimeen", (s) => `https://binothaimeen.net/site/search?q=${q(s)}`, /\/content\/\d+/, {
+      idUrl: (id) => `/content/${id}`,
+      home: () => "https://binothaimeen.net/",
+    }),
+  ],
 };
 
 export function methodsFor(id: SourceId): AccessMethod[] {
   return CONNECTORS[id] ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// المهلة القصوى لكل مصدر
+// ---------------------------------------------------------------------------
+
+/**
+ * يعيد نتيجة الوعد إن وصلت خلال ms، وإلا [] فوراً. الطلب لا يُلغى: يكمل في الخلفية
+ * ويملأ الذاكرة المؤقتة، فيجد السؤال التالي النتيجة جاهزة. after() يُبقي الدالة حية
+ * على Vercel حتى ينتهي (ويُتجاهل خارج سياق الطلب).
+ */
+export function withDeadline<T>(promise: Promise<T[]>, ms: number): Promise<T[]> {
+  const settled = promise.catch(() => [] as T[]);
+  try {
+    after(() => settled);
+  } catch {
+    /* خارج طلب (سكربت أو اختبار) */
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    settled,
+    new Promise<T[]>((resolve) => {
+      timer = setTimeout(() => resolve([]), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
 }

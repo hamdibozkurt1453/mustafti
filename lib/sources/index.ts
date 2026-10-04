@@ -1,7 +1,7 @@
 import "server-only";
 
-import { methodsFor } from "./connectors";
-import { sampleLinks } from "./html";
+import { methodsFor, withDeadline } from "./connectors";
+import { inspectPage } from "./html";
 import { politeFetch } from "./polite-fetch";
 import { SOURCES, type SourceDef } from "./registry";
 import { BlockedError, type AccessKind, type SourceId, type SourceResult, type SourceStatus } from "./types";
@@ -9,18 +9,14 @@ import { BlockedError, type AccessKind, type SourceId, type SourceResult, type S
 export { SOURCES, SOURCE_BY_ID } from "./registry";
 export type { SourceResult, SourceId } from "./types";
 
-/**
- * البحث في مصدر واحد بالواجهة الموحدة:
- *   search(query, lang) => [{ title, text, url, source, sourceId, grade?, lang }]
- * يجرب طرق الوصول بالترتيب (MCP ← API ← الموقع)، ويعيد نتائج أول طريقة تنجح بنتائج.
- * فشل طريقة لا يوقف البحث: ينتقل إلى التالية، وإن فشلت كلها يعيد [].
- */
-export async function search(id: SourceId, query: string, lang: string): Promise<SourceResult[]> {
-  const q = query.trim().slice(0, 200);
-  if (!q) return [];
+/** المهلة القصوى لكل مصدر في البحث (طلب حمدي، 4 أكتوبر): ما لم يصل خلالها يكمل في الخلفية ويُخزَّن. */
+export const SOURCE_DEADLINE_MS = 6_000;
+
+/** طرق المصدر بالترتيب: أول طريقة تنجح بنتائج. فشل طريقة ينقلنا إلى التالية. */
+async function runMethods(id: SourceId, query: string, lang: string): Promise<SourceResult[]> {
   for (const method of methodsFor(id)) {
     try {
-      const results = await method.search(q, lang);
+      const results = await method.search(query, lang);
       if (results.length) return results;
     } catch (error) {
       console.warn(`source ${id} via ${method.kind} failed:`, (error as Error).message);
@@ -29,22 +25,21 @@ export async function search(id: SourceId, query: string, lang: string): Promise
   return [];
 }
 
-/** البحث في عدة مصادر معاً (بالتوازي)، مع مهلة إجمالية: ما لم يصل في الوقت يُترك. */
-export async function searchMany(
-  ids: SourceId[],
-  query: string,
-  lang: string,
-  timeoutMs = 10_000,
-): Promise<SourceResult[]> {
-  const settled = await Promise.all(
-    ids.map((id) =>
-      Promise.race([
-        search(id, query, lang),
-        new Promise<SourceResult[]>((resolve) => setTimeout(() => resolve([]), timeoutMs)),
-      ]),
-    ),
-  );
-  return settled.flat();
+/**
+ * البحث في مصدر واحد بالواجهة الموحدة:
+ *   search(query, lang) => [{ title, text, url, source, sourceId, grade?, lang }]
+ * يجرب طرق الوصول بالترتيب (MCP ← API ← الموقع)، بمهلة قصوى 6 ثوانٍ للمصدر كله.
+ * إن تجاوزها يعيد [] الآن، ويكمل الطلب في الخلفية فتجده الأسئلة التالية في الذاكرة.
+ */
+export function search(id: SourceId, query: string, lang: string, deadlineMs = SOURCE_DEADLINE_MS): Promise<SourceResult[]> {
+  const q = query.trim().slice(0, 200);
+  if (!q) return Promise.resolve([]);
+  return withDeadline(runMethods(id, q, lang), deadlineMs);
+}
+
+/** البحث في عدة مصادر بالتوازي، ولكل مصدر مهلته القصوى (6 ثوانٍ). */
+export async function searchMany(ids: SourceId[], query: string, lang: string): Promise<SourceResult[]> {
+  return (await Promise.all(ids.map((id) => search(id, query, lang)))).flat();
 }
 
 /** المصادر التي لها موصّل بحث فعلي. */
@@ -76,6 +71,7 @@ export type SourceHealth = {
   status: SourceStatus;
   methods: MethodHealth[];
   note?: string;
+  blocked?: string;
 };
 
 /** كلمة اختبار لكل مصدر (تناسب محتواه). */
@@ -147,6 +143,9 @@ export async function sourceHealth(def: SourceDef): Promise<SourceHealth> {
     access: def.access,
     note: def.note,
   };
+  // موقع يحجبنا أو يمنع robots.txt بحثه: لا نرسل إليه أي طلب، ونذكر السبب.
+  if (def.blocked) return { ...base, status: "link_only", methods: [], blocked: def.blocked };
+
   const methods = methodsFor(def.id);
   if (!methods.length) {
     const link = await checkLink(def);
@@ -169,19 +168,22 @@ export function allSourcesHealth(): Promise<SourceHealth[]> {
 }
 
 
+export type SiteDebug = { url: string; error?: string } & Partial<ReturnType<typeof inspectPage>>;
+
 /**
- * تشخيص صيغة صفحة البحث (/api/health?debug=1): أول الروابط في صفحة نتائج الموقع،
- * لضبط نمط الروابط في connectors.ts. لا تُحفظ الصفحة.
+ * تشخيص صفحة البحث (/api/health?debug=1): حجمها وعنوانها، والروابط ذات المعرّف الرقمي،
+ * ونماذج البحث وOpenSearch، والبيانات المضمّنة، وروابط API في سكربتاتها. لضبط connectors.ts.
+ * لا يُحفظ شيء من الصفحة.
  */
-export async function debugSiteSearch(id: SourceId): Promise<{ url: string; links: string[]; error?: string } | null> {
+export async function debugSiteSearch(id: SourceId): Promise<SiteDebug | null> {
   const method = methodsFor(id).find((m) => m.kind === "site" && m.pageUrl);
   if (!method?.pageUrl) return null;
   const { query, lang } = probeFor(id);
   const url = method.pageUrl(query, lang);
   try {
     const { text, finalUrl } = await politeFetch(url, { respectRobots: true });
-    return { url: finalUrl, links: sampleLinks(text, finalUrl, 15) };
+    return { url: finalUrl, ...inspectPage(text, finalUrl) };
   } catch (error) {
-    return { url, links: [], error: String((error as Error)?.message ?? error).slice(0, 160) };
+    return { url, error: String((error as Error)?.message ?? error).slice(0, 160) };
   }
 }

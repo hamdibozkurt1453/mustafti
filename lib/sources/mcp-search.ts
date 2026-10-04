@@ -9,7 +9,8 @@ import { clip, htmlToText } from "./html";
  * كل نتيجة تحمل رابط مصدرها، ومنه نعرف المنصة (quranenc، hadeethenc، islamhouse…).
  */
 
-export type McpItem = { title: string; text: string; url: string; grade?: string; lang?: string };
+/** ref: معرّف النتيجة في الخادم (لأداة fetch لاحقاً: النص الكامل ودرجة الحديث). */
+export type McpItem = { title: string; text: string; url: string; grade?: string; lang?: string; ref?: string };
 
 const QUERY_KEYS = ["query", "q", "search", "keyword", "keywords", "text", "term"];
 const LANG_KEYS = ["language", "lang", "locale", "language_code", "languageCode"];
@@ -87,8 +88,9 @@ export function collectItems(data: unknown, max = 12, fallbackUrl?: string): Mcp
         url,
         title: clip(htmlToText(title ?? text ?? ""), 160),
         text: clip(htmlToText(text ?? title ?? ""), 600),
-        grade: pick(o, ["grade", "hukm", "degree", "attribution_grade", "authenticity"]),
+        grade: pick(o, ["grade", "hadith_grade", "grade_ar", "hukm", "degree", "attribution_grade", "authenticity"]),
         lang: pick(o, ["language", "lang", "locale"]),
+        ref: pick(o, ["id", "doc_id", "document_id"]),
       });
     }
     for (const value of Object.values(o)) {
@@ -99,36 +101,81 @@ export function collectItems(data: unknown, max = 12, fallbackUrl?: string): Mcp
   return out;
 }
 
-/** بحث عام عبر أداة search في الخادم (مشترك بين المنصات، ومخزّن 24 ساعة في lib/mcp.ts). */
-export async function mcpSearch(query: string, lang: string): Promise<McpItem[]> {
+/** مجموعات المحتوى التي يغطيها بحث الخادم (وصف أداة search: القرآن، والحديث، ومكتبة IslamHouse). */
+export type McpCorpus = "quran" | "hadith" | "library";
+
+const CORPUS_MATCH: Record<McpCorpus, RegExp> = {
+  quran: /quran|qur|ayah|verse/i,
+  hadith: /hadith|hadeeth|sunnah/i,
+  library: /library|islamhouse|house|book/i,
+};
+
+/**
+ * قيمة المعطى sources لمجموعة واحدة، من enum في مخطط الأداة إن أعلنه الخادم،
+ * وإلا الاسم البديهي. تحديد المجموعة يجعل البحث أسرع، ويمنع نسبة نتيجة لغير مصدرها
+ * (نتائج القرآن مثلاً تأتي بروابط islamenc.com لا quranenc.com).
+ */
+function sourcesArg(tool: McpTool, corpus: McpCorpus): unknown {
+  const prop = tool.inputSchema.properties?.sources as
+    | { type?: string; enum?: unknown[]; items?: { enum?: unknown[] } }
+    | undefined;
+  if (!prop) return undefined;
+  const options = (prop.items?.enum ?? prop.enum ?? []).map(String);
+  const value = options.find((o) => CORPUS_MATCH[corpus].test(o)) ?? corpus;
+  return prop.type === "string" ? value : [value];
+}
+
+/** تصنيف نتيجة بلا معطى sources: بنطاق الرابط وحقولها. */
+function corpusOf(item: McpItem): McpCorpus {
+  if (/hadeethenc\.com/.test(item.url)) return "hadith";
+  if (/islamhouse\.com/.test(item.url)) return "library";
+  return "quran";
+}
+
+/**
+ * بحث الخادم في مجموعة واحدة (مخزّن 24 ساعة في lib/mcp.ts).
+ * إن رفض الخادم قيمة sources نعيد البحث بدونها ونصنّف النتائج بأنفسنا.
+ */
+export async function mcpSearch(query: string, lang: string, corpus: McpCorpus): Promise<McpItem[]> {
   const tool = await findTool("search");
   if (!tool) throw new Error("MCP tool `search` not found");
-  const result = await callTool(tool.name, buildArgs(tool, query, lang));
-  const items = collectItems(toolData(result));
-  if (items.length) return items;
-  // نتيجة نصية بلا JSON: نعيدها مقتطفاً واحداً إن وُجد فيها رابط.
-  const text = toolText(result);
-  const link = text.match(/https?:\/\/[^\s)"'<>]+/)?.[0];
-  return link ? [{ title: clip(text, 120), text: clip(text, 600), url: link }] : [];
+  const base = buildArgs(tool, query, lang);
+  const sources = sourcesArg(tool, corpus);
+
+  let result;
+  let filtered = false;
+  try {
+    result = await callTool(tool.name, sources === undefined ? base : { ...base, sources });
+    filtered = sources !== undefined;
+  } catch (error) {
+    if (sources === undefined || /timed? ?out|timeout/i.test(String((error as Error).message))) throw error;
+    result = await callTool(tool.name, base);
+  }
+
+  let items = collectItems(toolData(result));
+  if (!items.length) {
+    // نتيجة نصية بلا JSON: نعيدها مقتطفاً واحداً إن وُجد فيها رابط.
+    const text = toolText(result);
+    const link = text.match(/https?:\/\/[^\s)"'<>]+/)?.[0];
+    items = link ? [{ title: clip(text, 120), text: clip(text, 600), url: link }] : [];
+  }
+  return filtered ? items : items.filter((item) => corpusOf(item) === corpus);
 }
 
-/** نتائج MCP الخاصة بمنصة واحدة (بحسب نطاق الرابط). */
-export async function mcpSearchHost(query: string, lang: string, hosts: string[]): Promise<McpItem[]> {
-  const items = await mcpSearch(query, lang);
-  return items.filter((item) => {
-    try {
-      const host = new URL(item.url).hostname.replace(/^www\./, "");
-      return hosts.some((h) => host === h || host.endsWith(`.${h}`));
-    } catch {
-      return false;
-    }
-  });
+/** آية أو آيات بعينها عبر get_quran_verses (أسرع من البحث). */
+export async function mcpQuranVerses(surah: number, ayah: number, lang: string): Promise<McpItem[]> {
+  const tool = await findTool("get_quran_verses");
+  if (!tool) throw new Error("MCP tool `get_quran_verses` not found");
+  const args: Record<string, unknown> = { surah, ayah };
+  if (tool.inputSchema.properties?.language) args.language = lang;
+  return collectItems(toolData(await callTool(tool.name, args)));
 }
 
-/** يستدعي أداة متخصصة (مثل get_hadith) بمعطيات مبنية من مخططها، ويجمع نتائجها. */
-export async function mcpToolSearch(toolName: string, query: string, lang: string, extra: Record<string, unknown> = {}) {
-  const tool = await findTool(toolName);
-  if (!tool) throw new Error(`MCP tool \`${toolName}\` not found`);
-  const result = await callTool(tool.name, buildArgs(tool, query, lang, extra));
-  return collectItems(toolData(result));
+/** البحث في عناوين مكتبة IslamHouse عبر browse_library (المعطى name). */
+export async function mcpLibrary(query: string, lang: string): Promise<McpItem[]> {
+  const tool = await findTool("browse_library");
+  if (!tool) throw new Error("MCP tool `browse_library` not found");
+  const args: Record<string, unknown> = { name: query };
+  if (tool.inputSchema.properties?.language) args.language = lang;
+  return collectItems(toolData(await callTool(tool.name, args)));
 }
