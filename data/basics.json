@@ -1,0 +1,940 @@
+{
+ "_about": "قاعدة «الأساسيات» لمُستفتي: مراجع فقط بلا أي نص ديني. لكل سؤال أساسي: صيغ المطابقة بعدة لغات (match: كل عنصر عبارة، تُطابق بعد توحيد الحروف)، وآيات (سورة:آية أو سورة:آية-آية) تُجلب بـ get_quran_verses، وكلمات بحث حديث تُبحث في موسوعة الأحاديث عبر MCP، وأرقام أسئلة «بيّنات». النصوص كلها تُجلب من المصادر عند الطلب.",
+ "entries": [
+  {
+   "id": "arkan_islam",
+   "topic_ar": "أركان الإسلام",
+   "match": [
+    "اركان الاسلام",
+    "rukun islam",
+    "pillars of islam",
+    "five pillars",
+    "islamin sartlari",
+    "islam'in şartları",
+    "piliers de l'islam",
+    "اسلام کے ارکان",
+    "ارکان اسلام"
+   ],
+   "verses": [],
+   "hadithQueries": [
+    "بني الإسلام على خمس"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "arkan_iman",
+   "topic_ar": "أركان الإيمان",
+   "match": [
+    "اركان الايمان",
+    "rukun iman",
+    "pillars of faith",
+    "articles of faith",
+    "pillars of iman",
+    "imanin sartlari",
+    "imanın şartları",
+    "piliers de la foi",
+    "ایمان کے ارکان",
+    "ارکان ایمان"
+   ],
+   "verses": [
+    "2:285",
+    "4:136"
+   ],
+   "hadithQueries": [
+    "أن تؤمن بالله وملائكته وكتبه ورسله واليوم الآخر"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "ihsan",
+   "topic_ar": "الإحسان",
+   "match": [
+    "الاحسان",
+    "ihsan",
+    "ihsân"
+   ],
+   "verses": [],
+   "hadithQueries": [
+    "الإحسان أن تعبد الله كأنك تراه"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "tawhid",
+   "topic_ar": "التوحيد ووحدانية الله",
+   "match": [
+    "التوحيد",
+    "توحيد",
+    "tawhid",
+    "tawheed",
+    "oneness of god",
+    "oneness of allah",
+    "tevhid",
+    "tauhid",
+    "unicite de dieu",
+    "unicité de dieu",
+    "توحید"
+   ],
+   "verses": [
+    "112:1-4",
+    "2:163"
+   ],
+   "hadithQueries": [
+    "حق الله على العباد أن يعبدوه ولا يشركوا به شيئا"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "shahadatan",
+   "topic_ar": "الشهادتان",
+   "match": [
+    "الشهادتين",
+    "الشهادتان",
+    "shahada",
+    "shahadah",
+    "kelime-i sehadet",
+    "kelime-i şehadet",
+    "syahadat",
+    "chahada",
+    "کلمہ شہادت"
+   ],
+   "verses": [
+    "47:19",
+    "3:18"
+   ],
+   "hadithQueries": [
+    "بني الإسلام على خمس"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "allah",
+   "topic_ar": "من هو الله",
+   "match": [
+    "من هو الله",
+    "who is allah",
+    "who is god",
+    "allah kimdir",
+    "siapa allah",
+    "qui est allah",
+    "اللہ کون"
+   ],
+   "verses": [
+    "112:1-4",
+    "2:255",
+    "42:11"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "salah_importance",
+   "topic_ar": "مكانة الصلاة",
+   "match": [
+    "اهميه الصلاه",
+    "مكانه الصلاه",
+    "importance of prayer",
+    "why do muslims pray",
+    "namazin onemi",
+    "namazın önemi",
+    "pentingnya shalat",
+    "pourquoi les musulmans prient",
+    "نماز کی اہمیت"
+   ],
+   "verses": [
+    "4:103",
+    "2:43",
+    "20:14"
+   ],
+   "hadithQueries": [
+    "بني الإسلام على خمس"
+   ],
+   "bayyinat": [
+    205
+   ]
+  },
+  {
+   "id": "salah_pillars",
+   "topic_ar": "أركان الصلاة وصفتها",
+   "match": [
+    "اركان الصلاه",
+    "فرائض الصلاه",
+    "صفه الصلاه",
+    "كيف اصلي",
+    "pillars of prayer",
+    "how to pray",
+    "namazin farzlari",
+    "namazın farzları",
+    "rukun shalat",
+    "rukun salat",
+    "cara shalat",
+    "piliers de la priere",
+    "piliers de la prière",
+    "comment prier",
+    "نماز کے ارکان",
+    "ارکان نماز",
+    "نماز کا طریقہ"
+   ],
+   "verses": [],
+   "hadithQueries": [
+    "صلوا كما رأيتموني أصلي",
+    "ارجع فصل فإنك لم تصل"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "salah_conditions",
+   "topic_ar": "شروط الصلاة والطهارة لها",
+   "match": [
+    "شروط الصلاه",
+    "conditions of prayer",
+    "namazin sartlari",
+    "namazın şartları",
+    "syarat shalat",
+    "conditions de la priere",
+    "conditions de la prière",
+    "نماز کی شرائط",
+    "نماز کی شرطیں"
+   ],
+   "verses": [
+    "5:6"
+   ],
+   "hadithQueries": [
+    "لا تقبل صلاة بغير طهور"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "wudu",
+   "topic_ar": "الوضوء",
+   "match": [
+    "الوضوء",
+    "wudu",
+    "wudhu",
+    "ablution",
+    "abdest",
+    "وضو"
+   ],
+   "verses": [
+    "5:6"
+   ],
+   "hadithQueries": [
+    "من توضأ فأحسن الوضوء"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "siyam_wisdom",
+   "topic_ar": "الصيام وحكمته",
+   "match": [
+    "الصيام",
+    "الصوم",
+    "صيام رمضان",
+    "fasting",
+    "ramadan",
+    "oruc",
+    "oruç",
+    "ramazan",
+    "puasa",
+    "jeune",
+    "jeûne",
+    "روزہ",
+    "روزے",
+    "fast in ramadan",
+    "muslims fast"
+   ],
+   "verses": [
+    "2:183",
+    "2:185"
+   ],
+   "hadithQueries": [
+    "من صام رمضان إيمانا واحتسابا"
+   ],
+   "bayyinat": [
+    208
+   ]
+  },
+  {
+   "id": "siyam_who",
+   "topic_ar": "من يجب عليه الصيام ومن يُعذر",
+   "match": [
+    "على من يجب الصيام",
+    "من يجب عليه الصيام",
+    "who must fast",
+    "who is exempt from fasting",
+    "kimlere farz",
+    "oruc kimlere",
+    "oruç kimlere",
+    "siapa yang wajib puasa",
+    "qui doit jeuner",
+    "qui doit jeûner",
+    "روزہ کس پر فرض"
+   ],
+   "verses": [
+    "2:183-185"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "laylat_qadr",
+   "topic_ar": "ليلة القدر",
+   "match": [
+    "ليله القدر",
+    "laylat al-qadr",
+    "laylatul qadr",
+    "kadir gecesi",
+    "lailatul qadar",
+    "nuit du destin",
+    "شب قدر"
+   ],
+   "verses": [
+    "97:1-5"
+   ],
+   "hadithQueries": [
+    "من قام ليلة القدر إيمانا واحتسابا"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "zakah",
+   "topic_ar": "الزكاة",
+   "match": [
+    "الزكاه",
+    "zakat",
+    "zakah",
+    "zekat",
+    "zekât",
+    "zakât",
+    "زکوۃ",
+    "زکاۃ"
+   ],
+   "verses": [
+    "9:60",
+    "9:103",
+    "2:43"
+   ],
+   "hadithQueries": [
+    "بني الإسلام على خمس"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "hajj",
+   "topic_ar": "الحج",
+   "match": [
+    "الحج",
+    "hajj",
+    "hac",
+    "haji",
+    "pelerinage",
+    "pèlerinage",
+    "حج"
+   ],
+   "verses": [
+    "3:97",
+    "22:27"
+   ],
+   "hadithQueries": [
+    "الحج المبرور ليس له جزاء إلا الجنة"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "prophet",
+   "topic_ar": "النبي محمد ﷺ",
+   "match": [
+    "من هو محمد",
+    "من هو النبي",
+    "who is muhammad",
+    "who is the prophet",
+    "peygamber kimdir",
+    "hz muhammed kimdir",
+    "siapa nabi muhammad",
+    "qui est muhammad",
+    "qui est mahomet",
+    "محمد ﷺ کون"
+   ],
+   "verses": [
+    "33:40",
+    "21:107",
+    "68:4"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "quran",
+   "topic_ar": "القرآن الكريم",
+   "match": [
+    "ما هو القران",
+    "ما القران",
+    "what is the quran",
+    "kuran nedir",
+    "kur'an nedir",
+    "apa itu al-quran",
+    "apa itu alquran",
+    "qu'est-ce que le coran",
+    "قرآن کیا ہے"
+   ],
+   "verses": [
+    "15:9",
+    "2:2",
+    "17:88"
+   ],
+   "hadithQueries": [],
+   "bayyinat": [
+    27
+   ]
+  },
+  {
+   "id": "quran_author",
+   "topic_ar": "مصدر القرآن (ليس من تأليف محمد ﷺ)",
+   "match": [
+    "تاليف محمد",
+    "من كتب القران",
+    "من الف القران",
+    "مصدر القران",
+    "who wrote the quran",
+    "quran written by muhammad",
+    "did muhammad write",
+    "kuran'i kim yazdi",
+    "kur'an'ı kim yazdı",
+    "siapa yang menulis al-quran",
+    "coran a-t-il ete ecrit",
+    "coran a-t-il été écrit",
+    "ecrit par muhammad",
+    "écrit par muhammad",
+    "قرآن کس نے لکھا"
+   ],
+   "verses": [
+    "10:37-38",
+    "29:48",
+    "53:3-4",
+    "4:82"
+   ],
+   "hadithQueries": [],
+   "bayyinat": [
+    27,
+    26
+   ]
+  },
+  {
+   "id": "revelation",
+   "topic_ar": "الوحي",
+   "match": [
+    "الوحي",
+    "revelation",
+    "vahiy",
+    "wahyu",
+    "révélation",
+    "وحی"
+   ],
+   "verses": [
+    "53:3-4",
+    "42:51"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "angels",
+   "topic_ar": "الملائكة",
+   "match": [
+    "الملائكه",
+    "angels",
+    "melekler",
+    "malaikat",
+    "anges",
+    "فرشتے"
+   ],
+   "verses": [
+    "2:285",
+    "66:6",
+    "35:1"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "hereafter",
+   "topic_ar": "اليوم الآخر",
+   "match": [
+    "اليوم الاخر",
+    "يوم القيامه",
+    "the last day",
+    "day of judgment",
+    "day of judgement",
+    "hereafter",
+    "ahiret",
+    "kiyamet",
+    "kıyamet",
+    "hari akhir",
+    "hari kiamat",
+    "jour dernier",
+    "jour du jugement",
+    "آخرت",
+    "قیامت"
+   ],
+   "verses": [
+    "99:7-8",
+    "3:185"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "qadar",
+   "topic_ar": "القضاء والقدر",
+   "match": [
+    "القدر",
+    "القضاء والقدر",
+    "predestination",
+    "divine decree",
+    "qadar",
+    "kader",
+    "takdir",
+    "destin",
+    "تقدیر"
+   ],
+   "verses": [
+    "54:49",
+    "57:22"
+   ],
+   "hadithQueries": [
+    "وتؤمن بالقدر خيره وشره"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "purpose",
+   "topic_ar": "الغاية من الخلق",
+   "match": [
+    "الغايه من الخلق",
+    "لماذا خلقنا",
+    "لماذا خلق الله",
+    "خلقت الجن والانس",
+    "purpose of life",
+    "purpose of creation",
+    "why did god create",
+    "why were we created",
+    "yaratilis amaci",
+    "yaratılış amacı",
+    "tujuan hidup",
+    "tujuan penciptaan",
+    "but de la vie",
+    "pourquoi dieu nous a crees",
+    "pourquoi dieu nous a créés",
+    "زندگی کا مقصد"
+   ],
+   "verses": [
+    "51:56"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "qibla",
+   "topic_ar": "القبلة والكعبة",
+   "match": [
+    "الكعبه",
+    "القبله",
+    "kaaba",
+    "kabah",
+    "ka'bah",
+    "qibla",
+    "kible",
+    "kâbe",
+    "kabe",
+    "kiblat",
+    "کعبہ",
+    "قبلہ"
+   ],
+   "verses": [
+    "2:144",
+    "2:150"
+   ],
+   "hadithQueries": [],
+   "bayyinat": [
+    9
+   ]
+  },
+  {
+   "id": "jihad",
+   "topic_ar": "معنى الجهاد",
+   "match": [
+    "الجهاد",
+    "jihad",
+    "cihad",
+    "djihad",
+    "جہاد"
+   ],
+   "verses": [
+    "22:78",
+    "2:190",
+    "2:256"
+   ],
+   "hadithQueries": [
+    "أفضل الجهاد كلمة عدل عند سلطان جائر",
+    "المجاهد من جاهد نفسه"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "sword",
+   "topic_ar": "انتشار الإسلام",
+   "match": [
+    "انتشر الاسلام",
+    "انتشار الاسلام",
+    "بالسيف",
+    "spread by the sword",
+    "spread by sword",
+    "kilicla yayildi",
+    "kılıçla yayıldı",
+    "disebarkan dengan pedang",
+    "répandu par l'épée",
+    "repandu par l'epee",
+    "تلوار سے پھیلا"
+   ],
+   "verses": [
+    "2:256",
+    "16:125",
+    "10:99"
+   ],
+   "hadithQueries": [],
+   "bayyinat": [
+    229
+   ]
+  },
+  {
+   "id": "khamr",
+   "topic_ar": "تحريم الخمر وحكمته",
+   "match": [
+    "الخمر",
+    "المسكر",
+    "alcohol",
+    "içki",
+    "khamr",
+    "minuman keras",
+    "alcool",
+    "wine"
+   ],
+   "verses": [
+    "5:90-91",
+    "2:219"
+   ],
+   "hadithQueries": [
+    "كل مسكر خمر"
+   ],
+   "bayyinat": [
+    199
+   ]
+  },
+  {
+   "id": "ikhtilaf",
+   "topic_ar": "اختلاف العلماء والاجتهاد",
+   "match": [
+    "اختلاف العلماء",
+    "احكام مختلفه",
+    "الخلاف الفقهي",
+    "الاجتهاد",
+    "why do scholars differ",
+    "scholars disagree",
+    "differences among scholars",
+    "alimler neden farkli",
+    "âlimler neden farklı",
+    "perbedaan pendapat ulama",
+    "savants ont des avis differents",
+    "savants ont des avis différents",
+    "علماء میں اختلاف"
+   ],
+   "verses": [],
+   "hadithQueries": [
+    "إذا حكم الحاكم فاجتهد ثم أصاب فله أجران"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "dua",
+   "topic_ar": "الدعاء",
+   "match": [
+    "الدعاء",
+    "dua",
+    "supplication",
+    "prayer to god",
+    "dua etmek",
+    "doa",
+    "invocation",
+    "دعا"
+   ],
+   "verses": [
+    "2:186",
+    "40:60"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "akhlaq",
+   "topic_ar": "الأخلاق في الإسلام",
+   "match": [
+    "الاخلاق",
+    "حسن الخلق",
+    "good character",
+    "morals in islam",
+    "ahlak",
+    "akhlak",
+    "bon comportement",
+    "اخلاق"
+   ],
+   "verses": [
+    "68:4",
+    "16:90"
+   ],
+   "hadithQueries": [
+    "إن من خياركم أحسنكم أخلاقا"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "parents",
+   "topic_ar": "بر الوالدين",
+   "match": [
+    "بر الوالدين",
+    "الوالدين",
+    "parents",
+    "anne baba",
+    "orang tua",
+    "والدین"
+   ],
+   "verses": [
+    "17:23-24"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "tawbah",
+   "topic_ar": "التوبة",
+   "match": [
+    "التوبه",
+    "repentance",
+    "tevbe",
+    "tövbe",
+    "taubat",
+    "repentir",
+    "توبہ"
+   ],
+   "verses": [
+    "39:53",
+    "66:8"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "shirk",
+   "topic_ar": "الشرك",
+   "match": [
+    "الشرك",
+    "shirk",
+    "sirk",
+    "şirk",
+    "syirik",
+    "شرک"
+   ],
+   "verses": [
+    "4:48",
+    "31:13"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "prophets",
+   "topic_ar": "الأنبياء والرسل",
+   "match": [
+    "الانبياء",
+    "الرسل",
+    "prophets",
+    "messengers",
+    "peygamberler",
+    "nabi dan rasul",
+    "les prophetes",
+    "les prophètes",
+    "انبیاء"
+   ],
+   "verses": [
+    "2:136",
+    "4:163-165"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "isa",
+   "topic_ar": "عيسى عليه السلام في الإسلام",
+   "match": [
+    "عيسي",
+    "المسيح",
+    "hz isa",
+    "yesus",
+    "عیسیٰ",
+    "عیسی",
+    "jesus",
+    "nabi isa"
+   ],
+   "verses": [
+    "3:59",
+    "4:157",
+    "19:30"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "women",
+   "topic_ar": "مكانة المرأة",
+   "match": [
+    "المراه في الاسلام",
+    "مكانه المراه",
+    "women in islam",
+    "status of women",
+    "islam'da kadin",
+    "islam'da kadın",
+    "wanita dalam islam",
+    "la femme en islam",
+    "اسلام میں عورت"
+   ],
+   "verses": [
+    "4:1",
+    "33:35",
+    "16:97"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "freedom",
+   "topic_ar": "حرية الاعتقاد",
+   "match": [
+    "لا اكراه",
+    "حريه الاعتقاد",
+    "freedom of religion",
+    "compulsion in religion",
+    "din ozgurlugu",
+    "din özgürlüğü",
+    "kebebasan beragama",
+    "liberté de religion",
+    "liberte de religion",
+    "مذہبی آزادی"
+   ],
+   "verses": [
+    "2:256",
+    "18:29",
+    "10:99"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "sabr",
+   "topic_ar": "الصبر",
+   "match": [
+    "الصبر",
+    "patience",
+    "sabir",
+    "sabır",
+    "sabar",
+    "صبر"
+   ],
+   "verses": [
+    "2:153",
+    "2:155-157"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "sunnah",
+   "topic_ar": "مكانة السنة",
+   "match": [
+    "مكانه السنه",
+    "حجيه السنه",
+    "importance of sunnah",
+    "sunnetin onemi",
+    "sünnetin önemi",
+    "kedudukan sunnah",
+    "importance de la sunna",
+    "سنت کی اہمیت"
+   ],
+   "verses": [
+    "59:7",
+    "4:80"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "islam_religion",
+   "topic_ar": "الإسلام دين الله",
+   "match": [
+    "ما هو الاسلام",
+    "ما الاسلام",
+    "what is islam",
+    "islam nedir",
+    "apa itu islam",
+    "qu'est-ce que l'islam",
+    "اسلام کیا ہے"
+   ],
+   "verses": [
+    "3:19",
+    "3:85",
+    "5:3"
+   ],
+   "hadithQueries": [
+    "بني الإسلام على خمس"
+   ],
+   "bayyinat": []
+  },
+  {
+   "id": "marriage",
+   "topic_ar": "الزواج في الإسلام",
+   "match": [
+    "الزواج في الاسلام",
+    "marriage in islam",
+    "islam'da evlilik",
+    "pernikahan dalam islam",
+    "le mariage en islam",
+    "اسلام میں نکاح"
+   ],
+   "verses": [
+    "30:21",
+    "4:1"
+   ],
+   "hadithQueries": [],
+   "bayyinat": []
+  },
+  {
+   "id": "salam",
+   "topic_ar": "إفشاء السلام",
+   "match": [
+    "السلام عليكم",
+    "افشاء السلام",
+    "greeting in islam",
+    "selamlasma",
+    "selamlaşma",
+    "salam dalam islam",
+    "salutation en islam",
+    "سلام کرنا"
+   ],
+   "verses": [
+    "4:86"
+   ],
+   "hadithQueries": [
+    "أفشوا السلام بينكم"
+   ],
+   "bayyinat": []
+  }
+ ]
+}

@@ -14,6 +14,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { BASICS, matchBasics, parseVerseRef, quotedVerses, verseRefsInText } from "../lib/brain/basics";
 import { equivalentFor, findTerms, GLOSSARY, glossaryBlock } from "../lib/brain/glossary";
 import { checkOutput, guard, isVerbatim, separateQuoted } from "../lib/brain/guard";
 import { looksPersonal, looksUrgent } from "../lib/brain/heuristics";
@@ -499,5 +500,85 @@ describe("تنظيف نص أدوات MCP", () => {
     assert.match(out, /أفضل الجهاد: حج مبرور/);
     assert.match(out, /الدرجة: صحيح/);
     assert.doesNotMatch(out, /EXACT|reproduce|RETRIEVED|CITE|Every result/);
+  });
+});
+
+describe("الحارس: الاقتباس شبه الحرفي (نصوص PDF مضطربة الترتيب)", () => {
+  const pdf = "وهم- يعلمون أن القرآن لم يأت به بشر وجود الإعجاز التاريخي والتشريعي، والبلاغي والعلمي، وغير ذلك من الأمور التي لا يمكن أن يأتي بها بشر في ذلك الزمان";
+  it("إعادة ترتيب يسيرة وعلامات ترقيم مختلفة تُقبل", () => {
+    const out = "ينقضه «وجود الإعجاز التاريخي والتشريعي والبلاغي والعلمي وغير ذلك من الأمور التي لا يمكن أن يأتي بها بشر في ذلك الزمان» [1].";
+    assert.equal(guard(out, { sources: [pdf] }).ok, true);
+  });
+  it("كلمة زائدة واحدة في اقتباس طويل تُقبل", () => {
+    const out = "«وجود الإعجاز التاريخي والتشريعي والبلاغي والعلمي وغير ذلك من الأمور الكثيرة التي لا يمكن أن يأتي بها بشر في ذلك الزمان» [1].";
+    assert.equal(guard(out, { sources: [pdf] }).ok, true);
+  });
+  it("اقتباس مختلق بكلمات مختلفة يُرفض", () => {
+    const out = "«القرآن كتاب ألفه رجل حكيم في مكة وجمعه أصحابه بعد وفاته» [1].";
+    assert.equal(guard(out, { sources: [pdf] }).ok, false);
+  });
+  it("حديث مختلق بكلمات بعضها من المصدر يُرفض", () => {
+    const out = "قال رسول الله ﷺ: «من شرب الشاي بعد الفجر زاد إيمانه وغفر له» [1].";
+    assert.equal(guard(out, { sources: [HADITH_SOURCE] }).ok, false);
+  });
+  it("عبارة الحكم تبقى تُفحص خارج الاقتباس", () => {
+    const out = "«وجود الإعجاز التاريخي والتشريعي والبلاغي والعلمي» [1]، وهذا حرام.";
+    assert.equal(guard(out, { sources: [pdf] }).ok, false);
+  });
+});
+
+describe("الحارس: إدخال حكم في اقتباس شبه حرفي", () => {
+  it("كلمة حكم مضافة إلى اقتباس شبه حرفي تُكشف", () => {
+    const src = "إن الحكمة من تحريم الخمر جاء النص عليها في القرآن الكريم إذ بين الله تعالى ما فيها من المفاسد";
+    const out = "«إن الحكمة من تحريم الخمر جاء النص عليها في القرآن الكريم إذ بين الله تعالى ما فيها من المفاسد فهي حرام» [1].";
+    assert.equal(guard(out, { sources: [src] }).ok, false);
+  });
+});
+
+
+describe("قاعدة الأساسيات (data/basics.json)", () => {
+  it("نحو أربعين سؤالاً، ومراجع فقط: آيات صحيحة الصيغة، وكلمات بحث قصيرة، وأرقام بيّنات", () => {
+    assert.ok(BASICS.length >= 38, String(BASICS.length));
+    assert.equal(new Set(BASICS.map((b) => b.id)).size, BASICS.length);
+    for (const b of BASICS) {
+      assert.ok(b.match.length > 0, b.id);
+      for (const v of b.verses) assert.ok(parseVerseRef(v), `${b.id}: ${v}`);
+      for (const q of b.hadithQueries) assert.ok(q.length <= 60, `${b.id}: كلمات بحث لا نص`);
+      for (const n of b.bayyinat) assert.ok(Number.isInteger(n) && n > 0 && n <= 263, `${b.id}: ${n}`);
+      assert.deepEqual(Object.keys(b).sort(), ["bayyinat", "hadithQueries", "id", "match", "topic_ar", "verses"]);
+    }
+  });
+
+  it("الأسئلة العامة في الاختبار الحي تطابق أساسياتها", () => {
+    const expect: Record<string, string> = {
+      "ref-01": "qibla",
+      "ref-02": "quran_author",
+      "ref-03": "sword",
+      "ref-07": "tawhid",
+      "ref-09": "khamr",
+      "ref-11": "purpose",
+      "ref-12": "jihad",
+      "gen-01": "siyam_wisdom",
+      "gen-02": "siyam_who",
+      "gen-03": "salah_pillars",
+      "gen-04": "arkan_iman",
+    };
+    for (const [id, basic] of Object.entries(expect)) {
+      const c = BRAIN_CASES.find((x) => x.id === id)!;
+      assert.ok(matchBasics(c.message).some((e) => e.id === basic), `${id} → ${basic}`);
+    }
+  });
+
+  it("الكلمة القصيرة كاملة: «بوضوح» ليست «وضو»", () => {
+    assert.deepEqual(matchBasics("قلها بوضوح"), []);
+  });
+
+  it("الآيات في السؤال: برقمها وبنصها", () => {
+    assert.deepEqual(verseRefsInText("ما تفسير 2:255 و 112:1-4؟"), [
+      { surah: 2, ayah: 255, through: undefined },
+      { surah: 112, ayah: 1, through: 4 },
+    ]);
+    assert.deepEqual(quotedVerses(BRAIN_CASES.find((c) => c.id === "ref-11")!.message), ["وما خلقت الجن والإنس إلا ليعملوا"]);
+    assert.equal(parseVerseRef("115:1"), null);
   });
 });

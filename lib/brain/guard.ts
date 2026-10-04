@@ -124,7 +124,49 @@ export function isVerbatim(inner: string, haystacks: string[]): boolean {
     .map(matchKey)
     .filter((f) => f.length >= MIN_FRAGMENT_KEY);
   if (!fragments.length) return false;
-  return fragments.every((f) => keys.some((k) => k.includes(f)));
+  return fragments.every((f) => keys.some((k) => k.includes(f) || nearVerbatim(f, k)));
+}
+
+/** كلمات الاقتباس (بحروفها الأصلية) غير الموجودة في أي نص مرجعي؛ "" للاقتباس الحرفي. */
+function extraWords(inner: string, haystacks: string[]): string {
+  const words = new Set(haystacks.flatMap((h) => matchKey(h).split(" ")));
+  return stripMarks(inner)
+    .split(/\s+/)
+    .filter((w) => {
+      const k = matchKey(w);
+      return k && !k.split(" ").every((x) => words.has(x));
+    })
+    .join(" ");
+}
+
+/** حد الاقتباس شبه الحرفي: نسبة كلماته الموجودة في النص، ونسبة ما جاء منها بترتيبه. */
+export const NEAR_COVERAGE = 0.85;
+export const NEAR_ORDER = 0.7;
+
+/** طول أطول تتابع مشترك (بالترتيب) بين قائمتي كلمات. */
+function lcs(a: string[], b: string[]): number {
+  let prev = new Array<number>(b.length + 1).fill(0);
+  for (let i = 1; i <= a.length; i++) {
+    const row = new Array<number>(b.length + 1).fill(0);
+    for (let j = 1; j <= b.length; j++) row[j] = a[i - 1] === b[j - 1] ? prev[j - 1] + 1 : Math.max(prev[j], row[j - 1]);
+    prev = row;
+  }
+  return prev[b.length];
+}
+
+/**
+ * اقتباس شبه حرفي (كلاهما موحَّد بـ matchKey): بعض نصوص «بيّنات» مستخرجة من PDF بترتيب كلمات
+ * مضطرب، فيعيد النموذج ترتيبها. يُقبل إن وُجد ≥85% من كلماته في النص و≥70% منها بترتيبه.
+ * للاقتباس من 4 كلمات فأكثر فقط؛ والأقصر يجب أن يكون حرفياً.
+ */
+export function nearVerbatim(quoteKey: string, sourceKey: string): boolean {
+  const q = quoteKey.split(" ").filter(Boolean);
+  if (q.length < 4) return false;
+  const src = sourceKey.split(" ").filter(Boolean);
+  const set = new Set(src);
+  const covered = q.filter((w) => set.has(w)).length / q.length;
+  if (covered < NEAR_COVERAGE) return false;
+  return lcs(q, src) / q.length >= NEAR_ORDER;
 }
 
 /**
@@ -144,7 +186,8 @@ export function separateQuoted(text: string, ctx: GuardContext = {}): { ownText:
     if (key.length < MIN_QUOTE_KEY) {
       ownText += text.slice(q.start, q.end); // مصطلح أو كلمة: صياغة الأداة
     } else if (isVerbatim(q.inner, haystacks)) {
-      ownText += " ⟦Q⟧ ";
+      // شبه الحرفي: الكلمات التي ليست في النص المصدر تبقى صياغةً للأداة فيفحصها الحارس.
+      ownText += ` ⟦Q⟧ ${extraWords(q.inner, haystacks)} `;
     } else if (isMarkedTranslation(text, q.start, q.end)) {
       // ترجمة معنى موسومة بجوار إشارة [n]: صياغة للأداة (تُفحص كلها)، لا اقتباس بلا أصل.
       ownText += ` ${q.inner} `;
