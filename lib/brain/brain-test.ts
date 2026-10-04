@@ -41,9 +41,14 @@ export type CaseReport = {
     bySource: Record<string, number>;
     searches: { query: string; lang: string; source: string; results: number; ms: number }[];
     retried: boolean;
+    counts?: { raw: number; cleaned: number; ranked: number; kept: number };
+    dropped?: { reason: string; source: string; title: string }[];
+    scored?: { source: string; title: string; kw: number; score?: number; enriched: boolean }[];
+    rerank?: string;
     abstainReason?: string;
     attempts: { raw: string; guardOk: boolean; findings: string[] }[];
   };
+
   text?: string;
   raw?: string;
   totalMs?: number;
@@ -117,16 +122,21 @@ export async function runBrainCase(id: string): Promise<CaseReport> {
         excerpt: p.text.slice(0, 200),
       })),
       diag: {
-        queries: reply.diag.queries,
-        bySource: reply.diag.searches.reduce<Record<string, number>>(
+        queries: reply.diag.retrieval?.queries ?? [],
+        bySource: (reply.diag.retrieval?.searches ?? []).reduce<Record<string, number>>(
           (acc, x) => ({ ...acc, [x.source]: (acc[x.source] ?? 0) + x.results }),
           {},
         ),
-        searches: reply.diag.searches,
-        retried: reply.diag.retried,
+        searches: reply.diag.retrieval?.searches ?? [],
+        retried: reply.diag.retrieval?.retried ?? false,
+        counts: reply.diag.retrieval?.counts,
+        dropped: reply.diag.retrieval?.dropped.slice(0, 30),
+        scored: reply.diag.retrieval?.scored,
+        rerank: reply.diag.retrieval?.rerank,
         abstainReason: reply.diag.abstainReason,
         attempts: reply.diag.attempts,
       },
+
       text: reply.text,
       raw: reply.raw,
       totalMs: reply.timings.totalMs,
@@ -136,4 +146,50 @@ export async function runBrainCase(id: string): Promise<CaseReport> {
     const detail = error instanceof LlmError ? `${error.code}: ${error.detail}` : String((error as Error)?.message ?? error);
     return { ...head, ok: false, checks: {}, error: detail.slice(0, 400) };
   }
+}
+
+/**
+ * عيّنات خام من أدوات خادم MCP (لتشخيص IslamHouse وتفاصيل الحديث): مخطط كل أداة،
+ * ورد search في المكتبة والحديث، وbrowse_library، ثم get_hadith/fetch لأول نتيجة حديث.
+ */
+export async function mcpSamples(): Promise<unknown> {
+  const { listTools, callTool, toolData, toolText } = await import("@/lib/mcp");
+  const { findTool, buildArgs } = await import("@/lib/sources/mcp-search");
+  const short = (r: Awaited<ReturnType<typeof callTool>>) => ({
+    isError: r.isError ?? false,
+    structured: r.structuredContent === undefined ? null : JSON.stringify(r.structuredContent).slice(0, 1500),
+    text: toolText(r).slice(0, 1500),
+  });
+  const run = async (name: string, args: Record<string, unknown>) => {
+    try {
+      return { tool: name, args, ...short(await callTool(name, args)) };
+    } catch (error) {
+      return { tool: name, args, error: String((error as Error).message).slice(0, 300) };
+    }
+  };
+  const tools = await listTools().catch(() => []);
+  const searchTool = await findTool("search");
+  const enumOf = (k: string) => {
+    const p = searchTool?.inputSchema.properties?.sources as { enum?: unknown[]; items?: { enum?: unknown[] } } | undefined;
+    return (p?.items?.enum ?? p?.enum ?? []).map(String).find((o) => new RegExp(k, "i").test(o)) ?? k;
+  };
+  const lib = searchTool ? { ...buildArgs(searchTool, "أركان الإيمان", "ar"), sources: [enumOf("library|house")] } : {};
+  const had = searchTool ? { ...buildArgs(searchTool, "أركان الإيمان", "ar"), sources: [enumOf("hadith|hadeeth")] } : {};
+  const [libSearch, hadSearch, browse] = await Promise.all([run("search", lib), run("search", had), run("browse_library", { name: "الإيمان", language: "ar" })]);
+  let firstId: string | undefined;
+  try {
+    const r = await callTool("search", had);
+    const s = JSON.stringify(toolData(r)) + toolText(r);
+    firstId = s.match(/"(?:id|doc_id|document_id)"\s*:\s*"?([\w:-]+)"?/)?.[1];
+  } catch {
+    /* بلا معرّف */
+  }
+  const detail = firstId
+    ? await Promise.all([run("get_hadith", { id: firstId.match(/\d+/)?.[0] ?? firstId, language: "ar" }), run("fetch", { id: firstId })])
+    : [];
+  return {
+    tools: tools.map((t) => ({ name: t.name, inputSchema: t.inputSchema })),
+    samples: [libSearch, hadSearch, browse, ...detail],
+    firstHadithId: firstId ?? null,
+  };
 }

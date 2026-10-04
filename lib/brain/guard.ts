@@ -77,6 +77,19 @@ const MIN_FRAGMENT_KEY = 6;
 
 const FIXED_TEXTS: string[] = Object.values(MESSAGES).flatMap((byLang) => Object.values(byLang));
 
+/**
+ * وسم «ترجمة المعنى» بلغات الواجهة: حين يكون النص المصدر بغير لغة السائل، تُعرض ترجمته
+ * خارج علامات الاقتباس موسومة بهذا الوسم، ومعها إشارة [n] إلى النص الأصلي.
+ */
+export const TRANSLATION_MARKER =
+  /ترجمة\s+(?:ال)?معن[ىي]|translation\s+of\s+(?:the\s+)?meaning|anlam(?:ı|\s+tercümesi)|meal(?:i)?\b|traduction\s+(?:du|de)\s+sens|ترجم(?:ۂ|ہ)\s+معنی|مفہوم\s+کا\s+ترجمہ|terjemahan\s+makna/iu;
+
+/** ترجمة موسومة: الوسم وإشارة [n] قريبان من المقطع (قبله أو بعده). */
+export function isMarkedTranslation(text: string, start: number, end: number): boolean {
+  const around = text.slice(Math.max(0, start - 60), start) + " " + text.slice(end, end + 60);
+  return TRANSLATION_MARKER.test(around) && /\[\s*\d{1,2}\s*\]/.test(around);
+}
+
 type Quote = { start: number; end: number; inner: string };
 
 export function findQuotes(text: string): Quote[] {
@@ -132,6 +145,9 @@ export function separateQuoted(text: string, ctx: GuardContext = {}): { ownText:
       ownText += text.slice(q.start, q.end); // مصطلح أو كلمة: صياغة الأداة
     } else if (isVerbatim(q.inner, haystacks)) {
       ownText += " ⟦Q⟧ ";
+    } else if (isMarkedTranslation(text, q.start, q.end)) {
+      // ترجمة معنى موسومة بجوار إشارة [n]: صياغة للأداة (تُفحص كلها)، لا اقتباس بلا أصل.
+      ownText += ` ${q.inner} `;
     } else {
       unverified.push(q.inner.trim());
       ownText += text.slice(q.start, q.end);
@@ -304,7 +320,9 @@ export function scanOwnText(ownText: string): GuardFinding[] {
     const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
     for (const m of text.matchAll(g)) {
       const after = text.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 60);
-      if (!after.includes("⟦Q⟧")) {
+      const wide = text.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 300);
+      const translated = TRANSLATION_MARKER.test(wide) && /\[\s*\d{1,2}\s*\]/.test(wide);
+      if (!after.includes("⟦Q⟧") && !translated) {
         findings.push({ reason: "unsourced_quote", lang: "*", match: m[0].trim() });
         break;
       }

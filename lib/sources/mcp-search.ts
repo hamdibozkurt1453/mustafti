@@ -64,6 +64,8 @@ export function collectItems(
   fallbackUrl?: string,
   /** نتائج قرآن: لغة السائل ومفتاح الترجمة لبناء روابط الآيات. */
   quran?: { lang: string; key: string },
+  /** نتائج IslamHouse بلا رابط: يُبنى رابط المادة من معرّفها ونوعها. */
+  library?: { lang: string },
 ): McpItem[] {
   const out: McpItem[] = [];
   const seen = new Set<string>();
@@ -80,7 +82,9 @@ export function collectItems(
     const isVerse = Number.isInteger(surah) && surah >= 1 && surah <= 114 && Number.isInteger(ayah) && ayah >= 1;
     const url =
       pick(o, ["url", "link", "source_url", "sourceUrl", "citation_url", "citationUrl", "citation", "permalink", "href", "web_url", "uri"]) ??
-      (isVerse && quran ? quranencUrl(surah, ayah, quran.lang, quran.key) : fallbackUrl);
+      (isVerse && quran ? quranencUrl(surah, ayah, quran.lang, quran.key) : undefined) ??
+      (library ? islamhouseUrl(o, library.lang) : undefined) ??
+      fallbackUrl;
     const title =
       pick(o, ["title", "name", "heading", "question", "hadeeth_title", "sura_name", "surah_name"]) ??
       (isVerse ? `${surah}:${ayah}` : undefined);
@@ -119,6 +123,45 @@ export function collectItems(
     }
   };
   visit(data, 0);
+  return out;
+}
+
+const ISLAMHOUSE_TYPES: Record<string, string> = {
+  book: "books",
+  books: "books",
+  article: "articles",
+  articles: "articles",
+  audio: "audios",
+  audios: "audios",
+  video: "videos",
+  videos: "videos",
+  fatwa: "fatwa",
+  fatwas: "fatwa",
+  poster: "posters",
+  posters: "posters",
+};
+
+/** رابط مادة IslamHouse من معرّفها ونوعها (حين لا يعيد الخادم رابطاً): islamhouse.com/{lang}/{type}/{id}/ */
+export function islamhouseUrl(o: Record<string, unknown>, lang: string): string | undefined {
+  const id = pick(o, ["id", "item_id", "itemId", "library_id", "doc_id"]);
+  if (!id || !/^\d+$/.test(id)) return undefined;
+  const type = (pick(o, ["type", "content_type", "contentType", "kind", "item_type"]) ?? "books").toLowerCase();
+  return `https://islamhouse.com/${lang}/${ISLAMHOUSE_TYPES[type] ?? "books"}/${id}/`;
+}
+
+/** نتيجة نصية (Markdown) من المكتبة بلا JSON: كل كتلة فيها عنوان ومعرّف رقمي نتيجة. */
+export function libraryItemsFromText(text: string, lang: string, max = 8): McpItem[] {
+  const out: McpItem[] = [];
+  for (const block of text.split(/\n\s*\n|\n(?=#{1,4}\s|\d+\.\s|[-*]\s+\*\*)/)) {
+    if (out.length >= max) break;
+    const clean = block.replace(/[#*_`>]/g, "").trim();
+    const link = clean.match(/https?:\/\/[^\s)"'<>]*islamhouse\.com[^\s)"'<>]*/)?.[0];
+    const id = clean.match(/\b(?:id|ID|Id)\s*[:=]\s*(\d{3,})/)?.[1];
+    const url = link ?? (id ? islamhouseUrl({ id }, lang) : undefined);
+    if (!url || clean.length < 8) continue;
+    const firstLine = clean.split("\n")[0];
+    out.push({ title: clip(htmlToText(firstLine), 160), text: clip(htmlToText(clean), 600), url, ref: id });
+  }
   return out;
 }
 
@@ -204,11 +247,14 @@ export async function mcpSearch(query: string, lang: string, corpus: McpCorpus):
   }
 
   const quran = corpus === "quran" ? { lang, key: translationKey(lang) } : undefined;
-  let items = collectItems(toolData(result), 12, undefined, quran);
+  const library = corpus === "library" ? { lang } : undefined;
+  let items = collectItems(toolData(result), 12, undefined, quran, library);
   if (!items.length) {
     const text = toolText(result);
     if (quran) {
       items = quranItemsFromText(text, lang, quran.key);
+    } else if (library) {
+      items = libraryItemsFromText(text, lang);
     } else {
       // نتيجة نصية بلا JSON: نعيدها مقتطفاً واحداً إن وُجد فيها رابط.
       const link = text.match(/https?:\/\/[^\s)"'<>]+/)?.[0];
@@ -287,5 +333,7 @@ export async function mcpLibrary(query: string, lang: string): Promise<McpItem[]
   if (!tool) throw new Error("MCP tool `browse_library` not found");
   const args: Record<string, unknown> = { name: query };
   if (tool.inputSchema.properties?.language) args.language = lang;
-  return collectItems(toolData(await callTool(tool.name, args)));
+  const result = await callTool(tool.name, args);
+  const items = collectItems(toolData(result), 12, undefined, undefined, { lang });
+  return items.length ? items : libraryItemsFromText(toolText(result), lang);
 }

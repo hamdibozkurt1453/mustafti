@@ -19,6 +19,7 @@ import { checkOutput, guard, isVerbatim, separateQuoted } from "../lib/brain/gua
 import { looksPersonal, looksUrgent } from "../lib/brain/heuristics";
 import { detectIdentityProbe, identityReply, IDENTITY_PROMPT } from "../lib/brain/identity";
 import { MESSAGE_LANGS, MESSAGES, message } from "../lib/brain/messages";
+import { clean, keywords, prerank, type Candidate, type Dropped } from "../lib/brain/rank";
 import { ABSTAIN_AR, answerSystem, CLASSIFY_SYSTEM, NON_NEGOTIABLE_RULES } from "../lib/brain/prompts";
 import { BRAIN_CASES } from "../lib/brain/test-cases";
 
@@ -378,5 +379,81 @@ describe("القاموس والتعليمات", () => {
     for (const text of [IDENTITY_PROMPT, CLASSIFY_SYSTEM, NON_NEGOTIABLE_RULES]) {
       assert.doesNotMatch(text, /gemma|openrouter/i);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+const cand = (sourceId: string, title: string, text: string, url = `https://x/${Math.random()}`): Candidate => ({
+  sourceId,
+  source: sourceId,
+  title,
+  text,
+  url,
+});
+
+describe("الاسترجاع: التنظيف والترتيب الأولي", () => {
+  it("يحذف وصف الكتاب المكرر، وعناصر الواجهة، والمكرر", () => {
+    const dropped: Dropped[] = [];
+    const out = clean(
+      [
+        cand(
+          "risala",
+          "رسالة موجزة عن الإسلام كما جاء في القرآن الكريم والسنة النبوية",
+          "كتاب نافع يحتوي على تعريف موجز بالإسلام يُبيِّن أهم أصوله وتعاليمه ومحاسنه",
+        ),
+        cand("islamqa", "هل يجوز لمن صلى على الجنازة أن يعيد الصلاة عليها؟ يجوز لمن لم يصل…", "حفظ قائمة جديدة تنزيل مشاركة 01/10/2026"),
+        cand("hadeethenc", "بني الإسلام على خمس", "بني الإسلام على خمس: شهادة أن لا إله إلا الله", "https://h/1"),
+        cand("hadeethenc", "بني الإسلام على خمس", "بني الإسلام على خمس: شهادة أن لا إله إلا الله", "https://h/1"),
+      ],
+      dropped,
+    );
+    assert.deepEqual(dropped.map((d) => d.reason).sort(), ["book_blurb", "duplicate"]);
+    assert.equal(out.length, 2);
+    // نتيجة الإسلام سؤال وجواب: المقتطف واجهة، فالعنوان هو النص.
+    assert.match(out.find((x) => x.sourceId === "islamqa")!.text, /الجنازة/);
+  });
+
+  it("يحذف الأقواس الفارغة ﴿ ﴾", () => {
+    const out = clean([cand("bayyinat", "سؤال", "قال تعالى: ﴿ ﴾ وهذا جواب طويل بما يكفي للبقاء")], []);
+    assert.doesNotMatch(out[0].text, /﴿\s*﴾/);
+  });
+
+  it("حصة لكل مصدر: بيان الإسلام لا يُقصى لكثرة الأحاديث", () => {
+    const terms = keywords("ما معنى التوحيد");
+    const pool = [
+      ...Array.from({ length: 20 }, (_, i) => cand("hadeethenc", `حديث في التوحيد ${i}`, `التوحيد حق الله على العباد ${i}`)),
+      cand("byenah", "معنى التوحيد", "التوحيد هو إفراد الله بالعبادة"),
+    ];
+    const ranked = prerank(pool, terms, 6);
+    assert.ok(ranked.some((x) => x.sourceId === "byenah"));
+  });
+
+  it("الكلمات بعد إزالة التشكيل وأل التعريف", () => {
+    assert.deepEqual(keywords("ما مَعْنَى التَّوْحِيدِ؟"), ["توحيد"]);
+  });
+});
+
+describe("الحارس: ترجمة المعنى", () => {
+  const src = "إن من أعظم الجهاد كلمة عدل عند سلطان جائر";
+  it("الأصل مقتبس حرفياً والترجمة خارج الاقتباس موسومة", () => {
+    const out = `The Prophet ﷺ said: «${src}» [1] (translation of meaning): among the greatest jihad is a word of justice before a tyrant ruler.`;
+    assert.equal(guard(out, { sources: [src], lang: "en" }).ok, true);
+  });
+  it("الترجمة الموسومة وحدها مع [n]", () => {
+    const out = "Among the greatest jihad is a word of justice before a tyrant ruler [1] (translation of meaning).";
+    assert.equal(guard(out, { sources: [src], lang: "en" }).ok, true);
+  });
+  it("ترجمة بين علامات اقتباس مع الوسم و[n] تُقبل صياغةً وتُفحص", () => {
+    const out = "The Prophet said «the best jihad is an accepted Hajj» (translation of meaning) [1].";
+    assert.equal(guard(out, { sources: [src], lang: "en" }).ok, true);
+  });
+  it("ترجمة بين علامات اقتباس بلا وسم: اقتباس بلا أصل", () => {
+    const out = "The Prophet said «the best jihad is an accepted Hajj» [1].";
+    assert.equal(guard(out, { sources: [src], lang: "en" }).ok, false);
+  });
+  it("الحكم داخل ترجمة موسومة يُكشف", () => {
+    const out = "«Alcohol is haram for you» (translation of meaning) [1].";
+    assert.equal(guard(out, { sources: [src], lang: "en" }).ok, false);
   });
 });

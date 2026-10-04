@@ -46,6 +46,15 @@ export const MESSAGES = {
     ur: "آپ کا سوال آپ کی اپنی صورتِ حال کے بارے میں ہے، اس لیے اسے ایسے ماہر کی ضرورت ہے جو اس کی تفصیلات جانے، اور مستفتی فتویٰ نہیں دیتا۔ میں آپ کا سوال واضح کرنے اور پھر آپ کا نام پوچھے بغیر کسی اہل مفتی تک پہنچانے میں مدد کروں گا۔",
     id: "Pertanyaan Anda tentang keadaan Anda sendiri, sehingga memerlukan ahli yang mengetahui rinciannya, dan Mustafti tidak memberi fatwa. Saya akan membantu Anda memperjelas pertanyaan lalu mengirimkannya kepada mufti yang berkompeten, tanpa menanyakan nama Anda.",
   },
+  /** وسم ترجمة المعنى حين يكون النص المصدر بغير لغة السائل (يقبله الحارس). */
+  translationOfMeaning: {
+    ar: "(ترجمة المعنى)",
+    en: "(translation of meaning)",
+    tr: "(anlam tercümesi)",
+    fr: "(traduction du sens)",
+    ur: "(ترجمۂ معنی)",
+    id: "(terjemahan makna)",
+  },
   /** المستوى (ج): تنبيه الخلاف، بلا ترجيح. */
   khilaf: {
     ar: "في هذه المسألة خلاف بين أهل العلم، وما سبق عرضٌ لما في المصادر دون ترجيح. للتفصيل في حالتك يمكنك سؤال مختص.",
