@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { countryCodeOf, countryName, countryOptions } from "../lib/experts/countries";
 import { chapterAr, chapterOptionsAr, languageName, shortDateTime } from "../lib/experts/format";
 import {
   ApplicationSchema,
@@ -26,7 +27,7 @@ const base = {
   bio: "مدرّس فقه حنفي منذ عشر سنوات، وأجيب بالعربية والتركية.",
   role: "mufti",
   specialty: "الفقه الحنفي",
-  country: "تركيا",
+  countryCode: "TR",
   languages: ["ar", "tr"],
   traditional: false,
   degree: "ماجستير",
@@ -79,14 +80,14 @@ describe("الوثائق", () => {
 });
 
 describe("لوحة المختص", () => {
-  it("الأولوية العالية ثم الأقدم", () => {
+  it("بلد المختص أولاً ثم الأحدث، والأولوية لا تؤثر في الترتيب", () => {
     const rows = [
-      { id: "a", priority: "normal", created_at: "2026-10-04T08:00:00+00:00" },
-      { id: "b", priority: "high", created_at: "2026-10-04T10:00:00+00:00" },
-      { id: "c", priority: "high", created_at: "2026-10-04T09:00:00+00:00" },
-      { id: "d", priority: null, created_at: "2026-10-04T07:00:00+00:00" },
+      { id: "a", priority: "high", fromMyCountry: false, created_at: "2026-10-04T11:00:00+00:00" },
+      { id: "b", priority: "normal", fromMyCountry: true, created_at: "2026-10-04T08:00:00+00:00" },
+      { id: "c", priority: "normal", fromMyCountry: false, created_at: "2026-10-04T12:00:00+00:00" },
+      { id: "d", priority: "high", fromMyCountry: true, created_at: "2026-10-04T09:00:00+00:00" },
     ];
-    assert.deepEqual(sortCases(rows).map((r) => r.id), ["c", "b", "d", "a"]);
+    assert.deepEqual(sortCases(rows).map((r) => r.id), ["d", "b", "c", "a"]);
   });
   it("يُترجم الجواب لغير العربية فقط", () => {
     assert.equal(needsTranslation("ar"), false);
@@ -107,6 +108,7 @@ describe("الملف الشخصي", () => {
   });
   it("تعديل الملف لا يقبل الاسم ولا الدور (حقول المراجعة)", () => {
     const parsed = ProfileEditSchema.safeParse({
+      countryCode: "TN",
       bio: "نبذة كافية للاختبار هنا.",
       avatarPath: null,
       contact: { phone: "", email: "" },
@@ -140,5 +142,26 @@ describe("سطر بيانات الملف", () => {
   it("اسم اللغة لا رمزها، والتاريخ بأرقام لاتينية وبتوقيت الرياض", () => {
     assert.equal(languageName("ar", "ar"), "العربية");
     assert.equal(shortDateTime("2026-10-04T12:25:00Z", "ar"), "4 أكتوبر، 3:25 م");
+  });
+});
+
+describe("البلدان", () => {
+  it("رمز ISO صالح فقط، والاسم بالعربية", () => {
+    assert.equal(countryCodeOf("tn"), "TN");
+    assert.equal(countryCodeOf("XX"), null);
+    assert.equal(countryCodeOf("1.2.3.4"), null);
+    assert.equal(countryName("TN", "ar"), "تونس");
+    assert.match(countryName("SA", "ar") ?? "", /السعودية/);
+  });
+  it("القائمة كاملة وبأسماء عربية لا رموز", () => {
+    const opts = countryOptions("ar");
+    assert.ok(opts.length > 240);
+    assert.ok(opts.every((o) => o.name !== o.code));
+  });
+  it("الطلب يرفض بلداً خارج القائمة ويحفظ الرمز بأحرف كبيرة", () => {
+    assert.ok(!ApplicationSchema.safeParse({ ...base, countryCode: "ZZ" }).success);
+    const ok = ApplicationSchema.safeParse({ ...base, countryCode: "tn" });
+    assert.ok(ok.success);
+    assert.equal(ok.data.countryCode, "TN");
   });
 });
