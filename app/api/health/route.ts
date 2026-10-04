@@ -4,6 +4,7 @@ import { getDailyUsage, llmHealth, llmModel } from "@/lib/llm";
 import { mcpHealth } from "@/lib/mcp";
 import { allSourcesHealth, debugSiteSearch, SOURCES } from "@/lib/sources";
 import { checkBayyinat } from "@/lib/sources/bayyinat";
+import { mcpQuranSamples } from "@/lib/sources/mcp-search";
 import { renderHealthPage, type HealthReport } from "./render";
 
 /**
@@ -41,18 +42,22 @@ export async function GET(request: Request) {
   const full: HealthReport = { ...report, viewerIsAdmin, model: viewerIsAdmin ? llmModel() || null : null };
 
   let debug: HealthReport["debug"];
+  let quranSamples: HealthReport["quranSamples"];
   if (params.get("debug") === "1") {
     const ids = SOURCES.filter((s) => report.sources.find((h) => h.id === s.id && !h.blocked && h.methods.every((m) => m.results === 0)))
       .map((s) => s.id);
     const rows = await Promise.all(ids.map(async (id) => ({ id, page: await debugSiteSearch(id) })));
     debug = rows.filter((r) => r.page !== null) as HealthReport["debug"];
+    // القرآن عبر MCP بلا نتائج: عيّنة خام من ردود أدواته لفهم الصيغة.
+    const quran = report.sources.find((h) => h.id === "quranenc");
+    if (quran?.methods.some((m) => m.kind === "mcp" && m.results === 0)) quranSamples = await mcpQuranSamples();
   }
 
   const ok = report.mcp.ok && report.llm.keyValid !== false;
   if (params.get("format") === "json") {
-    return Response.json({ ...full, debug }, { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ...full, debug, quranSamples }, { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } });
   }
-  return new Response(renderHealthPage({ ...full, debug }), {
+  return new Response(renderHealthPage({ ...full, debug, quranSamples }), {
     status: ok ? 200 : 503,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
   });

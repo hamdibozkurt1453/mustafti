@@ -217,5 +217,33 @@ export function inspectPage(html: string, baseUrl: string) {
     nextData: /id=["']__NEXT_DATA__["']/.test(html),
     jsonBlocks: embeddedJson(html).length,
     apiHints,
+    scriptSrcs: scriptSources(html, baseUrl),
   };
+}
+
+/** ملفات JavaScript الخارجية على الموقع نفسه (قد تحوي رابط واجهة البحث التي ترسم النتائج). */
+export function scriptSources(html: string, baseUrl: string, max = 8): string[] {
+  const base = new URL(baseUrl);
+  const out: string[] = [];
+  for (const m of html.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi)) {
+    try {
+      const url = new URL(decodeEntities(m[1]), base);
+      if (url.hostname === base.hostname && !out.includes(url.toString())) out.push(url.toString());
+    } catch {
+      /* رابط غير صالح */
+    }
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+/** روابط تشبه واجهات البحث داخل ملف JavaScript (للتشخيص فقط). */
+export function apiHintsInScript(js: string, max = 10): string[] {
+  const found = new Set<string>();
+  for (const m of js.matchAll(/["'`]((?:https?:\/\/[^"'`\s]+)?\/?[\w\-/.{}$]*(?:api|search|ajax|graphql)[\w\-/.?=&{}$]*)["'`]/gi)) {
+    const hint = m[1];
+    if (hint.length > 3 && hint.length < 120 && /[/]/.test(hint)) found.add(hint);
+    if (found.size >= max) break;
+  }
+  return [...found];
 }

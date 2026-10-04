@@ -43,6 +43,7 @@ npm run build                # بناء الإنتاج
 | `lib/llm.ts` · `lib/mcp.ts` · `lib/sources/` | النموذج، وخادم MCP، وموصّلات مصادر المرجعية |
 | `app/api/health/` | صفحة حالة المنصة والمصادر |
 | `scripts/model-test.ts` · `lib/model-test.ts` | اختبار المقارنة بين النماذج |
+| `scripts/index-bayyinat.ts` · `supabase/bayyinat.sql` | فهرسة «بيّنات» من نسخة منزّلة يدوياً (الملف لا يُرفع) |
 | `docs/` | الخطة والمواصفات وخريطة المرجعية والقرارات |
 | `brand/` · `public/brand/` | الشعارات والهوية |
 

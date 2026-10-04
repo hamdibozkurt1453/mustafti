@@ -2,6 +2,7 @@ import "server-only";
 
 import { callTool, listTools, toolData, toolText, type McpTool } from "@/lib/mcp";
 import { clip, htmlToText } from "./html";
+import { quranencUrl, translationKey } from "./quran";
 
 /**
  * البحث عبر خادم MCP للجمعية. معطيات الأداة تُبنى من مخططها (inputSchema) كما يعلنه الخادم،
@@ -55,8 +56,15 @@ const pick = (o: Record<string, unknown>, keys: string[]): string | undefined =>
 /**
  * يمشي في JSON النتيجة ويجمع كل كائن فيه رابط وعنوان أو نص.
  * fallbackUrl: لواجهات لا تعيد رابطاً لكل نتيجة، فيُستعمل رابط صفحة البحث في الموقع نفسه.
+ * والآية التي ليس لها رابط يُبنى رابطها من رقمي السورة والآية.
  */
-export function collectItems(data: unknown, max = 12, fallbackUrl?: string): McpItem[] {
+export function collectItems(
+  data: unknown,
+  max = 12,
+  fallbackUrl?: string,
+  /** نتائج قرآن: لغة السائل ومفتاح الترجمة لبناء روابط الآيات. */
+  quran?: { lang: string; key: string },
+): McpItem[] {
   const out: McpItem[] = [];
   const seen = new Set<string>();
   const visit = (node: unknown, depth: number) => {
@@ -66,13 +74,26 @@ export function collectItems(data: unknown, max = 12, fallbackUrl?: string): Mcp
       return;
     }
     const o = node as Record<string, unknown>;
-    const url = pick(o, ["url", "link", "source_url", "sourceUrl", "permalink", "href", "web_url"]) ?? fallbackUrl;
-    const title = pick(o, ["title", "name", "heading", "question", "hadeeth_title", "sura_name"]);
+    // آية بلا رابط (رقم السورة والآية فقط): نبني رابطها في موسوعة القرآن.
+    const surah = Number(o.surah ?? o.sura ?? o.surah_number ?? o.sura_id ?? o.chapter);
+    const ayah = Number(o.ayah ?? o.aya ?? o.ayah_number ?? o.verse ?? o.verse_number ?? o.aya_number);
+    const isVerse = Number.isInteger(surah) && surah >= 1 && surah <= 114 && Number.isInteger(ayah) && ayah >= 1;
+    const url =
+      pick(o, ["url", "link", "source_url", "sourceUrl", "citation_url", "citationUrl", "citation", "permalink", "href", "web_url", "uri"]) ??
+      (isVerse && quran ? quranencUrl(surah, ayah, quran.lang, quran.key) : fallbackUrl);
+    const title =
+      pick(o, ["title", "name", "heading", "question", "hadeeth_title", "sura_name", "surah_name"]) ??
+      (isVerse ? `${surah}:${ayah}` : undefined);
     const text = pick(o, [
+      "arabic_text",
+      "text_ar",
+      "arabic",
+      "verse_text",
       "text",
       "snippet",
       "content",
       "translation",
+      "translation_text",
       "hadeeth",
       "explanation",
       "answer",
@@ -125,6 +146,36 @@ function sourcesArg(tool: McpTool, corpus: McpCorpus): unknown {
   return prop.type === "string" ? value : [value];
 }
 
+/**
+ * نتائج قرآن نصية (Markdown) بلا JSON: كل إشارة «سورة:آية» في النص نتيجة، مقتطفها سطرها
+ * وما يليه، ورابطها في موسوعة القرآن.
+ */
+export function quranItemsFromText(text: string, lang: string, key: string, max = 8): McpItem[] {
+  const out: McpItem[] = [];
+  const seen = new Set<string>();
+  const lines = text.split(/\r?\n/);
+  lines.forEach((line, i) => {
+    if (out.length >= max) return;
+    const m = line.match(/(?:^|[^\d])(\d{1,3})\s*[:：]\s*(\d{1,3})(?![\d])/);
+    if (!m) return;
+    const [surah, ayah] = [Number(m[1]), Number(m[2])];
+    if (surah < 1 || surah > 114 || ayah < 1 || seen.has(`${surah}:${ayah}`)) return;
+    seen.add(`${surah}:${ayah}`);
+    const following: string[] = [];
+    for (const next of lines.slice(i + 1, i + 4)) {
+      if (/\d{1,3}\s*[:：]\s*\d{1,3}/.test(next)) break; // بداية الآية التالية
+      following.push(next);
+    }
+    const body = [line, ...following].join(" ");
+    out.push({
+      title: clip(htmlToText(line.replace(/[#*_`>]/g, "")), 160),
+      text: clip(htmlToText(body.replace(/[#*_`>]/g, "")), 600),
+      url: quranencUrl(surah, ayah, lang, key),
+    });
+  });
+  return out;
+}
+
 /** تصنيف نتيجة بلا معطى sources: بنطاق الرابط وحقولها. */
 function corpusOf(item: McpItem): McpCorpus {
   if (/hadeethenc\.com/.test(item.url)) return "hadith";
@@ -152,23 +203,82 @@ export async function mcpSearch(query: string, lang: string, corpus: McpCorpus):
     result = await callTool(tool.name, base);
   }
 
-  let items = collectItems(toolData(result));
+  const quran = corpus === "quran" ? { lang, key: translationKey(lang) } : undefined;
+  let items = collectItems(toolData(result), 12, undefined, quran);
   if (!items.length) {
-    // نتيجة نصية بلا JSON: نعيدها مقتطفاً واحداً إن وُجد فيها رابط.
     const text = toolText(result);
-    const link = text.match(/https?:\/\/[^\s)"'<>]+/)?.[0];
-    items = link ? [{ title: clip(text, 120), text: clip(text, 600), url: link }] : [];
+    if (quran) {
+      items = quranItemsFromText(text, lang, quran.key);
+    } else {
+      // نتيجة نصية بلا JSON: نعيدها مقتطفاً واحداً إن وُجد فيها رابط.
+      const link = text.match(/https?:\/\/[^\s)"'<>]+/)?.[0];
+      items = link ? [{ title: clip(text, 120), text: clip(text, 600), url: link }] : [];
+    }
   }
   return filtered ? items : items.filter((item) => corpusOf(item) === corpus);
 }
 
-/** آية أو آيات بعينها عبر get_quran_verses (أسرع من البحث). */
+/**
+ * مفتاح ترجمة يقبله الخادم للغة: من list_quran_translations (مخزّن 24 ساعة)، ونفضّل
+ * مفتاحنا المعتمد إن ورد في القائمة. يعيد undefined إن تعذّرت القائمة (فيختار الخادم).
+ */
+async function serverTranslationKey(lang: string): Promise<string | undefined> {
+  const tool = await findTool("list_quran_translations");
+  if (!tool) return undefined;
+  try {
+    const result = await callTool(tool.name, tool.inputSchema.properties?.language ? { language: lang } : {});
+    const raw = JSON.stringify(toolData(result)) + "\n" + toolText(result);
+    const keys = [...new Set([...raw.matchAll(/\b([a-z]+_[a-z0-9_]+)\b/g)].map((m) => m[1]))];
+    const preferred = translationKey(lang);
+    return keys.includes(preferred) ? preferred : keys.find((k) => k.startsWith(`${preferred.split("_")[0]}_`));
+  } catch {
+    return undefined;
+  }
+}
+
+/** آية بعينها عبر get_quran_verses (أسرع من البحث)، بنصها العربي وترجمة معتمدة بلغة السائل. */
 export async function mcpQuranVerses(surah: number, ayah: number, lang: string): Promise<McpItem[]> {
   const tool = await findTool("get_quran_verses");
   if (!tool) throw new Error("MCP tool `get_quran_verses` not found");
+  const props = tool.inputSchema.properties ?? {};
+  const key = props.translation_key ? await serverTranslationKey(lang) : undefined;
   const args: Record<string, unknown> = { surah, ayah };
-  if (tool.inputSchema.properties?.language) args.language = lang;
-  return collectItems(toolData(await callTool(tool.name, args)));
+  if (props.language) args.language = lang;
+  if (key) args.translation_key = key;
+  const result = await callTool(tool.name, args);
+  const quran = { lang, key: key ?? translationKey(lang) };
+  const items = collectItems(toolData(result), 4, undefined, quran);
+  if (items.length) return items;
+  // نص بلا JSON: الآية المطلوبة نفسها نتيجة واحدة برابطها.
+  const text = toolText(result).trim();
+  return text
+    ? [{ title: `${surah}:${ayah}`, text: clip(htmlToText(text.replace(/[#*_`>]/g, "")), 1200), url: quranencUrl(surah, ayah, lang, quran.key) }]
+    : [];
+}
+
+/** عيّنة خام من ردود أدوات القرآن (لـ /api/health?debug=1): لفهم صيغة الرد إن بقيت النتائج صفراً. */
+export async function mcpQuranSamples(): Promise<{ tool: string; args: Record<string, unknown>; structured: string; text: string; error?: string }[]> {
+  const calls: [string, Record<string, unknown>][] = [
+    ["get_quran_verses", { surah: 1, ayah: 2, language: "ar" }],
+    ["search", { query: "الصلاة", language: "ar", limit: 3 }],
+    ["list_quran_translations", { language: "ar" }],
+  ];
+  const searchTool = await findTool("search");
+  if (searchTool) {
+    const sources = sourcesArg(searchTool, "quran");
+    if (sources !== undefined) calls[1][1].sources = sources;
+  }
+  return Promise.all(
+    calls.map(async ([tool, args]) => {
+      try {
+        const result = await callTool(tool, args);
+        const structured = result.structuredContent === undefined ? "" : JSON.stringify(result.structuredContent).slice(0, 700);
+        return { tool, args, structured, text: toolText(result).slice(0, 900) };
+      } catch (error) {
+        return { tool, args, structured: "", text: "", error: String((error as Error).message).slice(0, 200) };
+      }
+    }),
+  );
 }
 
 /** البحث في عناوين مكتبة IslamHouse عبر browse_library (المعطى name). */

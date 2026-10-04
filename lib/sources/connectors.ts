@@ -5,6 +5,7 @@ import { cached, DAY } from "@/lib/cache";
 import { clip, embeddedJson, extractResultLinks, linksFromJson, openSearchHref, searchForms, type ExtractedLink } from "./html";
 import { collectItems, mcpLibrary, mcpQuranVerses, mcpSearch, type McpCorpus, type McpItem } from "./mcp-search";
 import { politeFetch, politeJson } from "./polite-fetch";
+import { QURANENC_TRANSLATIONS } from "./quran";
 import { SOURCE_BY_ID } from "./registry";
 import type { AccessMethod, SourceId, SourceResult } from "./types";
 
@@ -168,20 +169,6 @@ const NUMERIC_PATH = /\/\d{2,}(?:\/|$|[-_])/;
 // ---------------------------------------------------------------------------
 
 /** quranenc: ترجمة آية بعينها حين يذكر السؤال رقمها (مثل 2:255). */
-const QURANENC_TRANSLATIONS: Record<string, string> = {
-  ar: "arabic_moyassar",
-  en: "english_saheeh",
-  fr: "french_montada",
-  tr: "turkish_shaban",
-  ur: "urdu_junagarhi",
-  id: "indonesian_affairs",
-  bn: "bengali_zakaria",
-  ru: "russian_kuliev",
-  fa: "persian_ih",
-  ms: "malay_basumayyah",
-  sw: "swahili_barawani",
-  ha: "hausa_gummi",
-};
 
 const quranencApi: AccessMethod = {
   kind: "api",
