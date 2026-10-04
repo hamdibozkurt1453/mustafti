@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Readex_Pro } from "next/font/google";
+import { Readex_Pro, Reem_Kufi } from "next/font/google";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -14,6 +14,14 @@ import "../globals.css";
 const readex = Readex_Pro({
   subsets: ["arabic", "latin"],
   variable: "--font-readex",
+  display: "swap",
+});
+
+// خط العناوين الفنية فقط (Reem Kufi: كوفي هندسي حديث يناسب الشعار).
+const reemKufi = Reem_Kufi({
+  subsets: ["arabic", "latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-reem",
   display: "swap",
 });
 
@@ -76,7 +84,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   setRequestLocale(locale);
 
   return (
-    <html lang={locale} dir={getDirection(locale)} className={readex.variable}>
+    <html lang={locale} dir={getDirection(locale)} className={`${readex.variable} ${reemKufi.variable}`}>
       <body className="flex min-h-dvh flex-col antialiased">
         <NextIntlClientProvider>
           <SiteHeader />

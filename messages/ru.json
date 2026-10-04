@@ -27,10 +27,14 @@
     "privacy": "",
     "eval": "",
     "challenge": "",
-    "rights": ""
+    "rights": "",
+    "tagline": "",
+    "colPlatform": "",
+    "colProject": "",
+    "sourceNote": "",
+    "login": ""
   },
   "home": {
-    "greeting": "",
     "intro": "",
     "whoAreYou": "",
     "whoOptional": "",
@@ -68,9 +72,28 @@
     },
     "nextPrayer": {
       "title": "",
-      "hint": "",
-      "link": ""
-    }
+      "in": "",
+      "at": "",
+      "defaultCity": "",
+      "yourLocation": "",
+      "useLocation": "",
+      "link": "",
+      "hours": "",
+      "minutes": "",
+      "seconds": "",
+      "names": {
+        "fajr": "",
+        "sunrise": "",
+        "dhuhr": "",
+        "asr": "",
+        "maghrib": "",
+        "isha": ""
+      }
+    },
+    "greetingLead": "",
+    "greetingAccent": "",
+    "suggestionsLabel": "",
+    "scrollHint": ""
   },
   "composer": {
     "label": "",
@@ -134,5 +157,79 @@
   "notFound": {
     "title": "",
     "description": ""
+  },
+  "sources": {
+    "title": "",
+    "items": {
+      "s1": "",
+      "s2": "",
+      "s3": "",
+      "s4": "",
+      "s5": "",
+      "s6": "",
+      "s7": "",
+      "s8": "",
+      "s9": "",
+      "s10": "",
+      "s11": "",
+      "s12": ""
+    }
+  },
+  "stats": {
+    "kicker": "",
+    "title": "",
+    "quran": "",
+    "hadith": "",
+    "library": "",
+    "fatwa": "",
+    "fatwaNote": "",
+    "source": ""
+  },
+  "how": {
+    "kicker": "",
+    "title": "",
+    "steps": {
+      "s1": {
+        "title": "",
+        "body": ""
+      },
+      "s2": {
+        "title": "",
+        "body": ""
+      },
+      "s3": {
+        "title": "",
+        "body": ""
+      }
+    }
+  },
+  "paths": {
+    "kicker": "",
+    "title": "",
+    "ask": {
+      "kicker": "",
+      "title": "",
+      "body": "",
+      "cta": ""
+    },
+    "newMuslim": {
+      "kicker": "",
+      "title": "",
+      "body": "",
+      "cta": ""
+    },
+    "discover": {
+      "kicker": "",
+      "title": "",
+      "body": "",
+      "cta": ""
+    }
+  },
+  "chat": {
+    "you": "",
+    "bot": "",
+    "thinking": "",
+    "newChat": "",
+    "label": ""
   }
 }
