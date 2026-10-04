@@ -129,6 +129,10 @@ export async function POST(request: Request) {
           dir: dirForLang(reply.lang),
           level: reply.classification?.level,
           sources: sourcesOf(reply),
+          ...(reply.referral ? { referral: reply.referral } : {}),
+          ...(reply.kind === "referral" || reply.kind === "abstain" || reply.kind === "refused"
+            ? { chapter: reply.classification?.chapter, userType: reply.classification?.userType }
+            : {}),
         });
         // احتياط للعرض: لا تصل علامات الخادم («[Surah …]»، «[EXACT]»، «Source: …») إلى السائل.
         const shown = reply.kind === "answer" ? cleanForDisplay(reply.text) : reply.text;

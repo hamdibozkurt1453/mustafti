@@ -46,6 +46,15 @@ export const MESSAGES = {
     ur: "آپ کا سوال آپ کی اپنی صورتِ حال کے بارے میں ہے، اس لیے اسے ایسے ماہر کی ضرورت ہے جو اس کی تفصیلات جانے، اور مستفتی فتویٰ نہیں دیتا۔ میں آپ کا سوال واضح کرنے اور پھر آپ کا نام پوچھے بغیر کسی اہل مفتی تک پہنچانے میں مدد کروں گا۔",
     id: "Pertanyaan Anda tentang keadaan Anda sendiri, sehingga memerlukan ahli yang mengetahui rinciannya, dan Mustafti tidak memberi fatwa. Saya akan membantu Anda memperjelas pertanyaan lalu mengirimkannya kepada mufti yang berkompeten, tanpa menanyakan nama Anda.",
   },
+  /** المستوى (د): سؤال عن حكم عام («ما حكم من يسرق وهو مضطر؟»)، لا عن حالة السائل. */
+  referralRuling: {
+    ar: "هذا سؤال عن حكم شرعي، ومُستفتي لا يُصدر أحكاماً. أستطيع أن أساعدك في صياغته وإرساله إلى مفتٍ مؤهل.",
+    en: "This is a question about a religious ruling, and Mustafti does not issue rulings. I can help you phrase it and send it to a qualified mufti.",
+    tr: "Bu, dinî bir hüküm hakkında bir sorudur ve Mustafti hüküm vermez. Sorunuzu ifade etmenize ve yetkin bir müftüye göndermenize yardımcı olabilirim.",
+    fr: "Ceci est une question sur un statut religieux, et Mustafti ne délivre pas d'avis juridiques. Je peux vous aider à la formuler et à l'envoyer à un mufti qualifié.",
+    ur: "یہ ایک شرعی حکم کے بارے میں سوال ہے، اور مستفتی احکام جاری نہیں کرتا۔ میں اسے واضح الفاظ میں لکھنے اور کسی اہل مفتی کو بھیجنے میں آپ کی مدد کر سکتا ہوں۔",
+    id: "Ini adalah pertanyaan tentang hukum agama, dan Mustafti tidak mengeluarkan ketetapan hukum. Saya dapat membantu Anda merumuskannya dan mengirimkannya kepada mufti yang berkompeten.",
+  },
   /** وسم ترجمة المعنى حين يكون النص المصدر بغير لغة السائل (يقبله الحارس). */
   translationOfMeaning: {
     ar: "(ترجمة المعنى)",

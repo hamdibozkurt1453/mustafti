@@ -32,7 +32,18 @@ export type ChatSource = {
 
 export type ChatEvent =
   | { type: "stage"; stage: ChatStage }
-  | { type: "start"; kind: ChatReplyKind; lang: string; dir: "rtl" | "ltr"; level?: string; sources: ChatSource[] }
+  | {
+      type: "start";
+      kind: ChatReplyKind;
+      lang: string;
+      dir: "rtl" | "ltr";
+      level?: string;
+      sources: ChatSource[];
+      /** للإحالة: نوع رسالتها، وللإحالة والامتناع: الباب ونوع السائل (لبدء الاستيضاح). */
+      referral?: "personal" | "ruling";
+      chapter?: string;
+      userType?: string;
+    }
   | { type: "delta"; text: string }
   | { type: "done" }
   | { type: "error"; code: "rate_limited" | "busy" | "bad_request"; text?: string };

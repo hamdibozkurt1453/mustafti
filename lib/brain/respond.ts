@@ -4,9 +4,10 @@ import { cacheGet, cacheSet, DAY } from "@/lib/cache";
 import { chat, type ChatMessage } from "@/lib/llm";
 import { classify, type Classification } from "./classify";
 import { checkOutput, guardAndLog, matchKey, type GuardResult } from "./guard";
-import { looksPersonal, looksUrgent } from "./heuristics";
+import { looksCaseRuling, looksPersonal, looksUrgent, referralKindOf } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
 import { answerFormatIssues, unquoteReferenceOnly } from "./format";
+import type { ReferralKind } from "@/lib/case/types";
 import { message } from "./messages";
 import { planCitations, type CitationPlan } from "./planner";
 import { retrieve, type RetrievalDiag } from "./retrieval";
@@ -28,6 +29,8 @@ export type AbstainReason = "no_passages" | "no_relevant" | "model_abstained" | 
 
 export type BrainReply = {
   kind: ReplyKind;
+  /** في الإحالة فقط: نوع رسالتها. */
+  referral?: ReferralKind;
   /** ما يُعرض للسائل (صياغة الأداة بعد الحارس، أو رد ثابت). */
   text: string;
   lang: string;
@@ -177,7 +180,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
   stage("understanding");
   // خطة الإحالات تبدأ مع التصنيف (لا لحالة شخصية أو عاجلة)، وتُهمل إن صُنّف السؤال D.
   let plan: Promise<CitationPlan | null> | undefined;
-  if (!looksPersonal(question) && !looksUrgent(question)) {
+  if (!looksPersonal(question) && !looksCaseRuling(question) && !looksUrgent(question)) {
     plan = planCitations(question);
   }
   const cls = await classify(question, { history: options.history });
@@ -191,6 +194,11 @@ export async function respond(question: string, options: RespondOptions = {}): P
     overrides.push(`level:${c.level}->D`);
     c.level = "D";
   }
+  // «ما حكم من يسرق وهو مضطر؟»: حكم على واقعة فردية ⇒ D (يرفع ولا يخفض).
+  if (c.level !== "D" && looksCaseRuling(question)) {
+    overrides.push(`level:${c.level}->D:case-ruling`);
+    c.level = "D";
+  }
   const timings = { classifyMs: cls.latencyMs } as BrainReply["timings"];
   const common = { lang: c.lang, classification: c };
 
@@ -202,8 +210,12 @@ export async function respond(question: string, options: RespondOptions = {}): P
 
   // 3) D: الإحالة فقط. لا نسترجع ولا نعرض أي دليل أو نص يمسّ مسألة السائل نفسها
   //    (عرض حديث في مسألته يشبه الفتوى). التعريف العام المحايد في رد الإحالة الثابت نفسه.
+  //    نوعان: حالة شخصية («طلقت زوجتي…») أو سؤال عن حكم عام («ما حكم من…»)، ثم الاستيضاح
+  //    وملف المسألة في المحادثة نفسها (lib/case/).
   if (c.level === "D") {
-    return done({ ...common, kind: "referral", text: withPrefix(message("referral", c.lang)), timings });
+    const referral = referralKindOf(question);
+    const text = message(referral === "ruling" ? "referralRuling" : "referral", c.lang);
+    return done({ ...common, kind: "referral", referral, text: withPrefix(text), timings });
   }
 
   // 4) A / B / C: الاسترجاع.
