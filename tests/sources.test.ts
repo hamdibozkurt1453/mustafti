@@ -296,3 +296,35 @@ describe("الأذكار: الأبواب الفرعية تكرارياً حتى 
     assert.equal(capped.calls, 5);
   });
 });
+
+describe("Quranpedia: خيارات التفسير بأشكال مختلفة (R1b)", () => {
+  it("الميسر ثم السعدي ثم ابن كثير ثم الطبري، ولو تغيّرت أسماء الحقول", () => {
+    const shapes: unknown[] = [
+      { data: { tafsir: [{ id: 3, name: "تفسير الطبري" }, { id: 7, name: "التفسير الميسر" }] } },
+      [{ book_id: 12, book_name: "تفسير ابن كثير" }, { book_id: 9, book_name: "تفسير السعدي" }],
+      { books: [{ book: { id: 44, ar_title: "تفسير الطبري" } }, { book: { id: 45, ar_title: "تفسير البغوي" } }] },
+      { result: [{ bookId: 5, ar_label: "تفسير ابن كثير" }] },
+      { list: [{ id: 8, meta: "x", اسم: "التفسير الميسر" }] },
+    ];
+    const picked = shapes.map((d) => qp.pickTafsir(qp.parseOptions(d)));
+    assert.deepEqual(
+      picked.map((p) => p && `${p.id}:${p.name}`),
+      ["7:التفسير الميسر", "9:تفسير السعدي", "44:تفسير الطبري", "5:تفسير ابن كثير", "8:التفسير الميسر"],
+    );
+    assert.equal(qp.pickTafsir(qp.parseOptions({})), undefined);
+  });
+});
+
+describe("مكتبة IslamHouse: أقرب تصنيف لعبارة البحث (R1b)", () => {
+  it("بتداخل الكلمات بعد توحيد العربية، وnull إن لم يتداخل شيء", async () => {
+    const { bestCategory } = await import("../lib/sources/mcp-search");
+    const cats = [
+      { id: "1", title: "العقيدة" },
+      { id: "2", title: "الفقه: الصلاة والطهارة" },
+      { id: "3", title: "الصيام" },
+    ];
+    assert.equal(bestCategory("قضاء الصلاة", cats)?.id, "2");
+    assert.equal(bestCategory("فضل صيام رمضان", cats)?.id, "3");
+    assert.equal(bestCategory("السيرة النبوية", cats), null);
+  });
+});

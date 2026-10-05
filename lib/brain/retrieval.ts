@@ -30,7 +30,7 @@ import {
 } from "./rank";
 import { MAX_FATWA_CARDS, toFatwaCard, type FatwaCard } from "./fatwa-cards";
 import { webSearchRead, type WebMode, type WebResult } from "./web";
-import { isFatwaDomain, type WebSource } from "./web-parse";
+import { isFatwaDomain, urlKey, type WebSource } from "./web-parse";
 import { explicitVerseRef, INDEX_SOURCE, indexSummaryLine, isValidVerse, parseVerseText, surahInfoLine, surahUrl, verseTitle } from "./quran-index";
 import { matchKey } from "./guard";
 import type { Passage } from "./prompts";
@@ -1046,6 +1046,9 @@ export async function retrieve(
     runMcpExtra(deps, arabicPhrases(c, question)[0], c.lang, diag.searches, left),
   ]);
   if (web.diag) diag.web = web.diag;
+  // الفتوى نفسها من Quranpedia ومن «ابحث واقرأ»: يُقدَّم اقتباس الطبقة الموثَّق (أدق موضعاً).
+  const webKeys = new Set(web.cands.filter((x) => !x.linkOnly).map((x) => urlKey(x.url)));
+  const publishedOnly = published.filter((x) => !webKeys.has(urlKey(x.url)));
 
   // «بيّنات» أولاً لأسئلة الشبهات وغير المسلمين (مصدر أساسي للحلول الحوارية في الشبهات).
   const shubha = c.userType === "non_muslim" || Boolean(c.misconception) || c.level === "B";
@@ -1072,7 +1075,7 @@ export async function retrieve(
   const round1Raw = [
     ...(shubha ? bayyinat : []),
     ...found,
-    ...published,
+    ...publishedOnly,
     ...mcpExtra,
     ...(quranSearch.done() ? quranSearch.value() : []),
     ...(shubha ? [] : bayyinat),
@@ -1178,9 +1181,11 @@ export async function caseFatwas(
     runWeb(deps, question, "case", c.lang, jobs.map((j) => j.q), webMs, searches, opts.onReading),
   ]);
   const webDiag = web.diag ?? undefined;
-  const cleaned = clean(qp.filter((x) => x.fatwa), []);
-  const seen = new Set(cleaned.map((x) => x.url));
-  const webFatwas = web.cands.filter((x) => x.fatwa && !seen.has(x.url));
+  // الفتوى نفسها من المصدرين: اقتباس «ابحث واقرأ» الموثَّق مقدَّم، و«رابط فقط» منها يُترك لنص Quranpedia.
+  const verifiedWeb = new Set(web.cands.filter((x) => x.fatwa && !x.linkOnly).map((x) => urlKey(x.url)));
+  const cleaned = clean(qp.filter((x) => x.fatwa && !verifiedWeb.has(urlKey(x.url))), []);
+  const seen = new Set(cleaned.map((x) => urlKey(x.url)));
+  const webFatwas = web.cands.filter((x) => x.fatwa && !seen.has(urlKey(x.url)));
   if (!cleaned.length && !webFatwas.length) return { fatwas: [], diag: { searches, scored: [], web: webDiag } };
   const terms = [...new Set([...keywords(question), ...jobs.flatMap((j) => keywords(j.q))])];
   const pool = [...webFatwas, ...prerank(cleaned, terms, 8)];

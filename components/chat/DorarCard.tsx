@@ -20,7 +20,10 @@ function jsonp(url: string, timeoutMs: number): Promise<unknown> {
     const name = `mustaftiDorar_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     const script = document.createElement("script");
     const w = window as unknown as Record<string, unknown>;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("dorar: timeout"));
+    }, timeoutMs);
     const cleanup = () => {
       clearTimeout(timer);
       delete w[name];
@@ -34,10 +37,6 @@ function jsonp(url: string, timeoutMs: number): Promise<unknown> {
       cleanup();
       reject(new Error("dorar: load failed"));
     };
-    timer = setTimeout(() => {
-      cleanup();
-      reject(new Error("dorar: timeout"));
-    }, timeoutMs);
     script.src = `${url}${url.includes("?") ? "&" : "?"}callback=${name}`;
     script.async = true;
     script.referrerPolicy = "no-referrer";
