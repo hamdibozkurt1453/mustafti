@@ -30,6 +30,9 @@ export type ChatSource = {
   noteKind?: "tafsir" | "translation";
 };
 
+/** فتوى منشورة: العنوان، والمفتي أو الجهة، ومقتطف حرفي من الجواب (≤ 400 حرف)، والرابط. */
+export type ChatFatwa = { title: string; mufti: string; excerpt: string; url: string; category?: string };
+
 export type ChatEvent =
   | { type: "stage"; stage: ChatStage }
   | {
@@ -43,6 +46,12 @@ export type ChatEvent =
       referral?: "personal" | "ruling";
       chapter?: string;
       userType?: string;
+      /** «فتاوى منشورة ذات صلة» (تحت الجواب، أو قبل الإحالة في الحالة الشخصية). */
+      fatwas?: ChatFatwa[];
+      /** عند الامتناع: أسئلة قريبة يمكن الجواب عنها من المصادر. */
+      suggestions?: string[];
+      /** سطر ثابت بعد بطاقات الفتاوى في الحالة الشخصية («الأفضل لحالتك أن يراها مختص»). */
+      note?: string;
     }
   | { type: "delta"; text: string }
   | { type: "done" }

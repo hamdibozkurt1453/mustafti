@@ -5,6 +5,7 @@ import { cached, DAY } from "@/lib/cache";
 import { chatJson } from "@/lib/llm";
 import { callTool, toolData, toolText } from "@/lib/mcp";
 import { search, type SourceId, type SourceResult } from "@/lib/sources";
+import { ayahTafsir } from "@/lib/sources/quranpedia";
 import { clip, htmlToText } from "@/lib/sources/html";
 import { findTool, mcpQuranRange, mcpSearch, mcpSearchAny, type McpItem } from "@/lib/sources/mcp-search";
 import { SOURCE_BY_ID } from "@/lib/sources/registry";
@@ -13,7 +14,21 @@ import { matchBasics, parseVerseRef, quotedVerses, verseRefsInText, type VerseRe
 import type { Classification } from "./classify";
 import { isEmptyPlan, type CitationPlan } from "./plan";
 import { findTerms } from "./glossary";
-import { applyScores, clean, cleanToolText, focusExcerpt, keywords, prerank, rerankList, STOP, type Candidate as RankCandidate } from "./rank";
+import {
+  applyScores,
+  clean,
+  cleanToolText,
+  focusExcerpt,
+  keywordScore,
+  keywords,
+  prerank,
+  RELEVANCE_MAX,
+  RELEVANCE_MIN,
+  rerankList,
+  STOP,
+  type Candidate as RankCandidate,
+} from "./rank";
+import { MAX_FATWA_CARDS, toFatwaCard, type FatwaCard } from "./fatwa-cards";
 import { explicitVerseRef, INDEX_SOURCE, indexSummaryLine, isValidVerse, parseVerseText, surahInfoLine, surahUrl, verseTitle } from "./quran-index";
 import { matchKey } from "./guard";
 import type { Passage } from "./prompts";
@@ -21,16 +36,21 @@ import type { Passage } from "./prompts";
 /**
  * الاسترجاع لمُستفتي: من البحث إلى النصوص التي تُرسل للصياغة.
  *
- *  1) البحث: MCP (الحديث، والقرآن) + «بيّنات» (Supabase) + قاموس المرجعية، بكلمتي بحث على
- *     الأكثر لكل مصدر. IslamHouse رابط فقط (بطيء ويتجاوز المهلة، فلا يدخل المسار الحي).
- *  2) التنظيف: حذف أوصاف الكتب (لا محتوى فيها)، وعناصر واجهة المواقع، والمكرر.
- *  3) ترتيب أولي بتداخل الكلمات (بعد إزالة التشكيل)، مع حصة لكل مصدر حتى لا يطغى مصدر.
- *  4) الإثراء: المحتوى لا العنوان — شرح الحديث ودرجته بأداة get_hadith/fetch.
- *  5) إعادة ترتيب بالصلة بطلب واحد مجمّع للنموذج (0–3)، ولا يُرسل للصياغة إلا ما درجته ≥ 2.
+ *  1) عبارات البحث: 2–4 عبارات عربية قصيرة يصوغها المصنّف (+ عبارة بلغة السائل).
+ *  2) البحث المتوازي في المصادر المناسبة لنوع السؤال: MCP (الحديث والقرآن) + «بيّنات» (Supabase)
+ *     + الفتاوى المنشورة عبر Quranpedia (نطاقات المرجعية فقط) + الدرر السنية (الحديث بحكمه)
+ *     + تفسير Quranpedia لسؤال التفسير عن آية بعينها + قاموس المرجعية. لكل مصدر HTTP مهلة 8 ثوانٍ:
+ *     المصدر البطيء يسقط ولا يُنتظر (ويكمل في الخلفية فيملأ الذاكرة للسؤال التالي).
+ *  3) الدمج والتنظيف: حذف أوصاف الكتب، وعناصر واجهة المواقع، والمكرر (بالرابط والنص).
+ *  4) ترتيب أولي بتداخل الكلمات، مع حصة لكل مصدر حتى لا يطغى مصدر.
+ *  5) الإثراء: شرح الحديث ودرجته بأداة get_hadith/fetch.
+ *  6) تقييم الصلة بطلب واحد مجمّع للنموذج من 0 إلى 100، ولا يبقى إلا ما بلغ 60.
+ *  7) الجواب من النصوص فقط (respond.ts). والفتاوى ذات الصلة تُعرض أيضاً بطاقاتٍ تحت الجواب.
  */
 
 export type Candidate = RankCandidate & {
   sourceId: SourceId | "bayyinat" | "glossary" | "quran-index";
+  fatwa?: SourceResult["fatwa"];
   pinned?: boolean;
   /** للآيات: نص الآية العربي، وما بعده (التفسير الميسر أو ترجمة المعنى)، للعرض المنظم. */
   verse?: string;
@@ -44,7 +64,7 @@ export type RetrievalDiag = {
   queries: { q: string; lang: string }[];
   searches: SearchDiag[];
   retried: boolean;
-  /** أعداد كل مرحلة: الخام، وبعد التنظيف، والمرشحون للتقييم، والمقبولون (≥2). */
+  /** أعداد كل مرحلة: الخام، وبعد التنظيف، والمرشحون للتقييم، والمقبولون (≥60). */
   counts: { raw: number; cleaned: number; ranked: number; kept: number };
   dropped: { reason: string; source: string; title: string }[];
   /** المرشحون بدرجاتهم (للتشخيص). */
@@ -55,7 +75,7 @@ export type RetrievalDiag = {
   verses?: string[];
   /** خطة الإحالات المقترحة، وعدد ما وُجد منها فعلاً في المصادر. */
   plan?: CitationPlan;
-  /** خطة إعادة التخطيط (مرة واحدة) إن لم يبلغ أي موضع من الأولى درجة 2. */
+  /** خطة إعادة التخطيط (مرة واحدة) إن لم يبلغ أي موضع من الأولى 60. */
   replan?: CitationPlan;
   /** عدد المراجع المحددة التي بلغت تقييم الصلة فعلاً، وسجل كل مرجع (وُجد / فارغ / خطأ / مهلة). */
   pinned?: number;
@@ -75,9 +95,16 @@ export const MAX_QUERIES_PER_SOURCE = 2;
 const SEARCH_DEADLINE_MS = 26_000;
 /** ميزانية الاسترجاع الافتراضية؛ respond.ts يمرر ما بقي من ميزانية السؤال (40 ث). */
 export const RETRIEVAL_BUDGET_MS = 32_000;
-const RERANK_POOL = 14;
+const RERANK_POOL = 16;
 const MAX_PASSAGES = 6;
-const MIN_SCORE = 2;
+/** أقل درجة صلة (من 100) لما يُرسل إلى الصياغة ويُعرض. */
+const MIN_SCORE = RELEVANCE_MIN;
+/** «نصوص ذات صلة» عند الامتناع: ما بين 40 و59 (قريب من السؤال ولا يكفي لجوابه). */
+const RELATED_MIN = 40;
+/** أقصى عدد للفتاوى بين النصوص المرسلة للصياغة (ليبقى مكان للآيات والأحاديث). */
+const MAX_FATWA_PASSAGES = 2;
+/** مهلة كل مصدر HTTP (Quranpedia والدرر): ما تأخر يسقط ولا يُنتظر. */
+export const EXTRA_DEADLINE_MS = 8_000;
 const PASSAGE_CHARS = 1400;
 /** مهلة إثراء كل نص بشرحه (مستقلة عن البحث). */
 const ENRICH_MS = 12_000;
@@ -113,7 +140,17 @@ export function buildQueries(c: Classification, question: string): { q: string; 
 // ---------------------------------------------------------------------------
 
 function fromSource(r: SourceResult): Candidate {
-  return { title: r.title, text: r.text, url: r.url, source: r.source, sourceId: r.sourceId, grade: r.grade, lang: r.lang, ref: r.ref };
+  return {
+    title: r.title,
+    text: r.text,
+    url: r.url,
+    source: r.source,
+    sourceId: r.sourceId,
+    grade: r.grade,
+    lang: r.lang,
+    ref: r.ref,
+    ...(r.fatwa ? { fatwa: r.fatwa } : {}),
+  };
 }
 
 async function searchSources(
@@ -184,7 +221,7 @@ export function glossaryCandidates(question: string): Candidate[] {
     source: "المرجعية العلمية — قاموس المصطلحات الأساسية",
     sourceId: "glossary" as const,
     lang: "ar",
-    score: 3,
+    score: RELEVANCE_MAX,
   }));
 }
 
@@ -315,6 +352,10 @@ export type PinDeps = {
   detail: (ref: string, lang: string, kind: "hadith" | "library") => Promise<{ text: string; grade?: string } | null>;
   bayyinatSearch: (q: string) => Promise<Candidate[]>;
   bayyinatNumbers: (numbers: number[]) => Promise<Candidate[]>;
+  /** مصادر HTTP بالواجهة الموحدة (Quranpedia والدرر)، بمهلة المصدر. */
+  sourceSearch?: (id: SourceId, q: string, lang: string, ms: number, onError: (e: string) => void) => Promise<SourceResult[]>;
+  /** تفسير آية من Quranpedia. */
+  tafsir?: (surah: number, ayah: number) => Promise<SourceResult[]>;
 };
 
 export const DEFAULT_PIN_DEPS: PinDeps = {
@@ -324,6 +365,8 @@ export const DEFAULT_PIN_DEPS: PinDeps = {
   detail: mcpDetail,
   bayyinatSearch: (q) => searchBayyinat(q, [], 3),
   bayyinatNumbers: (ns) => bayyinatByNumber(ns),
+  sourceSearch: (id, q, lang, ms, onError) => search(id, q, lang, ms, onError),
+  tafsir: ayahTafsir,
 };
 
 /** سجل كل مرجع محدد: وُجد، أو فارغ، أو خطأ، أو تجاوز المهلة (يظهر في brain-test). */
@@ -537,7 +580,7 @@ function mergePinned(out: Candidate[]): Candidate[] {
  * - core: آيات الخطة والسؤال (بأرقامها أو بذكرها الصريح «الآية الثانية من سورة يونس»)، وتعريف
  *   السورة والفهرس، والأحاديث، و«بيّنات».
  * - quran: البحث بالكلمات في نص القرآن (الآية المنقولة في السؤال، وquran_queries). أبطأ، فلا
- *   يُنتظر إن بلغ مرجع من core درجة 2 (retrieve).
+ *   يُنتظر إن بلغ مرجع من core 60 (retrieve).
  */
 export function pinnedJobs(
   c: Classification,
@@ -609,25 +652,34 @@ export function pinnedJobs(
 // ---------------------------------------------------------------------------
 
 const RerankSchema = z.object({
-  scores: z.array(z.object({ id: z.string(), score: z.number().int().min(0).max(3) })),
+  scores: z.array(z.object({ id: z.string(), score: z.number().min(0).max(RELEVANCE_MAX) })),
 });
 
 const RERANK_SYSTEM = `You rate retrieved passages for an Islamic Q&A tool. You do NOT answer the question.
-Each passage has an id like S1, S2… For each passage give a relevance score:
-3 = directly answers the question or its core concept;
-2 = clearly relevant content that helps explain the answer;
-1 = shares a word or the topic but does not help answer;
-0 = unrelated.
-A book or article description without actual content is at most 1. A passage in another language is judged by its meaning.
-Return JSON {"scores":[{"id":"S1","score":<0-3>}, …]} with one entry per passage, using the exact ids given.`;
+Each passage has an id like S1, S2… Give each passage a relevance score from 0 to 100:
+90-100 = directly answers the question or its core concept;
+60-89 = clearly relevant content that helps explain the answer;
+30-59 = same topic or shares words, but does not help answer THIS question;
+0-29 = unrelated.
+A book or article description without actual content is at most 30. A published fatwa («فتوى منشورة») about a different question or case is at most 50. A hadith whose meaning is unrelated to the question is at most 30, even if it shares a word. A passage in another language is judged by its meaning.
+Return JSON {"scores":[{"id":"S1","score":<0-100>}, …]} with one entry per passage, using the exact ids given.`;
 
-async function rerank(question: string, cands: Candidate[], terms: string[]): Promise<{ cands: Candidate[]; mode: "llm" | "keywords" }> {
+const RERANK_CASE = `CASE MODE: the asker describes their own situation. Each passage is a published fatwa. Score it by how close its published QUESTION is to the asker's matter (the same act, the same chapter of fiqh, similar circumstances): 90-100 = the same matter; 60-89 = a closely similar matter; below 60 = a different matter, or it only shares words. Do not judge whether the ruling applies to the asker.`;
+
+export type RerankMode = "general" | "case";
+
+export async function rerank(
+  question: string,
+  cands: Candidate[],
+  terms: string[],
+  mode: RerankMode = "general",
+): Promise<{ cands: Candidate[]; mode: "llm" | "keywords" }> {
   const toRate = cands.filter((c) => c.score === undefined);
   if (!toRate.length) return { cands, mode: "llm" };
   try {
     const res = await chatJson(
       [
-        { role: "system", content: RERANK_SYSTEM },
+        { role: "system", content: mode === "case" ? `${RERANK_SYSTEM}\n\n${RERANK_CASE}` : RERANK_SYSTEM },
         { role: "user", content: `QUESTION: """${question}"""\n\nPASSAGES:\n${rerankList(toRate, terms)}` },
       ],
       RerankSchema,
@@ -637,9 +689,109 @@ async function rerank(question: string, cands: Candidate[], terms: string[]): Pr
     return { cands, mode: "llm" };
   } catch {
     // احتياط بلا نموذج: تداخل الكلمات.
-    for (const c of toRate) c.score = c.kw! >= 4 ? 3 : c.kw! >= 2 ? 2 : c.kw! >= 1 ? 1 : 0;
+    for (const c of toRate) c.score = keywordScore(c.kw ?? 0);
     return { cands, mode: "keywords" };
   }
+}
+
+// ---------------------------------------------------------------------------
+// المصادر حسب نوع السؤال (Quranpedia والدرر)
+// ---------------------------------------------------------------------------
+
+/** سؤال تحقق من حديث: «هل هذا حديث صحيح؟»، «ما درجة حديث…»، "is this hadith authentic". */
+const HADITH_CHECK =
+  /(صح(?:ة|يح)|درج(?:ة|ته)|ضعيف|موضوع|ثابت|حكم)\s+(?:هذا\s+)?(?:ال)?حديث|(?:ال)?حديث\s+(?:هذا\s+)?(?:صحيح|ضعيف|موضوع|ثابت)|هل\s+(?:هذا\s+|هذه\s+)?(?:ال)?(?:حديث|رواية)|هل\s+(?:صح|ثبت|ورد)\s+(?:عن|أن|ان)|\b(?:authentic|sahih|da'?if|weak|fabricated|graded?)\b[^.?!]{0,40}\bhadith\b|\bhadith\b[^.?!]{0,40}\b(?:authentic|sahih|weak|fabricated|grade)\b/iu;
+
+export function looksHadithCheck(question: string): boolean {
+  return HADITH_CHECK.test(question);
+}
+
+/** النص المنقول في السؤال بين «» أو "" أو “” (3 كلمات فأكثر): متن الحديث المسؤول عنه مثلاً. */
+export function quotedSegment(question: string): string | null {
+  const m = question.match(/[«"“]([^«»"“”]{8,300})[»"”]/u);
+  const t = m?.[1]?.trim();
+  return t && t.split(/\s+/).length >= 3 ? t.split(/\s+/).slice(0, 12).join(" ") : null;
+}
+
+/** عبارات البحث العربية (2–4 من المصنّف)، وإلا كلمات السؤال. */
+export function arabicPhrases(c: Classification, question: string): string[] {
+  const out = [...new Set(c.searchQueries.ar.map((q) => q.trim()).filter(Boolean))].slice(0, 4);
+  if (!out.length && /[\u0600-\u06FF]/.test(question)) {
+    const kw = queryWords(question).slice(0, 4).join(" ");
+    if (kw) out.push(kw);
+  }
+  return out;
+}
+
+/** سؤال تفسير لآية بعينها («ما تفسير الآية 2:255»، «معنى آية الكرسي 2:255»). */
+const TAFSIR_ASK = /تفسير|يفسر|فسّر|فسر|معنى|معني|tafsir|tafseer|interpret|meaning|explain/iu;
+
+export type ExtraSearch = { source: SourceId; q: string; lang: string };
+
+/**
+ * المصادر المناسبة لنوع السؤال:
+ * - الفتاوى المنشورة (Quranpedia) بأول 3 عبارات عربية، لكل سؤال A/B/C.
+ * - الدرر السنية: متن الحديث المنقول في السؤال أولاً إن كان تحققاً من حديث، ثم أول عبارة.
+ */
+export function extraSearches(c: Classification, question: string): ExtraSearch[] {
+  const ar = arabicPhrases(c, question);
+  const out: ExtraSearch[] = [];
+  const add = (source: SourceId, q: string | null | undefined) => {
+    const t = q?.trim().slice(0, 150);
+    if (t && !out.some((x) => x.source === source && x.q === t)) out.push({ source, q: t, lang: "ar" });
+  };
+  ar.slice(0, 3).forEach((q) => add("quranpedia", q));
+  if (looksHadithCheck(question)) add("dorar_hadith", quotedSegment(question));
+  add("dorar_hadith", ar[0]);
+  return out;
+}
+
+/** تشغيل مصادر HTTP بالتوازي، لكلٍّ مهلته (8 ث أو ما بقي)، وتسجيل كل بحث في التشخيص. */
+async function runExtra(jobs: ExtraSearch[], deps: PinDeps, diag: SearchDiag[], left: () => number): Promise<Candidate[]> {
+  const run = deps.sourceSearch ?? DEFAULT_PIN_DEPS.sourceSearch!;
+  const results = await Promise.all(
+    jobs.map(async ({ source, q, lang }) => {
+      const t0 = Date.now();
+      const errors: string[] = [];
+      const ms = Math.min(EXTRA_DEADLINE_MS, left());
+      const found = await run(source, q, lang, ms, (e) => errors.push(e)).catch((e) => {
+        errors.push(String((e as Error)?.message ?? e));
+        return [] as SourceResult[];
+      });
+      const took = Date.now() - t0;
+      const timedOut = !found.length && !errors.length && took >= ms - 50;
+      diag.push({
+        query: q,
+        lang,
+        source,
+        results: found.length,
+        ms: took,
+        ...(errors.length || timedOut ? { error: (errors.join(" | ") || `timeout ${ms}ms`).slice(0, 300) } : {}),
+      });
+      return found.map(fromSource);
+    }),
+  );
+  return results.flat();
+}
+
+/** تفسير Quranpedia لسؤال تفسير يذكر آية بعينها (آية واحدة). */
+async function tafsirCandidates(question: string, deps: PinDeps, diag: SearchDiag[], left: () => number): Promise<Candidate[]> {
+  if (!TAFSIR_ASK.test(question)) return [];
+  const ref = explicitVerseRef(question) ?? verseRefsInText(question)[0];
+  if (!ref || !isValidVerse(ref.surah, ref.ayah)) return [];
+  const t0 = Date.now();
+  const run = deps.tafsir ?? DEFAULT_PIN_DEPS.tafsir!;
+  let error: string | undefined;
+  const found = await withTimeout(
+    run(ref.surah, ref.ayah).catch((e) => {
+      error = String((e as Error)?.message ?? e);
+      return [] as SourceResult[];
+    }),
+    Math.min(EXTRA_DEADLINE_MS, left()),
+    [] as SourceResult[],
+  );
+  diag.push({ query: `${ref.surah}:${ref.ayah}`, lang: "ar", source: "quranpedia-tafsir", results: found.length, ms: Date.now() - t0, ...(error ? { error } : {}) });
+  return found.map(fromSource);
 }
 
 // ---------------------------------------------------------------------------
@@ -694,26 +846,36 @@ export type RetrieveOptions = {
   onVerify?: () => void;
 };
 
+export type RetrieveResult = {
+  passages: Passage[];
+  diag: RetrievalDiag;
+  /** فتاوى منشورة بلغت 60 فأكثر (حتى 3)، تُعرض بطاقاتٍ تحت الجواب. */
+  fatwas: FatwaCard[];
+  /** نصوص قريبة لم تبلغ 60 (40–59، حتى 3): تُعرض عند الامتناع بدل الرد الجاف. */
+  related: Passage[];
+};
+
 /**
  * الاسترجاع على جولتين:
- *  1) المراجع المحددة (core) + بحث الحديث و«بيّنات» ← تقييم الصلة. ويدخل معها ما انتهى من بحث
- *     القرآن بالكلمات.
- *  2) إن لم يبلغ مرجع محدد درجة 2: انتظار بحث القرآن بالكلمات (ضمن الميزانية) وتقييم ما جاء به،
+ *  1) المراجع المحددة (core) + بحث الحديث و«بيّنات» + الفتاوى المنشورة والدرر (8 ث لكل مصدر)
+ *     ← تقييم الصلة (0–100). ويدخل معها ما انتهى من بحث القرآن بالكلمات.
+ *  2) إن لم يبلغ مرجع محدد 60: انتظار بحث القرآن بالكلمات (ضمن الميزانية) وتقييم ما جاء به،
  *     ثم إعادة التخطيط مرة واحدة إن بقي الأمر كذلك.
- * الانتظار أفضل من الامتناع: كل خطوة محدودة بما بقي من الميزانية فقط.
+ * كل خطوة محدودة بما بقي من الميزانية، والمصدر البطيء يسقط بدل انتظاره.
  */
 export async function retrieve(
   c: Classification,
   question: string,
   plan?: Promise<CitationPlan | null>,
   opts: RetrieveOptions = {},
-): Promise<{ passages: Passage[]; diag: RetrievalDiag }> {
+): Promise<RetrieveResult> {
   const deadline = opts.deadline ?? Date.now() + RETRIEVAL_BUDGET_MS;
   const left = () => Math.max(500, deadline - Date.now());
   const deps = opts.deps ?? DEFAULT_PIN_DEPS;
   const queries = buildQueries(c, question);
+  const extra = extraSearches(c, question);
   const diag: RetrievalDiag = {
-    queries,
+    queries: [...queries, ...extra.filter((x) => !queries.some((q) => q.q === x.q)).map(({ q, lang }) => ({ q, lang }))],
     searches: [],
     retried: false,
     counts: { raw: 0, cleaned: 0, ranked: 0, kept: 0 },
@@ -721,7 +883,7 @@ export async function retrieve(
     scored: [],
     rerank: "llm",
   };
-  const terms = [...new Set([...keywords(question), ...queries.flatMap((q) => keywords(q.q))])];
+  const terms = [...new Set([...keywords(question), ...queries.flatMap((q) => keywords(q.q)), ...extra.flatMap((q) => keywords(q.q))])];
   const glossary = glossaryCandidates(question);
 
   // «بيّنات»: السؤال كما كتبه السائل إن كان عربياً، وإلا كلمات البحث العربية.
@@ -730,10 +892,12 @@ export async function retrieve(
   const quranPins = settle(pins.quran, [] as Candidate[]);
   const quranSearch = settle(searchSources(queries, diag.searches, ["quranenc"], left()), [] as Candidate[]);
   const others = RETRIEVAL_SOURCES.filter((x) => x !== "quranenc");
-  const [pinnedCore, found, bayyinat] = await Promise.all([
+  const [pinnedCore, found, bayyinat, published, tafsir] = await Promise.all([
     withTimeout(pins.core, left(), [] as Candidate[]),
     searchSources(queries, diag.searches, others, left()),
     searchBayyinat(bayyinatQuery, diag.searches).catch(() => [] as Candidate[]),
+    runExtra(extra, deps, diag.searches, left),
+    tafsirCandidates(question, deps, diag.searches, left),
   ]);
 
   // «بيّنات» أولاً لأسئلة الشبهات وغير المسلمين (مصدر أساسي للحلول الحوارية في الشبهات).
@@ -756,22 +920,28 @@ export async function retrieve(
   };
   const hit = (xs: Candidate[]) => xs.some((x) => x.pinned && (x.score ?? 0) >= MIN_SCORE);
 
-  // الجولة 1: ما وصل + ما انتهى من بحث القرآن.
-  const round1Pinned = newPinned([...pinnedCore, ...(quranPins.done() ? quranPins.value() : [])]);
-  const round1Raw = [...(shubha ? bayyinat : []), ...found, ...(quranSearch.done() ? quranSearch.value() : []), ...(shubha ? [] : bayyinat)];
+  // الجولة 1: ما وصل + ما انتهى من بحث القرآن. التفسير المطلوب بعينه يُعامل مرجعاً محدداً.
+  const round1Pinned = newPinned([...pinnedCore, ...(quranPins.done() ? quranPins.value() : []), ...tafsir.map((x) => ({ ...x, kw: 50, pinned: true }))]);
+  const round1Raw = [
+    ...(shubha ? bayyinat : []),
+    ...found,
+    ...published,
+    ...(quranSearch.done() ? quranSearch.value() : []),
+    ...(shubha ? [] : bayyinat),
+  ];
   const enriched = await poolOf(round1Raw, RERANK_POOL);
   opts.onVerify?.();
   const reranked = await rerank(question, [...round1Pinned, ...enriched], terms);
   let all = reranked.cands;
 
-  // الجولة 2: لا مرجع محدد بلغ درجة 2 ← انتظار بحث القرآن بالكلمات وتقييم ما جاء به.
+  // الجولة 2: لا مرجع محدد بلغ 60 ← انتظار بحث القرآن بالكلمات وتقييم ما جاء به.
   if (!hit(all) && (!quranPins.done() || !quranSearch.done())) {
     const [qp, qs] = await Promise.all([withTimeout(quranPins.promise, left(), []), withTimeout(quranSearch.promise, left(), [])]);
     const fresh = [...newPinned(qp), ...(await poolOf(qs, 6))];
     if (fresh.length) all = [...all, ...(await rerank(question, fresh, terms)).cands];
   }
 
-  // إعادة التخطيط مرة واحدة: خطة غير فارغة لم يبلغ أي موضع منها درجة 2.
+  // إعادة التخطيط مرة واحدة: خطة غير فارغة لم يبلغ أي موضع منها 60.
   const firstPlan = diag.plan;
   if (opts.replan && firstPlan && !isEmptyPlan(firstPlan) && !hit(all) && deadline - Date.now() > 3_000) {
     const failed = planRefs(firstPlan);
@@ -796,10 +966,58 @@ export async function retrieve(
   diag.rerank = reranked.mode;
   diag.scored = cands.map((x) => ({ source: x.source, title: clip(x.title, 100), kw: x.kw ?? 0, score: x.score, enriched: Boolean(x.enriched) }));
 
-  const kept = cands
-    .filter((x) => (x.score ?? 0) >= MIN_SCORE)
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (b.kw ?? 0) - (a.kw ?? 0))
-    .slice(0, MAX_PASSAGES);
+  const byScore = (a: Candidate, b: Candidate) => (b.score ?? 0) - (a.score ?? 0) || (b.kw ?? 0) - (a.kw ?? 0);
+  const ranked = cands.filter((x) => (x.score ?? 0) >= MIN_SCORE).sort(byScore);
+  const fatwaKept = ranked.filter((x) => x.fatwa);
+  const fatwaPassages = fatwaKept.slice(0, MAX_FATWA_PASSAGES);
+  const kept = [...ranked.filter((x) => !x.fatwa).slice(0, MAX_PASSAGES - fatwaPassages.length), ...fatwaPassages].sort(byScore);
   diag.counts.kept = kept.length;
-  return { passages: kept.map((x) => toPassage(x, terms)), diag };
+  const related = cands
+    .filter((x) => !x.fatwa && (x.score ?? 0) >= RELATED_MIN && (x.score ?? 0) < MIN_SCORE)
+    .sort(byScore)
+    .slice(0, 3);
+  return {
+    passages: kept.map((x) => toPassage(x, terms)),
+    diag,
+    fatwas: fatwaKept.slice(0, MAX_FATWA_CARDS).flatMap((x) => toFatwaCard(x) ?? []),
+    related: related.map((x) => toPassage(x, terms)),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// الحالة الشخصية (D): فتاوى منشورة قريبة للاطلاع فقط، ثم الإحالة
+// ---------------------------------------------------------------------------
+
+/** مهلة البحث عن فتاوى منشورة قبل الاستيضاح (لا تؤخر الإحالة طويلاً). */
+export const CASE_FATWA_BUDGET_MS = 16_000;
+
+export type CaseFatwas = { fatwas: FatwaCard[]; diag: { searches: SearchDiag[]; scored: { title: string; score?: number }[]; rerank?: "llm" | "keywords" } };
+
+/**
+ * D: قبل الاستيضاح، فتاوى منشورة مشابهة لسؤال السائل (Quranpedia، نطاقات المرجعية فقط).
+ * تُقيَّم بقرب سؤالها المنشور من مسألة السائل، ولا يبقى إلا ما بلغ 60 (حتى 3). وإن تعذّر النموذج
+ * فلا شيء (لا نعرض فتوى على حالة شخصية بتداخل الكلمات وحده).
+ */
+export async function caseFatwas(c: Classification, question: string, opts: { deps?: PinDeps; deadline?: number } = {}): Promise<CaseFatwas> {
+  const deadline = opts.deadline ?? Date.now() + CASE_FATWA_BUDGET_MS;
+  const left = () => Math.max(500, deadline - Date.now());
+  const deps = opts.deps ?? DEFAULT_PIN_DEPS;
+  const searches: SearchDiag[] = [];
+  const jobs: ExtraSearch[] = arabicPhrases(c, question)
+    .slice(0, 3)
+    .map((q) => ({ source: "quranpedia" as const, q, lang: "ar" }));
+  const raw = (await runExtra(jobs, deps, searches, left)).filter((x) => x.fatwa);
+  const cleaned = clean(raw, []);
+  if (!cleaned.length) return { fatwas: [], diag: { searches, scored: [] } };
+  const terms = [...new Set([...keywords(question), ...jobs.flatMap((j) => keywords(j.q))])];
+  const pool = prerank(cleaned, terms, 8);
+  const res = await rerank(question, pool, terms, "case");
+  const scored = res.cands.map((x) => ({ title: clip(x.title, 100), score: x.score }));
+  if (res.mode !== "llm") return { fatwas: [], diag: { searches, scored, rerank: res.mode } };
+  const fatwas = res.cands
+    .filter((x) => (x.score ?? 0) >= MIN_SCORE)
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, MAX_FATWA_CARDS)
+    .flatMap((x) => toFatwaCard(x) ?? []);
+  return { fatwas, diag: { searches, scored, rerank: res.mode } };
 }

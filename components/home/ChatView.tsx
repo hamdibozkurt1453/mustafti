@@ -18,6 +18,8 @@ type Props = {
   onSubmit: () => void;
   onReset: () => void;
   onRetry: (id: string) => void;
+  /** سؤال مقترح عند الامتناع. */
+  onAsk: (question: string) => void;
   caseApi: CaseApi;
   busy: boolean;
   inputRef: RefObject<HTMLTextAreaElement | null>;
@@ -28,7 +30,7 @@ type Props = {
  * واجهة المحادثة: السائل في فقاعة خضراء داكنة، ومُستفتي في فقاعة بيضاء مع بطاقات المصادر،
  * والخانة مثبتة في الأسفل. اتجاه كل فقاعة حسب لغة نصها (RTL للعربية والأردية والفارسية).
  */
-export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, caseApi, busy, inputRef, reduced }: Props) {
+export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, onAsk, caseApi, busy, inputRef, reduced }: Props) {
   const t = useTranslations();
   const endRef = useRef<HTMLDivElement>(null);
   const [term, setTerm] = useState<GlossaryTerm | null>(null);
@@ -80,7 +82,7 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, 
                   <>
                     <BubbleMark className="mt-1 h-8 w-8 flex-none" />
                     <div className="min-w-0 max-w-[calc(100%-2.75rem)] flex-1 sm:max-w-[88%] sm:flex-none" aria-live="polite">
-                      <BotReply msg={msg} onTerm={setTerm} onRetry={onRetry} caseApi={caseApi} />
+                      <BotReply msg={msg} onTerm={setTerm} onRetry={onRetry} onAsk={onAsk} caseApi={caseApi} />
                     </div>
                   </>
                 )}

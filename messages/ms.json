@@ -239,7 +239,14 @@
       "searching": "Mencari dalam sumber…",
       "verifying": "Menyemak dalil…",
       "writing": "Menyusun jawapan…"
-    }
+    },
+    "fatwasTitle": "Fatwa terbitan yang berkaitan",
+    "fatwaBadge": "Fatwa terbitan",
+    "fatwaBy": "Mufti atau badan",
+    "viewFatwa": "Lihat fatwa",
+    "sendCase": "Hantar masalah saya kepada pakar",
+    "relatedTitle": "Teks berkaitan",
+    "suggestTitle": "Soalan berkaitan yang boleh saya jawab"
   },
   "case": {
     "start": "",

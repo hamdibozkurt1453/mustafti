@@ -4,7 +4,9 @@ import { after } from "next/server";
 import { cached, DAY } from "@/lib/cache";
 import { clip, embeddedJson, extractResultLinks, linksFromJson, openSearchHref, searchForms, type ExtractedLink } from "./html";
 import { collectItems, mcpFetchHadith, mcpLibrary, mcpQuranVerses, mcpSearch, type McpCorpus, type McpItem } from "./mcp-search";
+import { dorarResult, searchDorar } from "./dorar";
 import { politeFetch, politeJson } from "./polite-fetch";
+import { fatwaResult, searchFatwas } from "./quranpedia";
 import { QURANENC_TRANSLATIONS } from "./quran";
 import { SOURCE_BY_ID } from "./registry";
 import type { AccessMethod, SourceId, SourceResult } from "./types";
@@ -258,6 +260,20 @@ const mp3quranApi: AccessMethod = {
   },
 };
 
+/** Quranpedia: فتاوى منشورة من نطاقات المرجعية فقط (الفلتر في quranpedia.ts). */
+const quranpediaFatwas: AccessMethod = {
+  kind: "api",
+  via: "api.quranpedia.net/v1/search/{q}/fatwas",
+  search: async (query) => (await searchFatwas(query)).slice(0, MAX_RESULTS).map(fatwaResult),
+};
+
+/** الدرر السنية: الموسوعة الحديثية بالحكم حرفياً (dorar_api.json). */
+const dorarApi: AccessMethod = {
+  kind: "api",
+  via: "dorar.net/dorar_api.json?skey=",
+  search: async (query) => (await searchDorar(query)).slice(0, MAX_RESULTS).map(dorarResult),
+};
+
 // ---------------------------------------------------------------------------
 // خريطة الموصّلات (الترتيب = ترتيب المحاولة)
 // ---------------------------------------------------------------------------
@@ -270,24 +286,10 @@ export const CONNECTORS: Partial<Record<SourceId, AccessMethod[]>> = {
   risala: [risalaApi],
   tafsir_net: [site("tafsir_net", (s) => `https://tafsir.net/search?q=${q(s)}`, NUMERIC_PATH)],
   mp3quran: [mp3quranApi],
-  islamqa: [
-    site("islamqa", (s, l) => `https://islamqa.info/${l}/search?q=${q(s)}`, /\/answers\/\d+/, {
-      idUrl: (id, l) => `/${l}/answers/${id}`,
-      home: (l) => `https://islamqa.info/${l}`,
-    }),
-  ],
-  binbaz: [
-    site("binbaz", (s) => `https://binbaz.org.sa/search?q=${q(s)}`, /^\/(fatwas|articles|audios|books|discussions|speeches)\/\d+/, {
-      idUrl: (id) => `/fatwas/${id}`,
-      home: () => "https://binbaz.org.sa/",
-    }),
-  ],
-  binothaimeen: [
-    site("binothaimeen", (s) => `https://binothaimeen.net/site/search?q=${q(s)}`, /\/content\/\d+/, {
-      idUrl: (id) => `/content/${id}`,
-      home: () => "https://binothaimeen.net/",
-    }),
-  ],
+  // الفتاوى المنشورة (islamqa وbinbaz وbinothaimeen…) عبر Quranpedia فقط: نتائج بحث تلك المواقع
+  // تُبنى بالجافاسكربت فلا يراها الخادم، فلا نبحث فيها مباشرة (رابط فقط في registry.ts).
+  quranpedia: [quranpediaFatwas],
+  dorar_hadith: [dorarApi],
 };
 
 export function methodsFor(id: SourceId): AccessMethod[] {

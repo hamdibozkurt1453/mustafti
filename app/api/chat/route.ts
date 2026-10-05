@@ -3,7 +3,8 @@ import { z } from "zod";
 import { requireRole, authzResponse } from "@/lib/auth/roles";
 import { respond, type BrainReply } from "@/lib/brain/respond";
 import { guessLang } from "@/lib/brain/identity";
-import { dirForLang, MAX_HISTORY, MAX_QUESTION_CHARS, type ChatEvent, type ChatSource } from "@/lib/chat/protocol";
+import { dirForLang, MAX_HISTORY, MAX_QUESTION_CHARS, type ChatEvent, type ChatFatwa, type ChatSource } from "@/lib/chat/protocol";
+import type { Passage } from "@/lib/brain/prompts";
 import { llmUserMessage } from "@/lib/llm";
 import { checkChatRateLimit, CHAT_LIMIT_PER_HOUR } from "@/lib/rate-limit";
 import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin";
@@ -36,10 +37,9 @@ function wordDelay(words: number): number {
 /** بطاقات المصادر للجواب فقط: المشار إليها بـ [n] إن وُجدت، وإلا كل النصوص المسترجعة. */
 const MAX_CARDS = 4;
 
-function sourcesOf(reply: BrainReply): ChatSource[] {
-  if (reply.kind !== "answer") return [];
+function toCards(passages: Passage[]): ChatSource[] {
   // النص للعرض بلا علامات الخادم («[Surah 3, …]»، «[3:1]»، «[EXACT]»، «Source: …»).
-  const cards = reply.passages.map((p, i) => ({
+  return passages.map((p, i) => ({
     n: i + 1,
     title: p.title,
     text: cleanForDisplay(p.text),
@@ -49,12 +49,27 @@ function sourcesOf(reply: BrainReply): ChatSource[] {
     ...(p.lang ? { lang: p.lang } : {}),
     ...(p.verse ? { verse: cleanForDisplay(p.verse), note: p.note ? cleanForDisplay(p.note) : undefined, noteKind: p.noteKind } : {}),
   }));
+}
+
+function sourcesOf(reply: BrainReply): ChatSource[] {
+  // الامتناع: النصوص القريبة كما هي (لا امتناع جاف).
+  if (reply.kind === "abstain" || reply.kind === "refused") return toCards(reply.related ?? []).slice(0, MAX_CARDS);
+  if (reply.kind !== "answer") return [];
+  const cards = toCards(reply.passages);
   // المصادر المذكورة في الجواب فقط، بترتيب أول ذكر لها، وأربعة على الأكثر.
   const order = [...new Set([...reply.text.matchAll(/[\[(（]\s*(\d{1,2})\s*[\])）]/g)].map((m) => Number(m[1])))];
   return order
     .map((n) => cards.find((c) => c.n === n))
     .filter((c): c is (typeof cards)[number] => Boolean(c))
     .slice(0, MAX_CARDS);
+}
+
+/** «فتاوى منشورة ذات صلة»: ما لم يظهر بطاقةَ مصدر في الجواب نفسه (فلا تتكرر الفتوى). */
+function fatwasOf(reply: BrainReply, sources: ChatSource[]): ChatFatwa[] {
+  const shown = new Set(sources.map((s) => s.url));
+  return (reply.fatwas ?? [])
+    .filter((f) => !shown.has(f.url))
+    .map((f) => ({ title: f.title, mufti: f.mufti, excerpt: f.excerpt, url: f.url, ...(f.category ? { category: f.category } : {}) }));
 }
 
 /** إحصاء فقط (اللغة، والمستوى، وعدد المصادر، وهل امتنع)، بلا نص السؤال. */
@@ -122,13 +137,18 @@ export async function POST(request: Request) {
         });
         logQuery(reply);
 
+        const sources = sourcesOf(reply);
+        const fatwas = fatwasOf(reply, sources);
         send({
           type: "start",
           kind: reply.kind,
           lang: reply.lang,
           dir: dirForLang(reply.lang),
           level: reply.classification?.level,
-          sources: sourcesOf(reply),
+          sources,
+          ...(fatwas.length ? { fatwas } : {}),
+          ...(reply.suggestions?.length ? { suggestions: reply.suggestions } : {}),
+          ...(reply.note ? { note: reply.note } : {}),
           ...(reply.referral ? { referral: reply.referral } : {}),
           ...(reply.kind === "referral" || reply.kind === "abstain" || reply.kind === "refused"
             ? { chapter: reply.classification?.chapter, userType: reply.classification?.userType }

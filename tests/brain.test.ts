@@ -481,19 +481,19 @@ describe("إعادة الترتيب: الدرجات بالمعرّف لا بال
     const cands = make();
     applyScores(cands, [
       { id: "S3", score: 0 },
-      { id: "S1", score: 3 },
-      { id: "S2", score: 2 },
+      { id: "S1", score: 95 },
+      { id: "S2", score: 70 },
     ]);
-    assert.deepEqual(cands.map((c) => c.score), [3, 2, 0]);
+    assert.deepEqual(cands.map((c) => c.score), [95, 70, 0]);
   });
 
-  it("المعرّف بصيغ مختلفة، وما لم يُقيَّم 0، وما يفوق 3 يُقصّ", () => {
+  it("المعرّف بصيغ مختلفة، وما لم يُقيَّم 0، وما يفوق 100 يُقصّ (سلّم 0–100)", () => {
     const cands = make();
     applyScores(cands, [
-      { id: "[S2]", score: 9 },
-      { id: "1", score: 2 },
+      { id: "[S2]", score: 190 },
+      { id: "1", score: 64.6 },
     ]);
-    assert.deepEqual(cands.map((c) => c.score), [2, 3, 0]);
+    assert.deepEqual(cands.map((c) => c.score), [65, 100, 0]);
   });
 });
 

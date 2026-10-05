@@ -239,7 +239,14 @@
       "searching": "Ninatafuta katika vyanzo…",
       "verifying": "Ninathibitisha ushahidi…",
       "writing": "Ninaandika jibu…"
-    }
+    },
+    "fatwasTitle": "Fatwa zilizochapishwa zinazohusiana",
+    "fatwaBadge": "Fatwa iliyochapishwa",
+    "fatwaBy": "Mufti au taasisi",
+    "viewFatwa": "Tazama fatwa",
+    "sendCase": "Tuma suala langu kwa mtaalamu",
+    "relatedTitle": "Maandiko yanayohusiana",
+    "suggestTitle": "Maswali yanayokaribiana ninayoweza kujibu"
   },
   "case": {
     "start": "",

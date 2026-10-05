@@ -87,6 +87,8 @@ export type SourceHealth = {
 function probeFor(id: SourceId): { query: string; lang: string } {
   if (id === "quranenc") return { query: "الحمد لله رب العالمين 1:2", lang: "ar" };
   if (id === "mp3quran") return { query: "العفاسي", lang: "ar" };
+  if (id === "quranpedia") return { query: "قضاء صلاة الفجر", lang: "ar" };
+  if (id === "dorar_hadith") return { query: "إنما الأعمال بالنيات", lang: "ar" };
   if (id === "terminologyenc" || id === "jamhara") return { query: "التوحيد", lang: "ar" };
   if (id === "dorar_history") return { query: "غزوة بدر", lang: "ar" };
   if (id === "dorar_tafseer" || id === "tafsir_net") return { query: "الفاتحة", lang: "ar" };

@@ -101,6 +101,7 @@ export function HomeExperience() {
                 onSubmit={() => ask(text)}
                 onReset={newChat}
                 onRetry={retry}
+                onAsk={ask}
                 caseApi={caseApi}
                 busy={busy}
                 inputRef={inputRef}
