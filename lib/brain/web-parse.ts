@@ -192,7 +192,11 @@ export function tokenize(text: string): Token[] {
   let end = -1;
   for (let i = 0; i < src.length; i++) {
     const ch = src[i];
-    if (IGNORED.test(ch)) continue;
+    if (IGNORED.test(ch)) {
+      // تشكيل آخر الكلمة جزء منها في العرض بنص الصفحة.
+      if (w) end = i;
+      continue;
+    }
     if (/[\p{L}\p{N}]/u.test(ch)) {
       if (!w) start = i;
       w += foldChar(ch);
