@@ -26,6 +26,9 @@ let scoreOf: (question: string, block: string) => number = () => 0;
 let answerText = "";
 let suggestions: { q: string; id: string }[] = [];
 const llmCalls: string[] = [];
+/** رد طبقة «ابحث واقرأ» (طلب فيه tools): الافتراضي لا مصادر. */
+let webReply: unknown = { choices: [{ message: { role: "assistant", content: '{"queries":[],"sources":[],"explanation":""}' } }], usage: {} };
+const webRequests: { tools: { type: string; parameters?: Record<string, unknown> }[]; system: string }[] = [];
 
 const reply = (content: string) =>
   new Response(JSON.stringify({ choices: [{ message: { content } }], usage: {} }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -37,6 +40,11 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
     const name: string | undefined = body.response_format?.json_schema?.name;
     const msgs = body.messages as { role: string; content: string }[];
     const user = [...msgs].reverse().find((m) => m.role === "user")?.content ?? "";
+    if (Array.isArray(body.tools)) {
+      llmCalls.push("web");
+      webRequests.push({ tools: body.tools, system: msgs.find((m) => m.role === "system")?.content ?? "" });
+      return new Response(JSON.stringify(webReply), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
     llmCalls.push(name ?? "chat");
     if (name === "classification") {
       const c = CLASS[user.trim()] ?? { level: "A", ar: [] };
@@ -80,6 +88,28 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
   if (u.hostname === "dorar.net") return json(fixture("dorar.json"));
   throw new TypeError("fetch failed"); // MCP وغيره: لا شبكة
 }) as typeof fetch;
+
+/** رد OpenRouter مسجَّل لطبقة «ابحث واقرأ»: الجواب JSON، والمحتوى المقروء في annotations. */
+function webResponse(sources: { url: string; title: string; quote: string; page?: string }[]) {
+  return {
+    choices: [
+      {
+        message: {
+          role: "assistant",
+          content: JSON.stringify({
+            queries: ["عبارة"],
+            sources: sources.map(({ url, title, quote }) => ({ url, title, site: "x", quote })),
+            explanation: "",
+          }),
+          annotations: sources
+            .filter((x) => x.page)
+            .map((x) => ({ type: "url_citation", url_citation: { url: x.url, title: x.title, content: x.page } })),
+        },
+      },
+    ],
+    usage: { cost: 0.004, server_tool_use: { web_search_requests: 1, web_fetch_requests: sources.length } },
+  };
+}
 
 let brain: typeof import("../lib/brain/respond");
 let messages: typeof import("../lib/brain/messages");
@@ -148,7 +178,16 @@ describe("لا امتناع جاف", () => {
   it("لا نص بلغ 60: «لم أجد جواباً كافياً» مع النصوص القريبة، وأسئلة قريبة سليمة فقط", async () => {
     const q = "ما فضل النية في الأعمال؟";
     CLASS[q] = { level: "A", ar: ["النية في الأعمال"] };
-    scoreOf = (_q, b) => (/إنما الأعمالُ بالنِّيَّاتِ/.test(b) ? 50 : 10);
+    scoreOf = (_q, b) => (/إنما الأعمال/.test(b) ? 50 : 10);
+    // «ابحث واقرأ» قرأت صفحة الحديث، والاقتباس موجود فيها حرفياً.
+    webReply = webResponse([
+      {
+        url: "https://hadeethenc.com/ar/browse/hadith/4302",
+        title: "إنما الأعمال بالنيات",
+        quote: "إنما الأعمال بالنيات، وإنما لكل امرئ ما نوى",
+        page: "عن عمر بن الخطاب رضي الله عنه قال: سمعت رسول الله ﷺ يقول: إنما الأعمال بالنيات، وإنما لكل امرئ ما نوى. متفق عليه.",
+      },
+    ]);
     suggestions = [
       { q: "هل يجوز العمل بلا نية؟", id: "P1" }, // حكم: يُرفض
       { q: "ما نص حديث «إنما الأعمال بالنيات»؟", id: "P1" },
@@ -160,7 +199,8 @@ describe("لا امتناع جاف", () => {
     assert.match(r.text, /^لم أجد جواباً كافياً في المصادر المعتمدة\./);
     assert.match(r.text, /نصوص قريبة من سؤالك/);
     assert.equal(r.related?.length, 1);
-    assert.equal(r.related![0].grade, "[صحيح]");
+    assert.equal(r.related![0].url, "https://hadeethenc.com/ar/browse/hadith/4302");
+    assert.equal(r.related![0].text, "إنما الأعمال بالنيات، وإنما لكل امرئ ما نوى");
     assert.deepEqual(r.suggestions, ["ما نص حديث «إنما الأعمال بالنيات»؟"]);
     assert.deepEqual(brain.finalCheck(r, q).findings, []);
   });

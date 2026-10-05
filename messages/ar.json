@@ -247,9 +247,11 @@
     "label": "المحادثة",
     "stage": {
       "understanding": "يقرأ سؤالك…",
-      "searching": "أبحث في المصادر…",
+      "searching": "أبحث في المصادر المعتمدة…",
       "writing": "أصوغ الجواب…",
-      "verifying": "أتحقق من الأدلة…"
+      "verifying": "أتحقق من الأدلة…",
+      "reading": "أقرأ المصادر…",
+      "readingFatwa": "أقرأ الفتوى…"
     },
     "badgeOwn": "صياغة مُستفتي",
     "badgeQuoted": "نص منقول",
@@ -284,7 +286,13 @@
     "viewFatwa": "عرض الفتوى",
     "sendCase": "أرسل مسألتي لمختص",
     "relatedTitle": "نصوص ذات صلة",
-    "suggestTitle": "أسئلة قريبة يمكنني الجواب عنها"
+    "suggestTitle": "أسئلة قريبة يمكنني الجواب عنها",
+    "linksTitle": "روابط من المصادر المعتمدة",
+    "dorarTitle": "الدرر السنية — الموسوعة الحديثية",
+    "dorarMuhaddith": "المحدث",
+    "dorarSource": "المصدر",
+    "dorarGrade": "خلاصة حكم المحدث",
+    "dorarNote": "من موقع الدرر السنية مباشرة، بنصه."
   },
   "auth": {
     "loginTitle": "تسجيل الدخول",

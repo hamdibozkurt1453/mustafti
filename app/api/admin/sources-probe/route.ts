@@ -1,6 +1,6 @@
 import { authzResponse, requireRole } from "@/lib/auth/roles";
 import { classify } from "@/lib/brain/classify";
-import { looksHadithCheck, quotedSegment, rerank, searchBayyinat, type Candidate } from "@/lib/brain/retrieval";
+import { looksHadithCheck, quotedSegment, rerank, searchBayyinat, webCandidates, type Candidate } from "@/lib/brain/retrieval";
 import { keywords } from "@/lib/brain/rank";
 import { isLlmConfigured } from "@/lib/llm";
 import { clip } from "@/lib/sources/html";
@@ -17,7 +17,7 @@ import type { SourceResult } from "@/lib/sources/types";
  * لا يُحفظ شيء.
  */
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 async function guard(): Promise<Response | null> {
   try {
@@ -84,28 +84,48 @@ export async function POST(request: Request) {
     const bayyinat = async (q: string): Promise<SourceResult[]> =>
       (await searchBayyinat(q, [], 5)).map((x) => ({ ...x, sourceId: "dawa_center" as const, lang: x.lang ?? "ar" }));
     const outcome = await Promise.race([
-      runProbeSource(def.id as ProbeSourceId, question, queries, lang, bayyinat),
+      runProbeSource(def.id as ProbeSourceId, question, queries, lang, level, bayyinat),
       new Promise<"timeout">((r) => (timer = setTimeout(() => r("timeout"), def.deadlineMs))),
     ]);
     const ms = Date.now() - t0;
     if (outcome === "timeout") return Response.json({ status: "timeout", ms, count: 0, results: [], notes: [`المهلة ${def.deadlineMs}ms`] }, noStore);
 
-    // درجة الصلة لأول 3 نتائج (طلب واحد للنموذج)، بالسلّم نفسه في المحادثة.
-    const top: Candidate[] = outcome.results.slice(0, 3).map((r) => ({ ...r, kw: 0 }));
+    // درجة الصلة (طلب واحد للنموذج) بالسلّم نفسه في المحادثة: لأول 3 نتائج، وللفتاوى كلها مرتبة.
+    // ومصادر «ابحث واقرأ» تُقيَّم كما في المحادثة (الموثَّق بنص اقتباسه، و«رابط فقط» بعنوانه).
+    const fromWeb = outcome.web ? webCandidates(outcome.web.sources) : [];
+    const pool: Candidate[] = fromWeb.length ? fromWeb : outcome.results.slice(0, def.scoreAll ? 20 : 3).map((r) => ({ ...r, kw: 0 }));
     let scoring = "—";
-    if (top.length && isLlmConfigured()) {
+    if (pool.length && isLlmConfigured()) {
       const terms = [...new Set([...keywords(question), ...queries.flatMap((q) => keywords(q))])];
-      const res = await rerank(question, top, terms, level === "D" && def.id === "qp_fatwas" ? "case" : "general");
+      const res = await rerank(question, pool, terms, level === "D" && (def.id === "qp_fatwas" || def.id === "web") ? "case" : "general");
       scoring = res.mode;
     }
+    const top = def.scoreAll ? [...pool].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)) : pool;
+    const web = outcome.web
+      ? {
+          ok: outcome.web.ok,
+          queries: outcome.web.queries,
+          fetched: outcome.web.fetched,
+          sources: outcome.web.sources.map((x) => ({ ...x, score: fromWeb.find((c) => c.url === x.url)?.score })),
+          dropped: outcome.web.dropped,
+          explanation: outcome.web.explanation,
+          costUsd: outcome.web.costUsd,
+          toolUse: outcome.web.toolUse,
+          error: outcome.web.error,
+        }
+      : undefined;
+    const count = outcome.web ? outcome.web.sources.length : outcome.results.length;
     return Response.json(
       {
-        status: outcome.results.length ? "ok" : "empty",
+        status: outcome.skipped ? "skipped" : outcome.tools ? "ok" : count ? "ok" : "empty",
         ms,
-        count: outcome.results.length,
+        count: outcome.tools ? outcome.tools.length : count,
         scoring,
         notes: outcome.notes,
-        results: top.map((r) => ({
+        raw: outcome.raw,
+        tools: outcome.tools,
+        web,
+        results: (outcome.web ? [] : top).map((r) => ({
           title: r.title,
           url: r.url,
           source: r.source,
@@ -142,12 +162,16 @@ button[disabled]{opacity:.6;cursor:default}
 .res{border-top:1px solid var(--sand);padding:6px 0;font-size:.9rem;unicode-bidi:plaintext}
 .score{font-weight:700}.hi{color:var(--mid)}.lo{color:var(--bad)}
 .note{font-size:.8rem;opacity:.75;unicode-bidi:plaintext}
+.src.skipped{border-color:var(--sand);opacity:.8}
+pre.raw{white-space:pre-wrap;direction:ltr;text-align:left;background:var(--ivory);border-radius:10px;padding:8px;font-size:11px;max-height:320px;overflow:auto}
+.ok-q{color:var(--mid);font-weight:600}.bad-q{color:var(--bad);font-weight:600}
+.quote{background:var(--ivory);border-inline-start:3px solid var(--gold);padding:4px 10px;margin:4px 0;white-space:pre-wrap}
 a{color:var(--mid)}
 </style></head><body>
 <h1>فحص المصادر</h1>
 <p>اكتب سؤالاً، فيصوغ المصنّف 2–4 عبارات بحث، ثم يُشغَّل كل مصدر على حدة (بلا ذاكرة مؤقتة لمصادر HTTP): الحالة، والزمن، وعدد النتائج، وأول 3 نتائج بدرجة صلتها من 100 (يُقبل في المحادثة ما بلغ 60).</p>
 <div class="ex">
-<a data-q="ما حكم قضاء صلاة الفجر بعد طلوع الشمس؟">قضاء صلاة الفجر</a>
+<a data-q="ما حكم قضاء صلاة الفجر بعد طلوع الشمس؟">حكم عام: قضاء الفجر</a>
 <a data-q="هل حديث «اطلبوا العلم ولو بالصين» صحيح؟">التحقق من حديث</a>
 <a data-q="ما تفسير آية الكرسي 2:255؟">تفسير 2:255</a>
 <a data-q="طلقت زوجتي وأنا غاضب جداً، هل وقع الطلاق؟">حالة شخصية (D)</a>
@@ -169,6 +193,21 @@ const h=el("div","head");h.append(el("span","",label),el("span","badge",j.status
 if(j.scoring)h.append(el("span","badge","الصلة: "+j.scoring));box.append(h);
 if(j.error)box.append(el("div","note","الخطأ: "+j.error));
 (j.notes||[]).forEach(n=>box.append(el("div","note",n)));
+if(j.web){const w=j.web;
+box.append(el("div","note","عبارات البحث: "+((w.queries||[]).join(" · ")||"—")));
+box.append(el("div","note","الصفحات المقروءة (المحتوى في الرد): "+((w.fetched||[]).map(f=>f.url+" ("+f.chars+" حرفاً)").join("، ")||"لا شيء — كل المصادر «رابط فقط»")));
+box.append(el("div","note","التكلفة التقريبية: "+(w.costUsd==null?"—":"$"+Number(w.costUsd).toFixed(4))+(w.toolUse&&(w.toolUse.searches!=null||w.toolUse.fetches!=null)?" · بحث: "+(w.toolUse.searches??"—")+" · قراءة: "+(w.toolUse.fetches??"—"):"")));
+if(w.error)box.append(el("div","note","الخطأ: "+w.error));
+(w.sources||[]).forEach((x,i)=>{const d=el("div","res");
+const st=el("span",x.status==="verified"?"ok-q":"bad-q",x.status==="verified"?"اقتباس موثَّق":"رابط فقط ("+({no_content:"لا محتوى مقروء في الرد",not_found:"الاقتباس غير موجود في الصفحة",empty_quote:"بلا اقتباس"}[x.reason]||x.reason)+")");
+const s=el("span","score "+(x.score>=60?"hi":"lo"),x.score==null?"—":String(x.score));
+d.append(el("b","",(i+1)+". "),s,el("span",""," · "+x.title+" · "+x.site+" · "),st);
+if(x.quote)d.append(el("div","quote",x.quote));
+const a=el("a","",x.url);a.href=x.url;a.target="_blank";a.rel="noopener noreferrer";d.append(a);box.append(d)});
+(w.dropped||[]).forEach(x=>box.append(el("div","note","محذوف ("+({domain:"خارج نطاقات المرجعية",invalid_url:"رابط غير صالح",duplicate:"مكرر"}[x.reason]||x.reason)+"): "+x.url)));
+if(w.explanation)box.append(el("div","note","شرح النموذج (لا يُعرض للسائل): "+w.explanation))}
+if(j.tools){j.tools.forEach(t=>{const det=el("details","");det.append(el("summary","",t.name+(t.description?" — "+t.description.slice(0,120):"")));det.append(el("pre","raw",JSON.stringify(t.inputSchema,null,2)));box.append(det)})}
+(j.raw||[]).forEach(r=>{const det=el("details","");det.append(el("summary","","الرد الخام: "+r.path+(r.error?" — "+r.error:"")));det.append(el("pre","raw","المفاتيح: "+(r.keys||[]).join(", ")+"\\n\\n"+(r.head||"")));box.append(det)});
 (j.results||[]).forEach((r,i)=>{const d=el("div","res");
 const s=el("span","score "+(r.score>=60?"hi":"lo"),r.score===undefined||r.score===null?"—":String(r.score));
 d.append(el("b","",(i+1)+". "),s,el("span",""," · "+r.title));

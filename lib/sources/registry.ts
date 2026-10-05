@@ -180,10 +180,11 @@ export const SOURCES: SourceDef[] = [
     url: "https://dorar.net/hadith",
     domain: "الحديث النبوي",
     rule: "لا يُنسب حديث دون مصدر وحكم معتمد في البيانات.",
-    access: ["api"],
+    access: [],
     group: "core",
     langs: ["ar"],
-    note: "الواجهة العامة dorar_api.json?skey= (بلا مفتاح): الحديث وراويه ومحدثه ومصدره و«خلاصة حكم المحدث» حرفياً (lib/sources/dorar.ts). صفحات الموقع غير الواجهة ترد على خادمنا بـ 403، فتبقى روابط فقط.",
+    note: "الواجهة العامة dorar_api.json?skey= (JSONP): يطلبها متصفح السائل لسؤال التحقق من حديث (components/chat/DorarCard.tsx)، فتظهر بطاقة بالحكم حرفياً ولا تمر بالنموذج. وطبقة «ابحث واقرأ» تقرأ صفحاته من خوادم المزوّد. صفحة الفحص وحدها تطلبها من الخادم للتوثيق.",
+    blocked: "الموقع يرد على طلبات خادمنا بـ 403 (الفحص الحي، R1b)؛ لا طلب آلي منه من الخادم إلا في صفحة الفحص.",
   },
   {
     id: "dorar_tafseer",
@@ -364,4 +365,52 @@ export const SOURCE_BY_ID = Object.fromEntries(SOURCES.map((s) => [s.id, s])) as
 export const MCP_SOURCE = {
   name: "خادم MCP الرسمي لجمعية خدمة المحتوى الإسلامي باللغات",
   rule: "لا فتاوى: يسترجع النص المنشور فقط، وكل نتيجة تحمل رابط مصدرها.",
+};
+
+/**
+ * نطاقات المرجعية التي تبحث فيها طبقة «ابحث واقرأ» وتقرأ منها (أدوات OpenRouter web_search وweb_fetch،
+ * من خوادم المزوّد). كل رابط من غيرها يُحذف في الكود (lib/brain/web-parse.ts)، ولو أعاده النموذج.
+ */
+export const WEB_ALLOWED_DOMAINS = [
+  "islamqa.info",
+  "binbaz.org.sa",
+  "binothaimeen.net",
+  "dorar.net",
+  "islamhouse.com",
+  "hadeethenc.com",
+  "quranenc.com",
+  "islamenc.com",
+  "byenah.com",
+  "risala.prh.gov.sa",
+  "dawa.center",
+  "islamic-content.com",
+  "terminologyenc.com",
+  "tafsir.net",
+  "quranpedia.net",
+  "shamela.ws",
+  "bohoth.awqaf.gov.kw",
+] as const;
+
+/** نطاقات الفتاوى المنشورة أولاً في الحالة الشخصية (D). */
+export const WEB_FATWA_DOMAINS = ["islamqa.info", "binbaz.org.sa", "binothaimeen.net", "islamhouse.com", "dorar.net"] as const;
+
+/** اسم الموقع للعرض من نطاقه. */
+export const WEB_SITE_NAMES: Record<(typeof WEB_ALLOWED_DOMAINS)[number], string> = {
+  "islamqa.info": "الإسلام سؤال وجواب",
+  "binbaz.org.sa": "موقع الشيخ عبدالعزيز بن باز",
+  "binothaimeen.net": "موقع الشيخ محمد بن صالح العثيمين",
+  "dorar.net": "الدرر السنية",
+  "islamhouse.com": "موقع دار الإسلام (IslamHouse)",
+  "hadeethenc.com": "موسوعة الأحاديث النبوية",
+  "quranenc.com": "موسوعة القرآن الكريم",
+  "islamenc.com": "موسوعة المحتوى الإسلامي باللغات",
+  "byenah.com": "موقع بيان الإسلام",
+  "risala.prh.gov.sa": "رسالة الحرمين",
+  "dawa.center": "المستودع الدعوي الرقمي",
+  "islamic-content.com": "الجمهرة — موسوعة مفردات المحتوى الإسلامي",
+  "terminologyenc.com": "موسوعة المصطلحات الإسلامية",
+  "tafsir.net": "مركز تفسير للدراسات القرآنية",
+  "quranpedia.net": "موسوعة القرآن (Quranpedia)",
+  "shamela.ws": "المكتبة الشاملة",
+  "bohoth.awqaf.gov.kw": "الموسوعة الفقهية الكويتية",
 };

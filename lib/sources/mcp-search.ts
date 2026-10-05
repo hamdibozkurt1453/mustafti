@@ -1,7 +1,12 @@
 import "server-only";
 
 import { callTool, listTools, toolData, toolText, type McpTool } from "@/lib/mcp";
+import { matchKey } from "@/lib/brain/guard";
 import { clip, htmlToText } from "./html";
+import { stripMcpChrome } from "./mcp-text";
+
+/** نص منشور للعرض: بلا وسوم HTML ولا ترويسة الخادم التقنية. */
+const plain = (s: string) => stripMcpChrome(htmlToText(s));
 import { quranencUrl, translationKey } from "./quran";
 
 /**
@@ -111,8 +116,8 @@ export function collectItems(
       seen.add(key);
       out.push({
         url,
-        title: clip(htmlToText(title ?? text ?? ""), 160),
-        text: clip(htmlToText(text ?? title ?? ""), 600),
+        title: clip(plain(title ?? text ?? ""), 160),
+        text: clip(plain(text ?? title ?? ""), 600),
         grade: pick(o, ["grade", "hadith_grade", "grade_ar", "hukm", "degree", "attribution_grade", "authenticity"]),
         lang: pick(o, ["language", "lang", "locale"]),
         ref: pick(o, ["id", "doc_id", "document_id"]),
@@ -160,7 +165,7 @@ export function libraryItemsFromText(text: string, lang: string, max = 8): McpIt
     const url = link ?? (id ? islamhouseUrl({ id }, lang) : undefined);
     if (!url || clean.length < 8) continue;
     const firstLine = clean.split("\n")[0];
-    out.push({ title: clip(htmlToText(firstLine), 160), text: clip(htmlToText(clean), 600), url, ref: id });
+    out.push({ title: clip(plain(firstLine), 160), text: clip(plain(clean), 600), url, ref: id });
   }
   return out;
 }
@@ -211,8 +216,8 @@ export function quranItemsFromText(text: string, lang: string, key: string, max 
     }
     const body = [line, ...following].join(" ");
     out.push({
-      title: clip(htmlToText(line.replace(/[#*_`>]/g, "")), 160),
-      text: clip(htmlToText(body.replace(/[#*_`>]/g, "")), 600),
+      title: clip(plain(line.replace(/[#*_`>]/g, "")), 160),
+      text: clip(plain(body.replace(/[#*_`>]/g, "")), 600),
       url: quranencUrl(surah, ayah, lang, key),
     });
   });
@@ -298,7 +303,7 @@ export async function mcpQuranVerses(surah: number, ayah: number, lang: string):
   // نص بلا JSON: الآية المطلوبة نفسها نتيجة واحدة برابطها.
   const text = toolText(result).trim();
   return text
-    ? [{ title: `${surah}:${ayah}`, text: clip(htmlToText(text.replace(/[#*_`>]/g, "")), 1200), url: quranencUrl(surah, ayah, lang, quran.key) }]
+    ? [{ title: `${surah}:${ayah}`, text: clip(plain(text.replace(/[#*_`>]/g, "")), 1200), url: quranencUrl(surah, ayah, lang, quran.key) }]
     : [];
 }
 
@@ -371,15 +376,109 @@ export async function mcpQuranSamples(): Promise<{ tool: string; args: Record<st
   );
 }
 
-/** البحث في عناوين مكتبة IslamHouse عبر browse_library (المعطى name). */
-export async function mcpLibrary(query: string, lang: string): Promise<McpItem[]> {
+export type LibraryCategory = { id: string; title: string };
+
+/** قيمة معطى اللغة إن قبلها مخطط الأداة (وإلا العربية إن قبلها، وإلا بلا لغة). */
+export function langValue(tool: McpTool, lang: string): Record<string, unknown> {
+  const key = findKey(tool, LANG_KEYS);
+  if (!key) return {};
+  const allowed = tool.inputSchema.properties?.[key]?.enum?.map(String);
+  if (!allowed || allowed.includes(lang)) return { [key]: lang };
+  return allowed.includes("ar") ? { [key]: "ar" } : allowed.includes("en") ? { [key]: "en" } : {};
+}
+
+/** أثر استدعاء أداة (لصفحة الفحص): المعطيات والرد الخام. */
+export type McpCallTrace = (tool: string, args: Record<string, unknown>, data: unknown, text: string) => void;
+
+/** تصنيفات مكتبة IslamHouse (list_library_categories)، بمعرّف وعنوان، من JSON أو من أسطر النص. */
+export async function mcpLibraryCategories(lang: string, trace?: McpCallTrace): Promise<LibraryCategory[]> {
+  const tool = await findTool("list_library_categories");
+  if (!tool) throw new Error("MCP tool `list_library_categories` not found");
+  const args = langValue(tool, lang);
+  const result = await callTool(tool.name, args);
+  trace?.(tool.name, args, toolData(result), toolText(result));
+  const out: LibraryCategory[] = [];
+  const visit = (node: unknown, depth: number) => {
+    if (depth > 6 || !node || typeof node !== "object") return;
+    if (Array.isArray(node)) return node.forEach((n) => visit(n, depth + 1));
+    const o = node as Record<string, unknown>;
+    const id = pick(o, ["id", "category_id", "slug", "key", "value"]);
+    const title = pick(o, ["title", "name", "label", "category", "category_name"]);
+    if (id && title && !out.some((c) => c.id === id)) out.push({ id, title: plain(title) });
+    for (const v of Object.values(o)) if (v && typeof v === "object") visit(v, depth + 1);
+  };
+  visit(toolData(result), 0);
+  if (!out.length) {
+    for (const line of toolText(result).split("\n")) {
+      const m = line.match(/(?:^|[\s[(#-])(\d{1,7}|[a-z][a-z0-9_-]{1,40})\s*[\])]?\s*[-–—:|.]\s*(.{2,120})$/i);
+      if (m && !out.some((c) => c.id === m[1])) out.push({ id: m[1], title: m[2].replace(/[*_`#]/g, "").trim() });
+    }
+  }
+  return out;
+}
+
+/** أقرب تصنيف لعبارة البحث بتداخل الكلمات (بعد توحيد العربية)، أو null. */
+export function bestCategory(query: string, categories: LibraryCategory[]): LibraryCategory | null {
+  const words = (t: string) => new Set(matchKey(t).split(" ").map((w) => w.replace(/^(?:وال|بال|فال|لل|ال)(?=..)/, "")).filter((w) => w.length > 2));
+  const want = words(query);
+  let best: { c: LibraryCategory; n: number } | null = null;
+  for (const c of categories) {
+    const have = words(c.title);
+    const n = [...want].filter((w) => [...have].some((h) => h === w || (w.length >= 4 && (h.includes(w) || w.includes(h))))).length;
+    if (n > 0 && (!best || n > best.n)) best = { c, n };
+  }
+  return best?.c ?? null;
+}
+
+/** ردّ الخادم «NOT RETRIEVED» (أو ما يشبهه): لا نتائج، مع سببه. */
+const NOT_RETRIEVED = /NOT\s+RETRIEVED|no (?:results|items) (?:found|retrieved)/i;
+
+/**
+ * البحث في مكتبة IslamHouse: list_library_categories أولاً، ثم browse_library بتصنيف ولغة صحيحين
+ * (وبعبارة البحث إن قبلها المخطط). كان استدعاؤها بالاسم وحده يعيد «NOT RETRIEVED».
+ */
+export async function mcpLibrary(query: string, lang: string, trace?: McpCallTrace): Promise<McpItem[]> {
   const tool = await findTool("browse_library");
   if (!tool) throw new Error("MCP tool `browse_library` not found");
-  const args: Record<string, unknown> = { name: query };
-  if (tool.inputSchema.properties?.language) args.language = lang;
+  const props = tool.inputSchema.properties ?? {};
+  const catKey = Object.keys(props).find((k) => /categor/i.test(k));
+  const args: Record<string, unknown> = { ...langValue(tool, lang) };
+  const qKey = findKey(tool, [...QUERY_KEYS, "name", "title"]);
+  if (qKey && qKey !== catKey) args[qKey] = query;
+  if (catKey) {
+    const category = bestCategory(query, await mcpLibraryCategories(lang, trace));
+    if (!category) return [];
+    const numeric = props[catKey]?.type === "integer" || props[catKey]?.type === "number";
+    args[catKey] = numeric && /^\d+$/.test(category.id) ? Number(category.id) : category.id;
+  }
   const result = await callTool(tool.name, args);
+  const text = toolText(result);
+  trace?.(tool.name, args, toolData(result), text);
   const items = collectItems(toolData(result), 12, undefined, undefined, { lang });
-  return items.length ? items : libraryItemsFromText(toolText(result), lang);
+  const found = items.length ? items : libraryItemsFromText(text, lang);
+  if (!found.length && NOT_RETRIEVED.test(text)) throw new Error(`browse_library: ${clip(text, 160)}`);
+  return found;
+}
+
+/**
+ * قيم المعطى sources في أداة search كما يعلنها الخادم (enum)، وما سوى القرآن والحديث والمكتبة منها
+ * (أسئلة وأجوبة islamenc، أو فتاوى IslamHouse إن وُجدت) يُبحث فيه أيضاً.
+ */
+export async function mcpSearchSources(): Promise<{ all: string[]; extra: string[] }> {
+  const tool = await findTool("search");
+  const prop = tool?.inputSchema.properties?.sources as { enum?: unknown[]; items?: { enum?: unknown[] } } | undefined;
+  const all = (prop?.items?.enum ?? prop?.enum ?? []).map(String);
+  const known = (v: string) => Object.values(CORPUS_MATCH).some((re) => re.test(v)) && !/qa|question|fatw|islamenc|answer/i.test(v);
+  return { all, extra: all.filter((v) => !known(v)) };
+}
+
+/** البحث في مجموعة إضافية بقيمتها كما أعلنها الخادم. */
+export async function mcpSearchExtra(query: string, lang: string, source: string): Promise<McpItem[]> {
+  const tool = await findTool("search");
+  if (!tool) throw new Error("MCP tool `search` not found");
+  const prop = tool.inputSchema.properties?.sources as { type?: string } | undefined;
+  const result = await callTool(tool.name, { ...buildArgs(tool, query, lang), sources: prop?.type === "string" ? source : [source] });
+  return collectItems(toolData(result), 8);
 }
 
 const GRADE_KEYS = ["grade", "hadith_grade", "grade_ar", "hukm", "degree", "attribution_grade", "authenticity", "hadeeth_grade"];
@@ -420,8 +519,8 @@ export async function mcpFetchHadith(ref: string): Promise<{ text?: string; grad
   if (!grade) grade = raw.match(GRADE_LINE)?.[1]?.replace(/[*_]+/g, "").trim();
   if (!text && raw.trim()) text = raw;
   return {
-    text: text ? clip(htmlToText(text.replace(/[#*_`>]/g, "")), 1500) : undefined,
-    grade: grade ? clip(htmlToText(grade), 120) : undefined,
+    text: text ? clip(plain(text.replace(/[#*_`>]/g, "")), 1500) : undefined,
+    grade: grade ? clip(plain(grade), 120) : undefined,
     url: url && /^https?:\/\//.test(url) ? url : undefined,
   };
 }

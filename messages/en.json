@@ -247,9 +247,11 @@
     "label": "Conversation",
     "stage": {
       "understanding": "Reading your question…",
-      "searching": "Searching the sources…",
+      "searching": "Searching the approved sources…",
       "writing": "Writing the answer…",
-      "verifying": "Checking the evidence…"
+      "verifying": "Checking the evidence…",
+      "reading": "Reading the sources…",
+      "readingFatwa": "Reading the fatwa…"
     },
     "badgeOwn": "Mustafti's wording",
     "badgeQuoted": "Quoted text",
@@ -284,7 +286,13 @@
     "viewFatwa": "View the fatwa",
     "sendCase": "Send my question to a specialist",
     "relatedTitle": "Related texts",
-    "suggestTitle": "Related questions I can answer"
+    "suggestTitle": "Related questions I can answer",
+    "linksTitle": "Links from the approved sources",
+    "dorarTitle": "Dorar — Hadith Encyclopedia",
+    "dorarMuhaddith": "Hadith scholar",
+    "dorarSource": "Source",
+    "dorarGrade": "Scholar's verdict",
+    "dorarNote": "Directly from Dorar, verbatim."
   },
   "auth": {
     "loginTitle": "Sign in",

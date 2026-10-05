@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { GlossaryTerm } from "@/lib/brain/glossary";
 import { CaseReview, ClarifyBubble, StartCaseButton, type CaseApi } from "./CaseFlow";
+import { DorarCard } from "./DorarCard";
 import { FatwaList } from "./FatwaCard";
 import { RichText } from "./RichText";
 import { SourceCard } from "./SourceCard";
@@ -158,7 +159,40 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
         </section>
       )}
 
+      {/* التحقق من حديث: من متصفح السائل مباشرة (تختفي إن فشل الطلب). */}
+      {done && msg.hadithCheck && <DorarCard query={msg.hadithCheck.query} />}
+
       {done && msg.fatwas && msg.fatwas.length > 0 && <FatwaList fatwas={msg.fatwas} title={t("fatwasTitle")} />}
+
+      {done && msg.links && msg.links.length > 0 && (
+        <section aria-label={t("linksTitle")} className="mf-rise">
+          <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-600">{t("linksTitle")}</h3>
+          <ul className="grid gap-2">
+            {msg.links.map((l) => (
+              <li key={l.url}>
+                <a
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-sand-200 bg-white px-4 py-2.5 text-sm transition hover:border-green-600"
+                >
+                  <span className="min-w-0">
+                    <span dir="auto" className="block truncate font-semibold text-green-900">
+                      {l.title}
+                    </span>
+                    <span dir="auto" className="block text-xs text-ink-600">
+                      {l.site}
+                    </span>
+                  </span>
+                  <span aria-hidden className="text-green-600">
+                    ↗
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {caseFatwas && done && (
         <div dir={msg.dir} className="rounded-[22px] border border-sand-200 bg-white px-4 py-3 text-[15px] leading-relaxed text-green-900">

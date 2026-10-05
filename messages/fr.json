@@ -236,9 +236,11 @@
     "noteTranslation": "Traduction du sens",
     "stage": {
       "understanding": "Je lis votre question…",
-      "searching": "Je cherche dans les sources…",
+      "searching": "Je cherche dans les sources approuvées…",
       "verifying": "Je vérifie les preuves…",
-      "writing": "Je rédige la réponse…"
+      "writing": "Je rédige la réponse…",
+      "reading": "Je lis les sources…",
+      "readingFatwa": "Je lis la fatwa…"
     },
     "fatwasTitle": "Fatwas publiées en rapport",
     "fatwaBadge": "Fatwa publiée",
@@ -246,7 +248,13 @@
     "viewFatwa": "Voir la fatwa",
     "sendCase": "Envoyer ma question à un spécialiste",
     "relatedTitle": "Textes en rapport",
-    "suggestTitle": "Questions voisines auxquelles je peux répondre"
+    "suggestTitle": "Questions voisines auxquelles je peux répondre",
+    "linksTitle": "Liens des sources approuvées",
+    "dorarTitle": "Dorar — Encyclopédie du hadith",
+    "dorarMuhaddith": "Muhaddith",
+    "dorarSource": "Source",
+    "dorarGrade": "Jugement du muhaddith",
+    "dorarNote": "Directement depuis Dorar, texte intégral."
   },
   "case": {
     "start": "",

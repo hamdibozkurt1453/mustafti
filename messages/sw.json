@@ -236,9 +236,11 @@
     "noteTranslation": "Tafsiri ya maana",
     "stage": {
       "understanding": "Ninasoma swali lako…",
-      "searching": "Ninatafuta katika vyanzo…",
+      "searching": "Ninatafuta katika vyanzo vilivyoidhinishwa…",
       "verifying": "Ninathibitisha ushahidi…",
-      "writing": "Ninaandika jibu…"
+      "writing": "Ninaandika jibu…",
+      "reading": "Ninasoma vyanzo…",
+      "readingFatwa": "Ninasoma fatwa…"
     },
     "fatwasTitle": "Fatwa zilizochapishwa zinazohusiana",
     "fatwaBadge": "Fatwa iliyochapishwa",
@@ -246,7 +248,13 @@
     "viewFatwa": "Tazama fatwa",
     "sendCase": "Tuma suala langu kwa mtaalamu",
     "relatedTitle": "Maandiko yanayohusiana",
-    "suggestTitle": "Maswali yanayokaribiana ninayoweza kujibu"
+    "suggestTitle": "Maswali yanayokaribiana ninayoweza kujibu",
+    "linksTitle": "Viungo kutoka vyanzo vilivyoidhinishwa",
+    "dorarTitle": "Dorar — Ensaiklopidia ya Hadithi",
+    "dorarMuhaddith": "Mtaalamu wa hadithi",
+    "dorarSource": "Chanzo",
+    "dorarGrade": "Hukumu ya mtaalamu wa hadithi",
+    "dorarNote": "Moja kwa moja kutoka Dorar, kama ilivyo."
   },
   "case": {
     "start": "",

@@ -12,20 +12,25 @@ export function FatwaCard({ fatwa }: { fatwa: ChatFatwa }) {
   return (
     <li className="rounded-[20px] border border-sand-200 bg-white p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-gold-50 px-2.5 py-0.5 text-[11px] font-semibold text-green-900 ring-1 ring-gold-500/50">
-          {t("badgeQuoted")}
-        </span>
+        {fatwa.excerpt && (
+          <span className="rounded-full bg-gold-50 px-2.5 py-0.5 text-[11px] font-semibold text-green-900 ring-1 ring-gold-500/50">
+            {t("badgeQuoted")}
+          </span>
+        )}
         <span className="rounded-full bg-green-600/10 px-2.5 py-0.5 text-[11px] font-semibold text-green-600">{t("fatwaBadge")}</span>
       </div>
       <p dir="auto" className="mt-2 text-sm font-semibold leading-snug">
         {fatwa.title}
       </p>
-      <blockquote
-        dir={dirForText(fatwa.excerpt)}
-        className="mt-2 whitespace-pre-wrap border-s-2 border-gold-500 ps-3 text-[14px] leading-relaxed text-green-900/90"
-      >
-        {fatwa.excerpt}
-      </blockquote>
+      {/* بلا مقتطف موثَّق: رابط فقط. */}
+      {fatwa.excerpt && (
+        <blockquote
+          dir={dirForText(fatwa.excerpt)}
+          className="mt-2 whitespace-pre-wrap border-s-2 border-gold-500 ps-3 text-[14px] leading-relaxed text-green-900/90"
+        >
+          {fatwa.excerpt}
+        </blockquote>
+      )}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-sand-200 pt-3 text-xs">
         <span className="text-ink-600">
           {t("fatwaBy")}: <bdi dir="auto">{fatwa.mufti}</bdi>

@@ -165,9 +165,12 @@ describe("الدرر السنية: الحديث بحقوله والحكم حرف
     }
   });
 
-  it("search(«dorar_hadith») بالواجهة الموحدة: الدرجة والمصدر في النتيجة، والرابط صفحة البحث", async () => {
+  it("الخادم لا يطلب الدرر في البحث (يحجبه بـ 403)؛ صفحة الفحص وحدها عبر fetchDorar، بالدرجة والمصدر", async () => {
     requests.length = 0;
-    const results = await sources.search("dorar_hadith", "اطلبوا العلم ولو بالصين", "ar");
+    assert.deepEqual(await sources.search("dorar_hadith", "اطلبوا العلم ولو بالصين", "ar"), []);
+    assert.equal(requests.filter((r) => r.url.includes("dorar.net")).length, 0);
+    const { hadiths } = await dorar.fetchDorar("اطلبوا العلم ولو بالصين");
+    const results = hadiths.map(dorar.dorarResult);
     assert.equal(results.length, 2);
     assert.equal(results[1].grade, "باطل لا أصل له");
     assert.match(results[1].text, /خلاصة حكم المحدث: باطل لا أصل له/);
@@ -204,20 +207,19 @@ describe("مصادر نوع السؤال", () => {
     searchQueries: { ar, userLang: [] },
   });
 
-  it("الفتاوى بأول 3 عبارات، والدرر بأول عبارة", () => {
+  it("الفتاوى بأول 3 عبارات، ولا درر من الخادم", () => {
     const jobs = retrieval.extraSearches(C(["قضاء الفجر", "النوم عن الصلاة", "الصلاة الفائتة", "عبارة رابعة"]), "ماذا يفعل من نام عن الفجر؟");
     assert.deepEqual(
       jobs.map((j) => `${j.source}:${j.q}`),
-      ["quranpedia:قضاء الفجر", "quranpedia:النوم عن الصلاة", "quranpedia:الصلاة الفائتة", "dorar_hadith:قضاء الفجر"],
+      ["quranpedia:قضاء الفجر", "quranpedia:النوم عن الصلاة", "quranpedia:الصلاة الفائتة"],
     );
   });
 
-  it("التحقق من حديث: متن الحديث المنقول في السؤال أولاً في الدرر", () => {
+  it("التحقق من حديث: يُكتشف، ومتن الحديث المنقول عبارة بطاقة الدرر في المتصفح", () => {
     const q = "هل حديث «اطلبوا العلم ولو بالصين» صحيح؟";
     assert.equal(retrieval.looksHadithCheck(q), true);
     assert.equal(retrieval.quotedSegment(q), "اطلبوا العلم ولو بالصين");
-    const dorarJobs = retrieval.extraSearches(C(["طلب العلم"]), q).filter((j) => j.source === "dorar_hadith");
-    assert.deepEqual(dorarJobs.map((j) => j.q), ["اطلبوا العلم ولو بالصين", "طلب العلم"]);
+    assert.ok(retrieval.extraSearches(C(["طلب العلم"]), q).every((j) => j.source !== "dorar_hadith"));
     assert.equal(retrieval.looksHadithCheck("Is the hadith about seeking knowledge in China authentic?"), true);
     assert.equal(retrieval.looksHadithCheck("لماذا يصوم المسلمون؟"), false);
   });
