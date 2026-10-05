@@ -328,3 +328,29 @@ describe("مكتبة IslamHouse: أقرب تصنيف لعبارة البحث (R1
     assert.equal(bestCategory("السيرة النبوية", cats), null);
   });
 });
+
+describe("browse_library: المعطيات من مخططها بدقة (R1c)", () => {
+  it("رقم التصنيف بنوعه، ورمز اللغة من list_languages، ثم النوع من enum، ثم التصنيف وحده", async () => {
+    const { libraryArgCombos } = await import("../lib/sources/mcp-search");
+    const tool = {
+      name: "browse_library",
+      inputSchema: {
+        properties: {
+          category_id: { type: "integer" },
+          language: { type: "string" },
+          type: { type: "string", enum: ["book", "article", "fatwa", "audio"] },
+          page: { type: "integer" },
+        },
+        required: ["category_id"],
+      },
+    };
+    assert.deepEqual(libraryArgCombos(tool, "1746", "ar", "قضاء الصلاة"), [
+      { category_id: 1746, language: "ar" },
+      { category_id: 1746, language: "ar", type: "fatwa" },
+      { category_id: 1746 },
+    ]);
+    // لغة بقيم محددة (enum) لا تقبل الرمز: أقرب قيمة عربية.
+    const enumLang = { name: "browse_library", inputSchema: { properties: { category: { type: "string" }, lang: { type: "string", enum: ["arabic", "english"] } } } };
+    assert.deepEqual(libraryArgCombos(enumLang, "1747", "ar", "x")[0], { category: "1747", lang: "arabic" });
+  });
+});

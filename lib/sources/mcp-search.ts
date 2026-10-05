@@ -281,7 +281,9 @@ async function serverTranslationKey(lang: string): Promise<string | undefined> {
     const raw = JSON.stringify(toolData(result)) + "\n" + toolText(result);
     const keys = [...new Set([...raw.matchAll(/\b([a-z]+_[a-z0-9_]+)\b/g)].map((m) => m[1]))];
     const preferred = translationKey(lang);
-    return keys.includes(preferred) ? preferred : keys.find((k) => k.startsWith(`${preferred.split("_")[0]}_`));
+    // العربية: التفسير الميسر، ثم المختصر في التفسير إن لم يوجد الميسر.
+    const wanted = lang === "ar" ? [preferred, "arabic_mokhtasar"] : [preferred];
+    return wanted.find((k) => keys.includes(k)) ?? keys.find((k) => k.startsWith(`${preferred.split("_")[0]}_`));
   } catch {
     return undefined;
   }
@@ -440,24 +442,104 @@ const NOT_RETRIEVED = /NOT\s+RETRIEVED|no (?:results|items) (?:found|retrieved)/
 export async function mcpLibrary(query: string, lang: string, trace?: McpCallTrace): Promise<McpItem[]> {
   const tool = await findTool("browse_library");
   if (!tool) throw new Error("MCP tool `browse_library` not found");
-  const props = tool.inputSchema.properties ?? {};
-  const catKey = Object.keys(props).find((k) => /categor/i.test(k));
-  const args: Record<string, unknown> = { ...langValue(tool, lang) };
-  const qKey = findKey(tool, [...QUERY_KEYS, "name", "title"]);
-  if (qKey && qKey !== catKey) args[qKey] = query;
-  if (catKey) {
-    const category = bestCategory(query, await mcpLibraryCategories(lang, trace));
-    if (!category) return [];
-    const numeric = props[catKey]?.type === "integer" || props[catKey]?.type === "number";
-    args[catKey] = numeric && /^\d+$/.test(category.id) ? Number(category.id) : category.id;
+  const catKey = Object.keys(tool.inputSchema.properties ?? {}).find((k) => /categor/i.test(k));
+  const category = catKey ? bestCategory(query, await mcpLibraryCategories(lang, trace)) : null;
+  if (catKey && !category) return [];
+  const langCode = await mcpLibraryLanguage(lang).catch(() => null);
+  let lastText = "";
+  // التركيبات بالترتيب حتى تأتي نتائج (رقم التصنيف بنوعه، ورمز اللغة من list_languages، والنوع).
+  for (const args of libraryArgCombos(tool, category?.id ?? null, langCode, query)) {
+    const result = await callTool(tool.name, args);
+    const text = toolText(result);
+    lastText = text;
+    trace?.(tool.name, args, toolData(result), text);
+    const items = collectItems(toolData(result), 12, undefined, undefined, { lang });
+    const found = items.length ? items : NOT_RETRIEVED.test(text) ? [] : libraryItemsFromText(text, lang);
+    if (found.length) return found;
   }
-  const result = await callTool(tool.name, args);
-  const text = toolText(result);
-  trace?.(tool.name, args, toolData(result), text);
-  const items = collectItems(toolData(result), 12, undefined, undefined, { lang });
-  const found = items.length ? items : libraryItemsFromText(text, lang);
-  if (!found.length && NOT_RETRIEVED.test(text)) throw new Error(`browse_library: ${clip(text, 160)}`);
-  return found;
+  if (NOT_RETRIEVED.test(lastText)) throw new Error(`browse_library: ${clip(lastText, 160)}`);
+  return [];
+}
+
+/** قيمة معطى بنوعه في المخطط (رقم إن كان integer/number والقيمة أرقام). */
+function typed(tool: McpTool, key: string, value: string): string | number {
+  const t = tool.inputSchema.properties?.[key]?.type;
+  return (t === "integer" || t === "number") && /^\d+$/.test(value) ? Number(value) : value;
+}
+
+/**
+ * رمز اللغة كما يعيده list_languages (إن وُجدت الأداة): القيمة التي تطابق رمز السائل أو اسم لغته.
+ * يعيد null إن لم توجد الأداة أو لم يُعرف الرمز.
+ */
+export async function mcpLibraryLanguage(lang: string): Promise<string | null> {
+  const tool = await findTool("list_languages");
+  if (!tool) return null;
+  const result = await callTool(tool.name, {});
+  const names: Record<string, RegExp> = { ar: /arab|عرب/i, en: /english|إنجليز/i, fr: /fran|فرنس/i, tr: /turk|ترك/i, ur: /urdu|أردو|اردو/i, id: /indones|إندونيس/i };
+  let byName: string | null = null;
+  const visit = (node: unknown, depth: number): string | null => {
+    if (depth > 6 || !node || typeof node !== "object") return null;
+    if (Array.isArray(node)) {
+      for (const n of node) {
+        const v = visit(n, depth + 1);
+        if (v) return v;
+      }
+      return null;
+    }
+    const o = node as Record<string, unknown>;
+    const code = pick(o, ["code", "language_code", "iso", "iso_code", "slug", "locale", "short_name", "id"]);
+    const name = pick(o, ["name", "title", "native_name", "english_name", "label"]);
+    if (code && code.toLowerCase() === lang.toLowerCase()) return code;
+    if (code && !byName && name && names[lang]?.test(name)) byName = code;
+    for (const v of Object.values(o)) {
+      const found = v && typeof v === "object" ? visit(v, depth + 1) : null;
+      if (found) return found;
+    }
+    return null;
+  };
+  return visit(toolData(result), 0) ?? byName;
+}
+
+/**
+ * تركيبات معطيات browse_library من مخططها (حتى 3): التصنيف بنوعه واللغة بالرمز المعتمد،
+ * ثم مع النوع (fatwa/article من enum إن وُجد)، ثم التصنيف وحده. والمعطيات المطلوبة الأخرى بأول
+ * قيمة في enum إن وُجد.
+ */
+export function libraryArgCombos(tool: McpTool, categoryId: string | null, langCode: string | null, query: string): Record<string, unknown>[] {
+  const props = tool.inputSchema.properties ?? {};
+  const keys = Object.keys(props);
+  const catKey = keys.find((k) => /categor/i.test(k));
+  const langKey = findKey(tool, LANG_KEYS);
+  const typeKey = keys.find((k) => /^(?:type|kind|content_type|contentType|item_type|resource_type)$/i.test(k));
+  const qKey = keys.find((k) => k !== catKey && [...QUERY_KEYS, "name", "title"].includes(k));
+  const base: Record<string, unknown> = {};
+  if (catKey && categoryId) base[catKey] = typed(tool, catKey, categoryId);
+  if (qKey) base[qKey] = query;
+  for (const req of tool.inputSchema.required ?? []) {
+    if (req in base || req === langKey || req === typeKey) continue;
+    const first = props[req]?.enum?.[0];
+    if (first !== undefined) base[req] = first;
+  }
+  const langArg: Record<string, unknown> = {};
+  if (langKey) {
+    const allowed = props[langKey]?.enum?.map(String);
+    const value = langCode ?? "ar";
+    langArg[langKey] = allowed && !allowed.includes(String(value)) ? (allowed.find((v) => /^ar/i.test(v)) ?? allowed[0]) : typed(tool, langKey, String(value));
+  }
+  const combos: Record<string, unknown>[] = [{ ...base, ...langArg }];
+  if (typeKey) {
+    const options = props[typeKey]?.enum?.map(String) ?? [];
+    const type = options.find((v) => /fatw/i.test(v)) ?? options.find((v) => /article/i.test(v)) ?? "fatwa";
+    combos.push({ ...base, ...langArg, [typeKey]: type });
+  }
+  combos.push({ ...base });
+  const seen = new Set<string>();
+  return combos.filter((c) => {
+    const k = JSON.stringify(c);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).slice(0, 3);
 }
 
 /**
@@ -469,7 +551,8 @@ export async function mcpSearchSources(): Promise<{ all: string[]; extra: string
   const prop = tool?.inputSchema.properties?.sources as { enum?: unknown[]; items?: { enum?: unknown[] } } | undefined;
   const all = (prop?.items?.enum ?? prop?.enum ?? []).map(String);
   const known = (v: string) => Object.values(CORPUS_MATCH).some((re) => re.test(v)) && !/qa|question|fatw|islamenc|answer/i.test(v);
-  return { all, extra: all.filter((v) => !known(v)) };
+  // «search» و«all» قيم عامة لا مجموعات.
+  return { all, extra: all.filter((v) => !known(v) && !/^(?:search|all|any|everything)$/i.test(v)) };
 }
 
 /** البحث في مجموعة إضافية بقيمتها كما أعلنها الخادم. */

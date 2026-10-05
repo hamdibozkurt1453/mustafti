@@ -77,7 +77,6 @@ function deps(overrides: Partial<PinDeps> = {}): PinDeps {
     bayyinatNumbers: async () => [],
     // مصادر HTTP (Quranpedia والدرر) بلا شبكة في الاختبار.
     sourceSearch: async () => [],
-    tafsir: async () => [],
     ...overrides,
   };
 }
