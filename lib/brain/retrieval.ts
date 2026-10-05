@@ -597,7 +597,9 @@ export function pinnedJobs(
 
   const refsP = planP.then((plan) => {
     const usePlan = !isEmptyPlan(plan);
-    const entries = usePlan ? [] : matchBasics(question);
+    // «الأساسيات» مع الخطة دائماً (كانت احتياطاً للخطة الفارغة فلا تُستعمل أبداً): المطابق الأول
+    // مع خطة، وحتى اثنين بدونها. مراجعها تمر بتقييم الصلة كغيرها.
+    const entries = matchBasics(question, usePlan ? 1 : 2);
     diag.basics = entries.map((e) => e.id);
     diag.plan = plan ?? undefined;
     const explicit = explicitVerseRef(question);
@@ -613,9 +615,10 @@ export function pinnedJobs(
   });
 
   const core = refsP.then(async ({ plan, usePlan, entries, unique }) => {
-    const hadithQs = usePlan ? plan!.hadithQueries : entries.flatMap((e) => e.hadithQueries.slice(0, 2)).slice(0, 3);
+    const basicHadith = entries.flatMap((e) => e.hadithQueries.slice(0, usePlan ? 1 : 2));
+    const hadithQs = [...new Set([...(usePlan ? plan!.hadithQueries : []), ...basicHadith])].slice(0, usePlan ? 4 : 3);
     const bayyinatQs = usePlan ? plan!.bayyinatQueries : [];
-    const bayyinatNs = usePlan ? [] : entries.flatMap((e) => e.bayyinat).slice(0, 3);
+    const bayyinatNs = entries.flatMap((e) => e.bayyinat).slice(0, 3);
     const jobs: Promise<Candidate | Candidate[] | null>[] = [
       ...unique.map((r) =>
         track(log, `آية ${r.surah}:${r.ayah}${r.through ? `-${r.through}` : ""}`, () => verseCandidate(r, c.lang, deps), left()),

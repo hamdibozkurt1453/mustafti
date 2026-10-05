@@ -575,6 +575,13 @@ describe("قاعدة الأساسيات (data/basics.json)", () => {
     }
   });
 
+  it("المطابقة بجذوع الكلمات وبأي ترتيب، والعبارة نفسها مقدَّمة (R1b)", () => {
+    assert.equal(matchBasics("لماذا يصوم المسلمون في رمضان؟")[0]?.id, "siyam_wisdom");
+    assert.equal(matchBasics("ما شروط صحة الصلاة؟")[0]?.id, "salah_conditions");
+    assert.equal(matchBasics("Apa saja rukun iman dalam Islam?")[0]?.id, "arkan_iman");
+    assert.deepEqual(matchBasics("ما حكم قضاء صلاة الفجر بعد طلوع الشمس؟").map((e) => e.id), []);
+  });
+
   it("الكلمة القصيرة كاملة: «بوضوح» ليست «وضو»", () => {
     assert.deepEqual(matchBasics("قلها بوضوح"), []);
   });
