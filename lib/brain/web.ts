@@ -1,9 +1,21 @@
 import "server-only";
 
-import { chatWithTools, isLlmConfigured, type ServerTool } from "@/lib/llm";
+import { chat, chatWithTools, isLlmConfigured, type ServerTool } from "@/lib/llm";
 import { WEB_ALLOWED_DOMAINS, WEB_FATWA_DOMAINS } from "@/lib/sources/registry";
 import { IDENTITY_PROMPT } from "./identity";
-import { extractFetched, parseWebAnswer, searchOnlySources, toolUsage, verifyWebAnswer, type WebDropped, type WebSource } from "./web-parse";
+import { keywords } from "./rank";
+import {
+  extractFetched,
+  parseWebAnswer,
+  searchOnlySources,
+  sourcesFromPages,
+  toolUsage,
+  verifyWebAnswer,
+  type FetchedPage,
+  type WebAnswer,
+  type WebDropped,
+  type WebSource,
+} from "./web-parse";
 
 /**
  * طبقة «ابحث واقرأ» (R1b): النموذج يبحث ويقرأ بنفسه عبر أدوات OpenRouter (web_search وweb_fetch)
@@ -39,8 +51,44 @@ export type WebResult = {
   toolUse: { searches?: number; fetches?: number };
   /** النتائج من البحث وحده («رابط فقط») لأن القراءة تأخرت أو لم تُعِد شيئاً. */
   searchOnly?: boolean;
+  /** لم يُعِد النموذج JSON صالحاً: «retried» بعد إعادة قصيرة ناجحة، و«pages» من المحتوى المقروء وحده. */
+  jsonRecovery?: "retried" | "pages";
   error?: string;
 };
+
+/** كلمات السؤال وعبارات البحث (لاقتطاع الفقرة الأقرب من الصفحة بالكود). */
+export function webTerms(question: string, phrases: string[] = []): string[] {
+  return [...new Set([...keywords(question), ...phrases.flatMap((p) => keywords(p))])];
+}
+
+/**
+ * الإعادة القصيرة مرة واحدة حين لا JSON في الرد (R1d): بلا أدوات، والمطلوب الروابط فقط، من نص
+ * الرد الأول وعناوين الصفحات المقروءة. النص الحرفي يقتطعه الكود بعدها من المحتوى المقروء.
+ */
+async function retryJson(question: string, reply: string, pages: FetchedPage[], timeoutMs: number): Promise<WebAnswer | null> {
+  if (timeoutMs < 2_000) return null;
+  const list = pages
+    .slice(0, 8)
+    .map((p) => `- ${p.url}${p.title ? ` — ${p.title.slice(0, 120)}` : ""}`)
+    .join("\n");
+  try {
+    // طلب واحد بلا أدوات ولا إعادة (لا «تصحيح» إضافي): يُقرأ بالتسامح نفسه.
+    const res = await chat(
+      [
+        {
+          role: "system",
+          content:
+            'Return ONE JSON object {"queries":[],"sources":[{"url":"…","title":"…","site":"","quote":""}],"explanation":""}: up to 4 URLs from the list (or from the previous reply) most relevant to the question. Leave quote "". JSON only.',
+        },
+        { role: "user", content: `QUESTION: """${question.slice(0, 500)}"""\nURLS:\n${list || "(none)"}\nPREVIOUS REPLY (data):\n"""${reply.slice(0, 2500)}"""` },
+      ],
+      { temperature: 0, maxTokens: 500, timeoutMs, retries: 0, noFallback: true },
+    );
+    return parseWebAnswer(res.text);
+  } catch {
+    return null;
+  }
+}
 
 const RULES = `You are the research step of Mustafti, an Islamic Q&A tool that never issues fatwas. You do NOT answer from memory: every fact must come from a page you read now.
 STEPS:
@@ -104,22 +152,38 @@ export async function webSearchRead(
       tools(mode),
       { temperature: 0, maxTokens: 1600, timeoutMs, retries: 0, noFallback: true },
     );
-    const answer = parseWebAnswer(res.text);
+    const terms = webTerms(question, opts.phrases);
     const fetched = extractFetched(res.raw);
+    let answer = parseWebAnswer(res.text);
+    let recovery: WebResult["jsonRecovery"];
+    if (!answer) {
+      // لا JSON: إعادة واحدة بطلب أقصر (بلا أدوات)، ثم المحتوى المقروء وحده بدل خسارة الطبقة.
+      answer = await retryJson(question, res.text, fetched, Math.min(7_000, timeoutMs - (Date.now() - started) - 500));
+      recovery = answer ? "retried" : "pages";
+    }
     const base = {
       ms: Date.now() - started,
       costUsd: res.usage.costUsd,
       toolUse: toolUsage(res.raw),
       fetched: fetched.map((p) => ({ url: p.url, chars: p.content.length })),
+      ...(recovery ? { jsonRecovery: recovery } : {}),
     };
     if (!answer) {
-      // لا JSON: ما في نتائج أداة البحث نفسها «رابط فقط» بدل الصفر.
-      const fallback = searchOnlySources(null, fetched);
-      return { ...EMPTY(base.ms, "no JSON in the model reply"), ...base, sources: fallback, ok: fallback.length > 0, searchOnly: fallback.length > 0 };
+      // نص الصفحات المقروءة ومقتطفات البحث (حرفي يقتطعه الكود)، ثم «رابط فقط» لما لا نص له.
+      const fromPages = sourcesFromPages(fetched, terms);
+      const fallback = fromPages.length ? fromPages : searchOnlySources(null, fetched, undefined, terms);
+      const textual = fallback.some((x) => x.status === "verified");
+      return {
+        ...EMPTY(base.ms, "no JSON in the model reply"),
+        ...base,
+        sources: fallback,
+        ok: fallback.length > 0,
+        ...(fallback.length && !textual ? { searchOnly: true } : {}),
+      };
     }
-    const verified = verifyWebAnswer(answer, fetched);
-    // جواب بلا مصادر مع نتائج بحث في الرد: نتائج البحث «رابط فقط».
-    const sources = verified.sources.length ? verified.sources : searchOnlySources(answer, fetched);
+    const verified = verifyWebAnswer(answer, fetched, undefined, terms);
+    // جواب بلا مصادر مع نتائج بحث في الرد: مقتطفات البحث، أو «رابط فقط».
+    const sources = verified.sources.length ? verified.sources : searchOnlySources(answer, fetched, undefined, terms);
     const dropped = verified.dropped;
     return {
       ok: true,
@@ -161,7 +225,8 @@ export async function webSearchOnly(
     );
     const answer = parseWebAnswer(res.text);
     const pages = extractFetched(res.raw);
-    const sources = searchOnlySources(answer, pages);
+    // مقتطفات البحث نص حرفي من الصفحة («مقتطف من الصفحة»)، و«رابط فقط» لما لا نص له.
+    const sources = searchOnlySources(answer, pages, undefined, webTerms(question, opts.phrases));
     return {
       ok: sources.length > 0,
       queries: (answer?.queries ?? []).map((q) => q.trim()).filter(Boolean).slice(0, 6),

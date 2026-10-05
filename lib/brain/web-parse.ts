@@ -1,13 +1,16 @@
 import { z } from "zod";
 import { WEB_ALLOWED_DOMAINS, WEB_FATWA_DOMAINS, WEB_SITE_NAMES } from "@/lib/sources/registry";
+import { bestParagraphs } from "./excerpt";
 
 /**
  * طبقة «ابحث واقرأ» — الجزء النقي (يُختبر محلياً بردود مسجّلة):
  *  - قراءة جواب النموذج (JSON): عبارات البحث، والمصادر {url, title, site, quote}، والشرح.
  *  - فلتر النطاقات: كل رابط خارج نطاقات المرجعية (WEB_ALLOWED_DOMAINS) يُحذف، ولو أعاده النموذج.
  *  - المحتوى المقروء: ما أعادته أداة web_fetch في الرد الخام (إن توفّر)، من أي موضع فيه.
- *  - التحقق من الاقتباس: يجب أن يوجد حرفياً (بعد تطبيع المسافات والتشكيل) في المحتوى المقروء
- *    لرابطه نفسه، ويُعرض بنص الصفحة لا بنص النموذج. وإلا فالمصدر «رابط فقط» بلا اقتباس.
+ *  - النص من الصفحة نفسها يقتطعه الكود (R1d): أفضل فقرة أو فقرتين من المحتوى المقروء لكلمات
+ *    السؤال، فهو حرفي بالضرورة. ومقتطفات البحث (snippets/highlights) نص حرفي من الصفحة أيضاً،
+ *    فتُستعمل بعلامة «مقتطف من الصفحة». واقتباس النموذج احتياط فقط: يُقبل إن وُجد حرفياً في المحتوى.
+ *  - «رابط فقط» لا يبقى إلا إن لم يتوفر أي نص للرابط.
  */
 
 export type WebDomain = (typeof WEB_ALLOWED_DOMAINS)[number];
@@ -69,13 +72,18 @@ export function parseWebAnswer(text: string): WebAnswer | null {
 // المحتوى المقروء في الرد الخام
 // ---------------------------------------------------------------------------
 
-export type FetchedPage = { url: string; title?: string; content: string };
+/** page: محتوى صفحة مقروءة · snippet: مقتطف من نتائج البحث (أو نص قصير). */
+export type FetchedPage = { url: string; title?: string; content: string; kind?: "page" | "snippet" };
 
 /** مفاتيح كلام النموذج في رسالته (لا تُقرأ محتوى). */
 const MODEL_OWN = /^(?:content|reasoning|reasoning_content|reasoning_details|refusal|tool_calls|function_call)$/;
 
 const URL_KEYS = ["url", "uri", "link", "source_url", "sourceUrl", "href"];
-const TEXT_KEYS = ["content", "text", "page_content", "pageContent", "markdown", "body", "extract", "excerpt", "snippet", "raw_content"];
+const TEXT_KEYS = ["content", "text", "page_content", "pageContent", "markdown", "body", "extract", "excerpt", "snippet", "raw_content", "highlights", "summary"];
+/** مفاتيح المقتطفات (نتائج البحث)، لا محتوى الصفحة. */
+const SNIPPET_KEYS = new Set(["extract", "excerpt", "snippet", "highlights", "summary"]);
+/** أقل طول لمحتوى يُعدّ صفحة مقروءة (الأقصر مقتطف). */
+export const PAGE_MIN_CHARS = 600;
 
 /** مفتاح الرابط للمقارنة: بلا البروتوكول وwww والشرطة الأخيرة وعلامة # ومعطيات التتبع. */
 export function urlKey(url: string): string {
@@ -95,13 +103,18 @@ export function urlKey(url: string): string {
  */
 export function extractFetched(raw: unknown): FetchedPage[] {
   const pages = new Map<string, FetchedPage>();
-  const add = (url: string, content: string, title?: string) => {
+  const add = (url: string, content: string, title: string | undefined, snippetKey: boolean) => {
     const c = content.trim();
     if (!/^https?:\/\//i.test(url) || c.length < 20) return;
+    const kind: FetchedPage["kind"] = !snippetKey && c.length >= PAGE_MIN_CHARS ? "page" : "snippet";
     const key = urlKey(url);
     const prev = pages.get(key);
-    if (!prev) pages.set(key, { url, title, content: c });
-    else if (!prev.content.includes(c)) prev.content = `${prev.content}\n${c}`;
+    if (!prev) pages.set(key, { url, title, content: c, kind });
+    else {
+      if (!prev.content.includes(c)) prev.content = kind === "page" && prev.kind !== "page" ? `${c}\n${prev.content}` : `${prev.content}\n${c}`;
+      if (kind === "page") prev.kind = "page";
+      if (!prev.title && title) prev.title = title;
+    }
   };
   const visit = (node: unknown, depth: number, parentKey: string) => {
     if (depth > 9 || node === null || node === undefined) return;
@@ -125,8 +138,13 @@ export function extractFetched(raw: unknown): FetchedPage[] {
     const o = node as Record<string, unknown>;
     const url = URL_KEYS.map((k) => o[k]).find((v): v is string => typeof v === "string");
     if (url) {
-      const texts = TEXT_KEYS.map((k) => o[k]).filter((v): v is string => typeof v === "string");
-      for (const t of texts) add(url, t, typeof o.title === "string" ? o.title : undefined);
+      const title = typeof o.title === "string" ? o.title : undefined;
+      for (const k of TEXT_KEYS) {
+        const v = o[k];
+        // highlights: مصفوفة مقتطفات نصية.
+        const text = typeof v === "string" ? v : Array.isArray(v) && v.every((x) => typeof x === "string") ? (v as string[]).join("\n") : null;
+        if (text) add(url, text, title, SNIPPET_KEYS.has(k));
+      }
     }
     const assistant = o.role === "assistant";
     for (const [k, v] of Object.entries(o)) {
@@ -299,8 +317,13 @@ export type WebSource = {
   /** الاقتباس بنص الصفحة المقروءة (للموثَّق فقط). */
   quote?: string;
   status: "verified" | "link_only";
-  /** حرفياً، أو شبه حرفي (≥ 90% من كلماته متتابعة). */
-  match?: "exact" | "near";
+  /**
+   * extracted: فقرة من الصفحة المقروءة يقتطعها الكود · snippet: مقتطف البحث من الصفحة ·
+   * exact/near: اقتباس النموذج موجوداً حرفياً أو شبه حرفي (≥ 90% من كلماته متتابعة).
+   */
+  match?: "extracted" | "snippet" | "exact" | "near";
+  /** النص مقتطف من نتائج البحث (لم تُقرأ الصفحة كاملة): يُعرض بعلامة «مقتطف من الصفحة». */
+  snippet?: boolean;
   /** نسبة أفضل تطابق للاقتباس (للتشخيص، ولو رُفض). */
   ratio?: number;
   /**
@@ -314,18 +337,71 @@ export type WebDropped = { url: string; reason: "domain" | "invalid_url" | "dupl
 
 export const MAX_WEB_SOURCES = 4;
 const QUOTE_MAX = 1200;
+/** أقصى طول لمقتطف البحث المعروض. */
+const SNIPPET_MAX = 600;
 
-/** يطبّق الفلتر والتحقق على جواب النموذج. */
+const clipText = (t: string, max: number) => {
+  if (t.length <= max) return t;
+  const space = t.lastIndexOf(" ", max);
+  return `${t.slice(0, space > max * 0.6 ? space : max).trimEnd()}…`;
+};
+
+/**
+ * النص الحرفي لرابط من محتواه المقروء، يقتطعه الكود (لا النموذج):
+ *  - صفحة مقروءة: أفضل فقرة أو فقرتين لكلمات السؤال (extracted).
+ *  - مقتطف بحث: نصه كما أعادته أداة البحث (snippet)، بعلامة «مقتطف من الصفحة».
+ *  - وإلا اقتباس النموذج إن وُجد حرفياً أو شبه حرفي في المحتوى (exact/near).
+ * null إن لم يتوفر نص.
+ */
+export function textFromPage(
+  page: FetchedPage,
+  terms: string[],
+  modelQuote = "",
+): { quote: string; match: NonNullable<WebSource["match"]>; ratio?: number; snippet?: boolean } | { quote: null; ratio: number } {
+  const kind = page.kind ?? (page.content.length >= PAGE_MIN_CHARS ? "page" : "snippet");
+  if (kind === "page") {
+    const best = bestParagraphs(page.content, terms);
+    if (best) return { quote: clipText(best.text, QUOTE_MAX), match: "extracted", ratio: best.ratio };
+  }
+  let ratio = 0;
+  if (modelQuote.trim()) {
+    const m = matchQuote(modelQuote, page.content);
+    ratio = Math.round(m.ratio * 100) / 100;
+    if (m.text) return { quote: clipText(m.text, QUOTE_MAX), match: m.match ?? "exact", ratio, ...(kind === "snippet" ? { snippet: true } : {}) };
+  }
+  if (kind === "snippet") {
+    // مقتطف البحث نص حرفي من الصفحة: يُستعمل كما هو إن كان فيه كلمة من السؤال (أو لا كلمات للمقارنة).
+    if (!terms.length || bestParagraphs(page.content, terms, { count: 1, maxChars: 10_000 })) {
+      return { quote: clipText(page.content.replace(/\s+/g, " ").trim(), SNIPPET_MAX), match: "snippet", snippet: true };
+    }
+  }
+  return { quote: null, ratio };
+}
+
+/** مصدر من المحتوى المقروء أو «رابط فقط» إن لم يتوفر نص. */
+function sourceFor(base: Omit<WebSource, "status">, page: FetchedPage | undefined, terms: string[], modelQuote: string): WebSource {
+  if (!page) return { ...base, status: "link_only", reason: modelQuote.trim() ? "no_content" : "empty_quote" };
+  const t = textFromPage(page, terms, modelQuote);
+  if (t.quote === null) return { ...base, status: "link_only", reason: modelQuote.trim() ? "not_found" : "empty_quote", ratio: t.ratio };
+  return { ...base, status: "verified", quote: t.quote, match: t.match, ...(t.ratio !== undefined ? { ratio: t.ratio } : {}), ...(t.snippet ? { snippet: true } : {}) };
+}
+
+/**
+ * يطبّق الفلتر والنص الحرفي على جواب النموذج. terms: كلمات السؤال (لاقتطاع الفقرة الأقرب).
+ * ثم الصفحات المقروءة التي لم يذكرها النموذج، ما بقي مكان.
+ */
 export function verifyWebAnswer(
   answer: WebAnswer,
   fetched: FetchedPage[],
   allowed: readonly string[] = WEB_ALLOWED_DOMAINS,
+  terms: string[] = [],
 ): { sources: WebSource[]; dropped: WebDropped[] } {
   const sources: WebSource[] = [];
   const dropped: WebDropped[] = [];
   const seen = new Set<string>();
   const byKey = new Map(fetched.map((p) => [urlKey(p.url), p]));
   for (const s of answer.sources) {
+    if (sources.length >= MAX_WEB_SOURCES) break;
     const url = s.url.trim();
     let valid = false;
     try {
@@ -350,43 +426,67 @@ export function verifyWebAnswer(
     seen.add(key);
     const page = byKey.get(key);
     const title = (s.title.trim() || page?.title?.trim() || WEB_SITE_NAMES[domain]).slice(0, 200);
-    const base = { url, title, site: WEB_SITE_NAMES[domain], domain };
-    if (!s.quote.trim()) sources.push({ ...base, status: "link_only", reason: "empty_quote" });
-    else if (!page) sources.push({ ...base, status: "link_only", reason: "no_content" });
-    else {
-      const m = matchQuote(s.quote, page.content);
-      const ratio = Math.round(m.ratio * 100) / 100;
-      sources.push(
-        m.text
-          ? { ...base, status: "verified", match: m.match, ratio, quote: m.text.length > QUOTE_MAX ? `${m.text.slice(0, QUOTE_MAX)}…` : m.text }
-          : { ...base, status: "link_only", reason: "not_found", ratio },
-      );
-    }
+    sources.push(sourceFor({ url, title, site: WEB_SITE_NAMES[domain], domain }, page, terms, s.quote));
+  }
+  // الصفحات المقروءة في نطاق المرجعية ولم يذكرها النموذج (بنصها فقط).
+  for (const extra of sourcesFromPages(fetched, terms, allowed, seen)) {
     if (sources.length >= MAX_WEB_SOURCES) break;
+    sources.push(extra);
   }
   return { sources, dropped };
 }
 
 /**
- * مصادر «رابط فقط» من نتائج البحث وحدها (حين لم تُقرأ الصفحات أو اقتربت المهلة): ما ذكره النموذج
- * من الروابط، ثم ما في نتائج أداة البحث نفسها في الرد الخام. بلا اقتباس (المقتطف لا يُوثَّق).
+ * مصادر من المحتوى المقروء وحده (بلا جواب النموذج، أو لم يذكرها): الصفحات أولاً ثم المقتطفات،
+ * وما لا نص فيه يُترك. يستعمله فشل الصيغة (لا JSON) والبحث بلا قراءة.
+ */
+export function sourcesFromPages(
+  pages: FetchedPage[],
+  terms: string[],
+  allowed: readonly string[] = WEB_ALLOWED_DOMAINS,
+  seen: Set<string> = new Set(),
+): WebSource[] {
+  const out: WebSource[] = [];
+  const ordered = [...pages].sort((a, b) => (a.kind === "page" ? 0 : 1) - (b.kind === "page" ? 0 : 1));
+  for (const p of ordered) {
+    if (out.length >= MAX_WEB_SOURCES) break;
+    const domain = webDomainOf(p.url, allowed);
+    const key = urlKey(p.url);
+    if (!domain || seen.has(key)) continue;
+    const s = sourceFor({ url: p.url, title: (p.title?.trim() || WEB_SITE_NAMES[domain]).slice(0, 200), site: WEB_SITE_NAMES[domain], domain }, p, terms, "");
+    if (s.status !== "verified") continue;
+    seen.add(key);
+    out.push(s);
+  }
+  return out;
+}
+
+/**
+ * مصادر البحث وحده (حين لم تُقرأ الصفحات أو اقتربت المهلة): ما ذكره النموذج من الروابط، ثم ما في
+ * نتائج أداة البحث نفسها في الرد الخام. مقتطف البحث نص حرفي من الصفحة («مقتطف من الصفحة»)،
+ * و«رابط فقط» لما لا نص له.
  */
 export function searchOnlySources(
   answer: WebAnswer | null,
   pages: FetchedPage[],
   allowed: readonly string[] = WEB_ALLOWED_DOMAINS,
+  terms: string[] = [],
 ): WebSource[] {
   const out: WebSource[] = [];
   const seen = new Set<string>();
+  const byKey = new Map(pages.map((p) => [urlKey(p.url), p]));
   const add = (url: string, title: string | undefined) => {
     const domain = webDomainOf(url, allowed);
     const key = urlKey(url);
     if (!domain || seen.has(key) || out.length >= MAX_WEB_SOURCES) return;
     seen.add(key);
-    out.push({ url, title: (title?.trim() || WEB_SITE_NAMES[domain]).slice(0, 200), site: WEB_SITE_NAMES[domain], domain, status: "link_only", reason: "search_only" });
+    const base = { url, title: (title?.trim() || byKey.get(key)?.title?.trim() || WEB_SITE_NAMES[domain]).slice(0, 200), site: WEB_SITE_NAMES[domain], domain };
+    const page = byKey.get(key);
+    const s = page ? sourceFor(base, page, terms, "") : null;
+    out.push(s && s.status === "verified" ? s : { ...base, status: "link_only", reason: "search_only" });
   };
   for (const s of answer?.sources ?? []) add(s.url.trim(), s.title);
   for (const p of pages) add(p.url, p.title);
-  return out;
+  // ما له نص أولاً.
+  return out.sort((a, b) => (a.status === "verified" ? 0 : 1) - (b.status === "verified" ? 0 : 1));
 }
-
