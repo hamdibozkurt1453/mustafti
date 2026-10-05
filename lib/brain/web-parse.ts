@@ -155,56 +155,135 @@ export function toolUsage(raw: unknown): { searches?: number; fetches?: number }
 // ---------------------------------------------------------------------------
 
 /** حروف تُهمل في المطابقة: التشكيل وعلامات المصحف والتطويل والمحارف الخفية. */
-const IGNORED = /[ؐ-ًؚ-ٰٟۖ-ۭـ​-‏‪-‮⁦-⁩﻿]/;
+const IGNORED = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/;
 
-/** النص مطبَّعاً (بلا تشكيل، والمسافات مسافة واحدة) مع موضع كل حرف في الأصل. */
-function normalizeWithMap(text: string): { norm: string; map: number[] } {
+/** توحيد الحرف للمطابقة: الهمزات ألفاً، و ؤ واواً، و ئ ياءً، والألف المقصورة ياءً، والتاء المربوطة هاءً. */
+function foldChar(ch: string): string {
+  switch (ch) {
+    case "أ":
+    case "إ":
+    case "آ":
+    case "ٱ":
+      return "ا";
+    case "ؤ":
+      return "و";
+    case "ئ":
+    case "ى":
+      return "ي";
+    case "ة":
+      return "ه";
+    default:
+      return ch.toLowerCase();
+  }
+}
+
+type Token = { w: string; start: number; end: number };
+
+/**
+ * كلمات النص مطبَّعة مع موضع كل كلمة في الأصل: بلا تشكيل ولا تطويل، والهمزات موحّدة، وكل ما ليس
+ * حرفاً أو رقماً (الترقيم العربي واللاتيني، والأقواس القرآنية ﴿﴾، وعلامات التنصيص، والمسافات
+ * المتعددة) فاصلٌ بين الكلمات.
+ */
+export function tokenize(text: string): Token[] {
   const src = text.normalize("NFC");
-  let norm = "";
-  const map: number[] = [];
-  let space = false;
+  const out: Token[] = [];
+  let w = "";
+  let start = -1;
+  let end = -1;
   for (let i = 0; i < src.length; i++) {
     const ch = src[i];
     if (IGNORED.test(ch)) continue;
-    if (/\s/.test(ch)) {
-      if (!space && norm.length) {
-        norm += " ";
-        map.push(i);
-      }
-      space = true;
-      continue;
+    if (/[\p{L}\p{N}]/u.test(ch)) {
+      if (!w) start = i;
+      w += foldChar(ch);
+      end = i;
+    } else if (w) {
+      out.push({ w, start, end });
+      w = "";
     }
-    space = false;
-    norm += ch;
-    map.push(i);
   }
-  if (norm.endsWith(" ")) {
-    norm = norm.slice(0, -1);
-    map.pop();
-  }
-  return { norm, map };
+  if (w) out.push({ w, start, end });
+  return out;
 }
 
 export function normalizeQuote(text: string): string {
-  return normalizeWithMap(text).norm;
+  return tokenize(text)
+    .map((t) => t.w)
+    .join(" ");
 }
 
-/** أقل طول للاقتباس المقبول (بعد التطبيع). */
+/** أقل طول للاقتباس المقبول (بعد التطبيع)، وأقل عدد كلمات. */
 export const MIN_QUOTE_CHARS = 15;
+export const MIN_QUOTE_WORDS = 3;
+/** نسبة الكلمات المتتابعة المطلوبة للقبول شبه الحرفي. */
+export const NEAR_RATIO = 0.9;
+
+export type QuoteMatch = { text: string | null; match?: "exact" | "near"; ratio: number };
+
+/** طول أطول تتابع مشترك (بالترتيب) ونهايته في b. */
+function lcsWithEnd(a: string[], b: string[]): { len: number; lastB: number; firstB: number } {
+  const n = a.length;
+  const m = b.length;
+  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+  }
+  // أول وآخر موضع مطابق في b (للعرض بنص الصفحة).
+  let i = n;
+  let j = m;
+  let lastB = -1;
+  let firstB = -1;
+  while (i > 0 && j > 0) {
+    if (a[i - 1] === b[j - 1]) {
+      if (lastB === -1) lastB = j - 1;
+      firstB = j - 1;
+      i--;
+      j--;
+    } else if (dp[i - 1][j] >= dp[i][j - 1]) i--;
+    else j--;
+  }
+  return { len: dp[n][m], lastB, firstB };
+}
 
 /**
- * يجد الاقتباس حرفياً في المحتوى (بعد تطبيع المسافات والتشكيل)، ويعيد نصه كما في الصفحة،
- * أو null. علامات التنصيص حول الاقتباس كله لا تُعدّ منه.
+ * يجد الاقتباس في المحتوى بعد التطبيع: حرفياً (كل الكلمات متتالية)، أو شبه حرفي (90% من كلماته
+ * متتابعة بالترتيب في موضع واحد من الصفحة). يعيد النص كما في الصفحة، ونسبة أفضل تطابق ولو رُفض.
  */
+export function matchQuote(quote: string, content: string): QuoteMatch {
+  const q = tokenize(quote).map((t) => t.w);
+  if (q.length < MIN_QUOTE_WORDS || q.join(" ").length < MIN_QUOTE_CHARS) return { text: null, ratio: 0 };
+  const page = tokenize(content);
+  const words = page.map((t) => t.w);
+  const original = content.normalize("NFC");
+  const span = (a: number, b: number) => original.slice(page[a].start, page[b].end + 1);
+
+  // حرفياً: كل الكلمات متتالية.
+  for (let i = 0; i + q.length <= words.length; i++) {
+    if (words[i] !== q[0]) continue;
+    let k = 1;
+    while (k < q.length && words[i + k] === q[k]) k++;
+    if (k === q.length) return { text: span(i, i + q.length - 1), match: "exact", ratio: 1 };
+  }
+
+  // شبه حرفي: نافذة تبدأ عند إحدى كلمات الاقتباس الأولى، وطولها أكبر قليلاً من الاقتباس.
+  const heads = new Set(q.slice(0, 3));
+  const size = Math.ceil(q.length * 1.15) + 2;
+  let best = { ratio: 0, first: -1, last: -1 };
+  for (let i = 0; i < words.length; i++) {
+    if (!heads.has(words[i])) continue;
+    const window = words.slice(i, i + size);
+    const { len, firstB, lastB } = lcsWithEnd(q, window);
+    const ratio = len / q.length;
+    if (ratio > best.ratio) best = { ratio, first: i + firstB, last: i + lastB };
+    if (best.ratio === 1) break;
+  }
+  if (best.ratio >= NEAR_RATIO && best.first >= 0) return { text: span(best.first, best.last), match: "near", ratio: best.ratio };
+  return { text: null, ratio: best.ratio };
+}
+
+/** الاقتباس بنص الصفحة إن وُجد (حرفياً أو شبه حرفي)، أو null. */
 export function locateVerbatim(quote: string, content: string): string | null {
-  const q = normalizeQuote(quote.trim().replace(/^[«"“'﴿]+|[»"”'﴾]+$/g, ""));
-  if (q.length < MIN_QUOTE_CHARS) return null;
-  const { norm, map } = normalizeWithMap(content);
-  const at = norm.indexOf(q);
-  if (at === -1) return null;
-  const startIdx = map[at];
-  const endIdx = map[at + q.length - 1];
-  return content.normalize("NFC").slice(startIdx, endIdx + 1);
+  return matchQuote(quote, content).text;
 }
 
 export type WebSource = {
@@ -216,8 +295,15 @@ export type WebSource = {
   /** الاقتباس بنص الصفحة المقروءة (للموثَّق فقط). */
   quote?: string;
   status: "verified" | "link_only";
-  /** سبب «رابط فقط»: لا محتوى مقروء في الرد لهذا الرابط، أو الاقتباس غير موجود فيه، أو فارغ. */
-  reason?: "no_content" | "not_found" | "empty_quote";
+  /** حرفياً، أو شبه حرفي (≥ 90% من كلماته متتابعة). */
+  match?: "exact" | "near";
+  /** نسبة أفضل تطابق للاقتباس (للتشخيص، ولو رُفض). */
+  ratio?: number;
+  /**
+   * سبب «رابط فقط»: لا محتوى مقروء في الرد لهذا الرابط، أو الاقتباس غير موجود فيه، أو فارغ،
+   * أو من نتائج البحث وحدها (لم تُقرأ الصفحة).
+   */
+  reason?: "no_content" | "not_found" | "empty_quote" | "search_only";
 };
 
 export type WebDropped = { url: string; reason: "domain" | "invalid_url" | "duplicate" };
@@ -264,14 +350,39 @@ export function verifyWebAnswer(
     if (!s.quote.trim()) sources.push({ ...base, status: "link_only", reason: "empty_quote" });
     else if (!page) sources.push({ ...base, status: "link_only", reason: "no_content" });
     else {
-      const exact = locateVerbatim(s.quote, page.content);
+      const m = matchQuote(s.quote, page.content);
+      const ratio = Math.round(m.ratio * 100) / 100;
       sources.push(
-        exact
-          ? { ...base, status: "verified", quote: exact.length > QUOTE_MAX ? `${exact.slice(0, QUOTE_MAX)}…` : exact }
-          : { ...base, status: "link_only", reason: "not_found" },
+        m.text
+          ? { ...base, status: "verified", match: m.match, ratio, quote: m.text.length > QUOTE_MAX ? `${m.text.slice(0, QUOTE_MAX)}…` : m.text }
+          : { ...base, status: "link_only", reason: "not_found", ratio },
       );
     }
     if (sources.length >= MAX_WEB_SOURCES) break;
   }
   return { sources, dropped };
 }
+
+/**
+ * مصادر «رابط فقط» من نتائج البحث وحدها (حين لم تُقرأ الصفحات أو اقتربت المهلة): ما ذكره النموذج
+ * من الروابط، ثم ما في نتائج أداة البحث نفسها في الرد الخام. بلا اقتباس (المقتطف لا يُوثَّق).
+ */
+export function searchOnlySources(
+  answer: WebAnswer | null,
+  pages: FetchedPage[],
+  allowed: readonly string[] = WEB_ALLOWED_DOMAINS,
+): WebSource[] {
+  const out: WebSource[] = [];
+  const seen = new Set<string>();
+  const add = (url: string, title: string | undefined) => {
+    const domain = webDomainOf(url, allowed);
+    const key = urlKey(url);
+    if (!domain || seen.has(key) || out.length >= MAX_WEB_SOURCES) return;
+    seen.add(key);
+    out.push({ url, title: (title?.trim() || WEB_SITE_NAMES[domain]).slice(0, 200), site: WEB_SITE_NAMES[domain], domain, status: "link_only", reason: "search_only" });
+  };
+  for (const s of answer?.sources ?? []) add(s.url.trim(), s.title);
+  for (const p of pages) add(p.url, p.title);
+  return out;
+}
+

@@ -12,6 +12,8 @@ import { stripMcpChrome } from "../lib/sources/mcp-text";
 import {
   extractFetched,
   locateVerbatim,
+  matchQuote,
+  searchOnlySources,
   parseWebAnswer,
   toolUsage,
   verifyWebAnswer,
@@ -153,14 +155,14 @@ before(async () => {
 });
 
 describe("webSearchRead", () => {
-  it("الأداتان بمعطياتهما: exa، ونطاقات المرجعية، وmax_uses 4، وmax_content_tokens 12000", async () => {
+  it("الأداتان بمعطياتهما: exa، ونطاقات المرجعية، وmax_uses 2، وmax_content_tokens 6000 (R1c)", async () => {
     sent.length = 0;
     const r = await web.webSearchRead("ما حكم قضاء صلاة الفجر بعد طلوع الشمس؟", { lang: "ar", phrases: ["قضاء الفجر"] });
     const tools = sent[0].body.tools as { type: string; parameters: Record<string, unknown> }[];
     assert.deepEqual(tools[0], { type: "openrouter:web_search", parameters: { engine: "exa", allowed_domains: [...WEB_ALLOWED_DOMAINS] } });
     assert.deepEqual(tools[1], {
       type: "openrouter:web_fetch",
-      parameters: { engine: "exa", max_uses: 4, max_content_tokens: 12000, allowed_domains: [...WEB_ALLOWED_DOMAINS] },
+      parameters: { engine: "exa", max_uses: 2, max_content_tokens: 6000, allowed_domains: [...WEB_ALLOWED_DOMAINS] },
     });
     assert.equal(sent[0].body.response_format, undefined);
     assert.equal(r.ok, true);
@@ -233,5 +235,63 @@ describe("صفحة الفحص: لا آية افتراضية", () => {
       assert.equal(out.skipped, true, id);
       assert.deepEqual(out.results, []);
     }
+  });
+});
+
+describe("التحقق الموسَّع من الاقتباس (R1c)", () => {
+  const TAFSIR = `﴿اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ﴾ [البقرة: 255]. قال ابنُ باز رحمه الله: هذه الآيةُ أعظمُ آيةٍ في كتاب الله، لما اشتملت عليه من أسماء الله وصفاته، والدلالة على توحيده سبحانه.`;
+
+  it("الترقيم العربي واللاتيني، والأقواس القرآنية، والهمزات، والتشكيل، والمسافات لا تمنع المطابقة الحرفية", () => {
+    const m = matchQuote("الله لا اله الا هو الحي القيوم. قال ابن باز رحمه الله هذه الايه اعظم ايه في كتاب الله", TAFSIR);
+    assert.equal(m.match, "exact");
+    assert.ok(m.text?.startsWith("اللَّهُ لَا إِلَٰهَ"), m.text ?? "");
+    assert.ok(m.text?.endsWith("في كتاب الله"));
+  });
+
+  it("90% من الكلمات متتابعة ← مقبول شبه حرفي بنص الصفحة؛ وأقل ← مرفوض بنسبته", () => {
+    const quote = "هذه الآية أعظم آية في كتاب الله لما اشتملت عليه من أسماء الله وصفاته والدلالة على توحيد الله سبحانه";
+    const near = matchQuote(quote, TAFSIR); // «توحيده» صارت «توحيد الله»: كلمة من 20
+    assert.equal(near.match, "near");
+    assert.ok(near.ratio >= 0.9, String(near.ratio));
+    assert.match(near.text!, /^هذه الآيةُ أعظمُ آيةٍ/);
+    const far = matchQuote("هذه الآية أعظم سورة في القرآن لما فيها من الأحكام والقصص والأمثال الكثيرة", TAFSIR);
+    assert.equal(far.text, null);
+    assert.ok(far.ratio < 0.9);
+  });
+
+  it("سبب الرفض ونسبته في المصدر", () => {
+    const { sources } = verifyWebAnswer(
+      { queries: [], explanation: "", sources: [{ url: "https://binbaz.org.sa/fatwas/1", title: "t", site: "", quote: "هذه الآية أعظم سورة في القرآن لما فيها من الأحكام والقصص" }] },
+      [{ url: "https://binbaz.org.sa/fatwas/1", content: TAFSIR }],
+    );
+    assert.equal(sources[0].status, "link_only");
+    assert.equal(sources[0].reason, "not_found");
+    assert.equal(typeof sources[0].ratio, "number");
+  });
+});
+
+describe("احتياط البحث وحده: «رابط فقط» بدل الصفر (R1c)", () => {
+  it("من روابط النموذج ثم من نتائج أداة البحث، في نطاقات المرجعية فقط", () => {
+    const out = searchOnlySources(
+      { queries: [], explanation: "", sources: [{ url: "https://islamqa.info/ar/answers/1", title: "فتوى", site: "", quote: "" }, { url: "https://evil.example/x", title: "x", site: "", quote: "" }] },
+      [{ url: "https://dorar.net/hadith/sharh/1", title: "حديث", content: "مقتطف من نتيجة البحث بما يكفي من الحروف" }],
+    );
+    assert.deepEqual(out.map((x) => `${x.domain}:${x.status}:${x.reason}`), ["islamqa.info:link_only:search_only", "dorar.net:link_only:search_only"]);
+  });
+
+  it("webLayer: القراءة تتأخر ← البحث السريع يبدأ ويُعرض «رابطاً فقط»، والقراءة إن جاءت بمصادر تُقدَّم", async () => {
+    const empty = { ok: false, queries: [], sources: [], dropped: [], fetched: [], explanation: "", ms: 0, costUsd: null, toolUse: {} };
+    const link = { ...empty, ok: true, searchOnly: true, sources: [{ url: "https://islamqa.info/ar/answers/9", title: "ف", site: "الإسلام سؤال وجواب", domain: "islamqa.info" as const, status: "link_only" as const, reason: "search_only" as const }] };
+    const slowRead = () => new Promise<typeof empty>((r) => setTimeout(() => r(empty), 60_000));
+    let searched = 0;
+    const t0 = Date.now();
+    const r = await web.webLayer("سؤال", { timeoutMs: 6_000 }, { read: slowRead as never, search: (async () => { searched++; return link; }) as never });
+    assert.equal(searched, 1);
+    assert.equal(r.sources[0].reason, "search_only");
+    assert.ok(Date.now() - t0 < 7_000, `${Date.now() - t0}ms`);
+    const verified = { ...empty, ok: true, sources: [{ ...link.sources[0], status: "verified" as const, quote: "نص", reason: undefined }] };
+    const fast = await web.webLayer("سؤال", { timeoutMs: 6_000 }, { read: (async () => verified) as never, search: (async () => { searched++; return link; }) as never });
+    assert.equal(fast.sources[0].status, "verified");
+    assert.equal(searched, 1, "لا بحث سريع إن جاءت القراءة بمصادر");
   });
 });

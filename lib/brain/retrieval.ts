@@ -21,6 +21,7 @@ import {
   focusExcerpt,
   keywordScore,
   keywords,
+  overlap,
   prerank,
   RELEVANCE_MAX,
   RELEVANCE_MIN,
@@ -29,7 +30,7 @@ import {
   type Candidate as RankCandidate,
 } from "./rank";
 import { MAX_FATWA_CARDS, toFatwaCard, type FatwaCard } from "./fatwa-cards";
-import { webSearchRead, type WebMode, type WebResult } from "./web";
+import { webLayer, type WebMode, type WebResult } from "./web";
 import { isFatwaDomain, urlKey, type WebSource } from "./web-parse";
 import { explicitVerseRef, INDEX_SOURCE, indexSummaryLine, isValidVerse, parseVerseText, surahInfoLine, surahUrl, verseTitle } from "./quran-index";
 import { matchKey } from "./guard";
@@ -55,6 +56,8 @@ export type Candidate = RankCandidate & {
   fatwa?: SourceResult["fatwa"];
   /** من طبقة «ابحث واقرأ» بلا اقتباس موثَّق: رابط فقط، لا يُرسل للصياغة. */
   linkOnly?: boolean;
+  /** من قيّم الصلة: النموذج ضد السؤال الحالي، أو تداخل الكلمات احتياطاً. */
+  scoredBy?: "llm" | "keywords";
   pinned?: boolean;
   /** للآيات: نص الآية العربي، وما بعده (التفسير الميسر أو ترجمة المعنى)، للعرض المنظم. */
   verse?: string;
@@ -96,6 +99,8 @@ export type WebDiag = {
   dropped: number;
   ms: number;
   costUsd: number | null;
+  /** من البحث وحده (القراءة تأخرت أو لم تُعِد شيئاً). */
+  searchOnly?: boolean;
   error?: string;
 };
 
@@ -388,7 +393,7 @@ export const DEFAULT_PIN_DEPS: PinDeps = {
   bayyinatNumbers: (ns) => bayyinatByNumber(ns),
   sourceSearch: (id, q, lang, ms, onError) => search(id, q, lang, ms, onError),
   tafsir: ayahTafsir,
-  web: webSearchRead,
+  web: webLayer,
   mcpExtra: defaultMcpExtra,
 };
 
@@ -726,10 +731,15 @@ export async function rerank(
       { temperature: 0, schemaName: "relevance", maxTokens: 1000, timeoutMs: 20_000, retries: 1 },
     );
     applyScores(toRate, res.data.scores);
+    for (const c of toRate) c.scoredBy = "llm";
     return { cands, mode: "llm" };
   } catch {
-    // احتياط بلا نموذج: تداخل الكلمات.
-    for (const c of toRate) c.score = keywordScore(c.kw ?? 0);
+    // احتياط بلا نموذج: تداخل كلمات النص الفعلي مع السؤال (لا kw المصطنع للمراجع المحددة ومصادر
+    // «ابحث واقرأ»، فقد كان 50 فيُقبل كل شيء بلا تقييم). والفتوى و«رابط فقط» لا يُقبلان بلا نموذج أبداً.
+    for (const c of toRate) {
+      c.score = c.fatwa || c.linkOnly ? 0 : keywordScore(overlap(c, terms));
+      c.scoredBy = "keywords";
+    }
     return { cands, mode: "keywords" };
   }
 }
@@ -915,13 +925,15 @@ async function runWeb(
   timeoutMs: number,
   searches: SearchDiag[],
   onSlow?: () => void,
+  /** طبقة بدأت مبكراً (مع التصنيف): تُنتظر بدل طلب جديد. */
+  early?: Promise<WebResult>,
 ): Promise<{ cands: Candidate[]; diag: WebDiag | null }> {
   const fn = deps.web ?? DEFAULT_PIN_DEPS.web!;
   const slow = onSlow ? setTimeout(onSlow, 6_000) : undefined;
   const t0 = Date.now();
   try {
     const result = await withTimeout(
-      fn(question, { mode, lang, phrases, timeoutMs }).catch(() => null),
+      (early ?? fn(question, { mode, lang, phrases, timeoutMs })).catch(() => null),
       timeoutMs + 1_500,
       null as WebResult | null,
     );
@@ -939,6 +951,7 @@ async function runWeb(
       dropped: result.dropped.length,
       ms: result.ms,
       costUsd: result.costUsd,
+      ...(result.searchOnly ? { searchOnly: true } : {}),
       ...(result.error ? { error: result.error } : {}),
     };
     searches.push({
@@ -984,6 +997,8 @@ export type RetrieveOptions = {
   onVerify?: () => void;
   /** «أقرأ المصادر…»: طبقة «ابحث واقرأ» ما زالت تقرأ بعد 6 ثوانٍ. */
   onReading?: () => void;
+  /** طبقة «ابحث واقرأ» بدأت مع التصنيف (respond.ts) لكسب الوقت. */
+  web?: Promise<WebResult>;
 };
 
 export type RetrieveResult = {
@@ -1042,7 +1057,7 @@ export async function retrieve(
     searchBayyinat(bayyinatQuery, diag.searches).catch(() => [] as Candidate[]),
     runExtra(extra, deps, diag.searches, left),
     tafsirCandidates(question, deps, diag.searches, left),
-    runWeb(deps, question, "general", c.lang, phrases, webMs, diag.searches, opts.onReading),
+    runWeb(deps, question, "general", c.lang, phrases, webMs, diag.searches, opts.onReading, opts.web),
     runMcpExtra(deps, arabicPhrases(c, question)[0], c.lang, diag.searches, left),
   ]);
   if (web.diag) diag.web = web.diag;
@@ -1124,7 +1139,8 @@ export async function retrieve(
   const byScore = (a: Candidate, b: Candidate) => (b.score ?? 0) - (a.score ?? 0) || (b.kw ?? 0) - (a.kw ?? 0);
   const ranked = cands.filter((x) => (x.score ?? 0) >= MIN_SCORE).sort(byScore);
   // «رابط فقط» لا يُرسل للصياغة أبداً (لا نص موثَّق فيه): الفتوى منه بطاقة بلا مقتطف، وغيره رابط.
-  const fatwaKept = ranked.filter((x) => x.fatwa);
+  // الفتوى لا تُعرض إلا إن قيّمها النموذج ضد السؤال الحالي (≥ 60).
+  const fatwaKept = ranked.filter((x) => x.fatwa && x.scoredBy === "llm");
   const fatwaPassages = fatwaKept.filter((x) => !x.linkOnly).slice(0, MAX_FATWA_PASSAGES);
   const kept = [...ranked.filter((x) => !x.fatwa && !x.linkOnly).slice(0, MAX_PASSAGES - fatwaPassages.length), ...fatwaPassages].sort(byScore);
   diag.counts.kept = kept.length;
@@ -1166,7 +1182,7 @@ export type CaseFatwas = {
 export async function caseFatwas(
   c: Classification,
   question: string,
-  opts: { deps?: PinDeps; deadline?: number; onReading?: () => void } = {},
+  opts: { deps?: PinDeps; deadline?: number; onReading?: () => void; web?: Promise<WebResult> } = {},
 ): Promise<CaseFatwas> {
   const deadline = opts.deadline ?? Date.now() + CASE_FATWA_BUDGET_MS;
   const left = () => Math.max(500, deadline - Date.now());
@@ -1178,7 +1194,7 @@ export async function caseFatwas(
   const webMs = Math.min(WEB_DEADLINE_MS, Math.max(2_000, deadline - Date.now() - 6_000));
   const [qp, web] = await Promise.all([
     runExtra(jobs, deps, searches, left),
-    runWeb(deps, question, "case", c.lang, jobs.map((j) => j.q), webMs, searches, opts.onReading),
+    runWeb(deps, question, "case", c.lang, jobs.map((j) => j.q), webMs, searches, opts.onReading, opts.web),
   ]);
   const webDiag = web.diag ?? undefined;
   // الفتوى نفسها من المصدرين: اقتباس «ابحث واقرأ» الموثَّق مقدَّم، و«رابط فقط» منها يُترك لنص Quranpedia.

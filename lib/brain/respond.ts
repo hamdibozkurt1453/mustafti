@@ -24,6 +24,7 @@ import {
 import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } from "./prompts";
 import type { FatwaCard } from "./fatwa-cards";
 import { suggestQuestions } from "./suggest";
+import { webLayer, type WebResult } from "./web";
 
 /**
  * «عقل» مُستفتي من البداية إلى النهاية لرسالة واحدة:
@@ -161,6 +162,8 @@ export type BrainStage = "understanding" | "searching" | "reading" | "readingFat
  */
 export const QUESTION_BUDGET_MS = 55_000;
 const RETRIEVAL_SHARE_MS = 42_000;
+/** مهلة «ابحث واقرأ» من بداية السؤال (تبقى 8 ثوانٍ قبل نهاية الاسترجاع لتقييم الصلة). */
+const WEB_EARLY_MS = 34_000;
 
 export type RespondOptions = {
   history?: ChatMessage[];
@@ -208,6 +211,15 @@ export async function respond(question: string, options: RespondOptions = {}): P
   }
   const prefix = probe === "manipulation" ? identityReply("manipulation", guessLang(question)) : "";
   const withPrefix = (text: string) => (prefix ? `${prefix}\n\n${text}` : text);
+
+  // «ابحث واقرأ» تبدأ أول شيء، مع التصنيف (R1c): أبطأ المصادر، ونتيجتها تُنتظر في الاسترجاع.
+  // وضع الفتاوى المشابهة للحالة الشخصية الظاهرة بالكود (D)، وإلا العام. لا تُطلب للعاجل.
+  let webEarly: Promise<WebResult> | undefined;
+  if (!looksUrgent(question)) {
+    const mode = looksPersonal(question) || looksCaseRuling(question) ? "case" : "general";
+    webEarly = webLayer(question, { mode, lang: guessLang(question), phrases: [], timeoutMs: WEB_EARLY_MS });
+    webEarly.catch(() => null);
+  }
 
   // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض).
   stage("understanding");
@@ -261,6 +273,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
     const found = await caseFatwas(c, question, {
       deadline: Math.min(Date.now() + CASE_FATWA_BUDGET_MS, started + RETRIEVAL_SHARE_MS),
       onReading: () => stage("readingFatwa"),
+      web: webEarly,
     }).catch(() => null);
     timings.searchMs = Date.now() - t0;
     if (found) diag.caseFatwas = found.diag;
@@ -287,6 +300,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
     deadline: started + RETRIEVAL_SHARE_MS,
     onVerify: () => stage("verifying"),
     onReading: () => stage("reading"),
+    web: webEarly,
   });
   timings.searchMs = Date.now() - t0;
   diag.retrieval = found.diag;
