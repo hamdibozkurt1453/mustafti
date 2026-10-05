@@ -254,7 +254,9 @@
     "dorarMuhaddith": "Masanin hadisi",
     "dorarSource": "Majiya",
     "dorarGrade": "Hukuncin masanin hadisi",
-    "dorarNote": "Kai tsaye daga Dorar, kamar yadda yake."
+    "dorarNote": "Kai tsaye daga Dorar, kamar yadda yake.",
+    "dorarClosest": "Sakamako mafi kusa a Kundin Hadisi",
+    "hadithNone": "Ban sami hukunci kan wannan hadisin a majiyoyin da aka amince ba."
   },
   "case": {
     "start": "",

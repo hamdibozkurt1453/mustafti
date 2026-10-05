@@ -254,7 +254,9 @@
     "dorarMuhaddith": "Muhaddis",
     "dorarSource": "Kaynak",
     "dorarGrade": "Muhaddisin hükmü",
-    "dorarNote": "Doğrudan Dorar'dan, aynen."
+    "dorarNote": "Doğrudan Dorar'dan, aynen.",
+    "dorarClosest": "Hadis Ansiklopedisi'nde en yakın sonuçlar",
+    "hadithNone": "Onaylı kaynaklarda bu hadis hakkında bir hüküm bulamadım."
   },
   "case": {
     "start": "",

@@ -26,6 +26,9 @@ let scoreOf: (question: string, block: string) => number = () => 0;
 let answerText = "";
 let suggestions: { q: string; id: string }[] = [];
 const llmCalls: string[] = [];
+/** تعليمات آخر طلب صياغة، وتعطيل تقييم الصلة (لاختبار الاحتياط بلا نموذج). */
+let lastChatSystem = "";
+let relevanceFails = false;
 /** رد طبقة «ابحث واقرأ» (طلب فيه tools): الافتراضي لا مصادر. */
 let webReply: unknown = { choices: [{ message: { role: "assistant", content: '{"queries":[],"sources":[],"explanation":""}' } }], usage: {} };
 const webRequests: { tools: { type: string; parameters?: Record<string, unknown> }[]; system: string }[] = [];
@@ -66,6 +69,7 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
     if (name === "citation_plan") {
       return reply(JSON.stringify({ quran: [], surah_info: [], quran_index: false, quran_queries: [], hadith_queries: [], bayyinat_queries: [] }));
     }
+    if (name === "relevance" && relevanceFails) return new Response("upstream error", { status: 500 });
     if (name === "relevance") {
       const question = user.match(/QUESTION: """([\s\S]*?)"""/)?.[1] ?? "";
       const blocks = user.split(/\n\n(?=\[S\d+\])/);
@@ -76,6 +80,7 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
       return reply(JSON.stringify({ scores }));
     }
     if (name === "suggestions") return reply(JSON.stringify({ questions: suggestions }));
+    lastChatSystem = msgs.find((m) => m.role === "system")?.content ?? "";
     return reply(answerText);
   }
   const u = new URL(url);
@@ -220,7 +225,7 @@ describe("لا امتناع جاف", () => {
 describe("الردود الثابتة الجديدة سليمة عند الحارس بكل اللغات", () => {
   it("fatwasFound وfatwasExpert وpartialFound", async () => {
     const { guard } = await import("../lib/brain/guard");
-    for (const key of ["fatwasFound", "fatwasExpert", "partialFound"] as const) {
+    for (const key of ["fatwasFound", "fatwasExpert", "partialFound", "hadithFromDorar"] as const) {
       for (const [lang, text] of Object.entries(messages.MESSAGES[key])) {
         assert.equal(guard(text).ok, true, `${key}/${lang}: ${guard(text).findings.map((f) => f.match).join(", ")}`);
       }
@@ -283,11 +288,75 @@ describe("«ابحث واقرأ» في الرد (R1b)", () => {
     webReply = webResponse([]);
   });
 
-  it("التحقق من حديث: عبارة بطاقة الدرر للمتصفح، ولا طلب للدرر من الخادم", async () => {
+  it("التحقق من حديث بلا نص من المصادر: سطر ثابت يسبق بطاقة الدرر، لا امتناع ولا زر إحالة (R1c)", async () => {
     const q = "هل حديث «اطلبوا العلم ولو بالصين» صحيح؟";
     CLASS[q] = { level: "A", ar: ["طلب العلم"] };
     scoreOf = () => 0;
+    // لا نص فيه حكم الحديث: النموذج يمتنع (أو لا نصوص أصلاً) ← السطر الثابت لا الامتناع.
+    answerText = "لم أجد جواباً كافياً في المصادر المعتمدة.";
     const r = await brain.respond(q);
-    assert.deepEqual(r.hadithCheck, { query: "اطلبوا العلم ولو بالصين" });
+    assert.equal(r.kind, "answer");
+    assert.equal(r.text, "هذه أحكام المحدّثين على هذا الحديث من الموسوعة الحديثية (الدرر السنية)، بنصّها:");
+    assert.deepEqual(r.hadithCheck, { query: "اطلبوا العلم ولو بالصين", fallback: true });
+    assert.deepEqual(brain.finalCheck(r, q).findings, []);
+  });
+
+  it("التحقق من حديث مع اقتباس موثَّق: سطر من النص المنقول فقط (الحكم ومن قاله)", async () => {
+    const q = "ما صحة حديث «من كذب علي متعمدا فليتبوأ مقعده من النار»؟";
+    CLASS[q] = { level: "A", ar: ["من كذب علي متعمدا"] };
+    scoreOf = (_q, b) => (/كذب علي/.test(b) ? 95 : 0);
+    webReply = webResponse([
+      {
+        url: "https://dorar.net/hadith/sharh/1",
+        title: "من كذب علي متعمدا",
+        quote: "من كذب علي متعمدا فليتبوأ مقعده من النار. خلاصة حكم المحدث: صحيح",
+        page: "الراوي: أبو هريرة. من كذب علي متعمدا فليتبوأ مقعده من النار. خلاصة حكم المحدث: صحيح. المحدث: البخاري.",
+      },
+    ]);
+    answerText = "حكم عليه البخاري بأنه «صحيح» [1].";
+    const r = await brain.respond(q);
+    assert.match(lastChatSystem, /HADITH CHECK/);
+    assert.equal(r.kind, "answer", r.text);
+    assert.equal(r.text, "حكم عليه البخاري بأنه «صحيح» [1].");
+    assert.equal(r.hadithCheck?.fallback, undefined);
+    webReply = webResponse([]);
   });
 });
+
+describe("لا فتوى من سؤال سابق ولا بلا تقييم صلة (R1c، البند 8)", () => {
+  const DIVORCE_FATWA = {
+    url: "https://binbaz.org.sa/fatwas/12345",
+    title: "الطلاق في الغضب",
+    quote: "الطلاق في حال الغضب الشديد الذي يغلق على صاحبه قصده لا يقع",
+    page: "الجواب: الطلاق في حال الغضب الشديد الذي يغلق على صاحبه قصده لا يقع، والله أعلم.",
+  };
+
+  it("عبارات بحث ملوّثة بسؤال سابق: الفتوى تُقيَّم ضد السؤال الحالي فلا تظهر", async () => {
+    const q = "ما معنى حديث «اطلبوا العلم» ومن رواه؟";
+    // المصنّف حمل موضوع السؤال السابق (الطلاق) إلى عبارات البحث، والطبقة جاءت بفتوى الطلاق.
+    CLASS[q] = { level: "A", ar: ["الطلاق في الغضب", "طلب العلم"] };
+    scoreOf = (question, b) => (/الطلاق|الغضب/.test(b) && !/طلاق|غضب/.test(question) ? 10 : 0);
+    webReply = webResponse([DIVORCE_FATWA]);
+    const r = await brain.respond(q, { history: [{ role: "user", content: "طلقت زوجتي وأنا غاضب جداً، هل وقع الطلاق؟" }] });
+    assert.ok(!(r.fatwas ?? []).some((f) => /binbaz/.test(f.url)), "فتوى الطلاق لا تظهر تحت سؤال آخر");
+    webReply = webResponse([]);
+  });
+
+  it("تعذّر تقييم الصلة بالنموذج: لا فتوى ولا «رابط فقط» تُقبل بالاحتياط (كان kw المصطنع يمنحها 80)", async () => {
+    const q = "ما فضل طلب العلم؟";
+    CLASS[q] = { level: "A", ar: ["طلب العلم"] };
+    webReply = webResponse([DIVORCE_FATWA, { url: "https://islamenc.com/ar/qa/9", title: "عنوان", quote: "" }]);
+    relevanceFails = true;
+    try {
+      const r = await brain.respond(q);
+      assert.deepEqual(r.fatwas ?? [], []);
+      assert.ok(!(r.links ?? []).length);
+      assert.ok(!r.passages.some((p) => /binbaz/.test(p.url)));
+      assert.equal(r.diag.retrieval?.rerank, "keywords");
+    } finally {
+      relevanceFails = false;
+      webReply = webResponse([]);
+    }
+  });
+});
+

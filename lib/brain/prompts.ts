@@ -78,6 +78,7 @@ Fields:
 - misconception: if the question assumes something false about Islam (e.g. «لماذا يعبد المسلمون الكعبة؟» assumes Muslims worship the Kaaba; a misquoted Qur'an verse), state that false assumption in ONE short Arabic sentence, neutrally, without correcting it. Otherwise null.
 - searchQueries.ar: 2-4 SHORT Modern Standard Arabic search phrases of 1-3 words each (distinct phrasings: the topic noun, the act or term as a fatwa title would name it, and a key phrase of the relevant verse or hadith): the core topic nouns as they would appear in a book title or a hadith/verse, never a full question, never ruling words. Examples: «لماذا يصوم المسلمون؟» → ["الصيام", "فضل صيام رمضان", "الحكمة من الصيام"]; «ما أركان الإيمان؟» → ["أركان الإيمان", "الإيمان بالله"]; «هل انتشر الإسلام بالسيف؟» → ["انتشار الإسلام", "لا إكراه في الدين"]. For a misconception, search the correct concept (e.g. «الكعبة قبلة المسلمين» → ["الكعبة", "القبلة"]). For a misquoted verse, search the correct key words of the verse (e.g. ["وما خلقت الجن والإنس"]). For a personal case (D), describe the matter neutrally as a fatwa title would (e.g. «طلقت زوجتي وأنا غاضب» → ["طلاق الغضبان", "الطلاق في حال الغضب"]), never the asker's details. For a question about a hadith's authenticity, include its distinctive words.
 - searchQueries.userLang: 1-2 short search phrases (1-3 words) in the user's language, e.g. ["fasting Ramadan"], ["rukun iman"]; empty if the user wrote in Arabic.
+- searchQueries describe ONLY the latest message. Earlier messages may help you understand a short follow-up («وما دليله؟»), but never carry an earlier topic into the search phrases of a new, different question.
 
 Return JSON only.`;
 
@@ -129,12 +130,14 @@ Never copy source markers such as "[Surah 3, translation …]", "[3:1]", "[EXACT
 The direct sentence states ONLY what a cited passage states or directly says: no dates, places, names, numbers or details that are not in the passages. Use honorifics where fitting (عليه السلام، ﷺ، رضي الله عنه). Keep your own wording short (normally under 90 words).`;
 }
 
-export type AnswerMode = "general" | "khilaf";
+export type AnswerMode = "general" | "khilaf" | "hadith";
 
 const MODE_NOTES: Record<AnswerMode, string> = {
   general: "Level A/B: answer directly from the passages with their numbers. Avoid categorical wording where the passages show room for difference.",
   khilaf:
     "Level C: describe ONLY what the passages state, show that there are different views if the passages show it, and do NOT prefer any view. Do not claim agreement or disagreement beyond the passages. Do not conclude.",
+  hadith:
+    "HADITH CHECK: the asker asks whether a hadith is authentic. Write 1-2 short sentences that report ONLY what the passages say about THIS hadith's grade and who graded it, with the grade copied verbatim inside «…» and its [n] (e.g. «قال ابن حبان: «باطل لا أصل له» [1].»). Do not grade it yourself, do not explain its meaning, and add nothing else. If several graders are quoted, list them as written.",
 };
 
 export type AnswerInput = {

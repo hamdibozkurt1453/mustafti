@@ -5,7 +5,6 @@ import { cached, DAY } from "@/lib/cache";
 import { chatJson } from "@/lib/llm";
 import { callTool, toolData, toolText } from "@/lib/mcp";
 import { search, type SourceId, type SourceResult } from "@/lib/sources";
-import { ayahTafsir } from "@/lib/sources/quranpedia";
 import { clip, htmlToText } from "@/lib/sources/html";
 import { findTool, mcpQuranRange, mcpSearch, mcpSearchAny, mcpSearchExtra, mcpSearchSources, type McpItem } from "@/lib/sources/mcp-search";
 import { SOURCE_BY_ID } from "@/lib/sources/registry";
@@ -21,6 +20,7 @@ import {
   focusExcerpt,
   keywordScore,
   keywords,
+  overlap,
   prerank,
   RELEVANCE_MAX,
   RELEVANCE_MIN,
@@ -29,7 +29,7 @@ import {
   type Candidate as RankCandidate,
 } from "./rank";
 import { MAX_FATWA_CARDS, toFatwaCard, type FatwaCard } from "./fatwa-cards";
-import { webSearchRead, type WebMode, type WebResult } from "./web";
+import { webLayer, type WebMode, type WebResult } from "./web";
 import { isFatwaDomain, urlKey, type WebSource } from "./web-parse";
 import { explicitVerseRef, INDEX_SOURCE, indexSummaryLine, isValidVerse, parseVerseText, surahInfoLine, surahUrl, verseTitle } from "./quran-index";
 import { matchKey } from "./guard";
@@ -55,6 +55,8 @@ export type Candidate = RankCandidate & {
   fatwa?: SourceResult["fatwa"];
   /** من طبقة «ابحث واقرأ» بلا اقتباس موثَّق: رابط فقط، لا يُرسل للصياغة. */
   linkOnly?: boolean;
+  /** من قيّم الصلة: النموذج ضد السؤال الحالي، أو تداخل الكلمات احتياطاً. */
+  scoredBy?: "llm" | "keywords";
   pinned?: boolean;
   /** للآيات: نص الآية العربي، وما بعده (التفسير الميسر أو ترجمة المعنى)، للعرض المنظم. */
   verse?: string;
@@ -96,6 +98,8 @@ export type WebDiag = {
   dropped: number;
   ms: number;
   costUsd: number | null;
+  /** من البحث وحده (القراءة تأخرت أو لم تُعِد شيئاً). */
+  searchOnly?: boolean;
   error?: string;
 };
 
@@ -371,8 +375,6 @@ export type PinDeps = {
   bayyinatNumbers: (numbers: number[]) => Promise<Candidate[]>;
   /** مصادر HTTP بالواجهة الموحدة (Quranpedia والدرر)، بمهلة المصدر. */
   sourceSearch?: (id: SourceId, q: string, lang: string, ms: number, onError: (e: string) => void) => Promise<SourceResult[]>;
-  /** تفسير آية من Quranpedia. */
-  tafsir?: (surah: number, ayah: number) => Promise<SourceResult[]>;
   /** طبقة «ابحث واقرأ» (أدوات OpenRouter). */
   web?: (question: string, opts: { mode: WebMode; lang: string; phrases: string[]; timeoutMs: number }) => Promise<WebResult>;
   /** مجموعات بحث MCP الإضافية (أسئلة وأجوبة islamenc، وفتاوى IslamHouse) إن أعلنها الخادم. */
@@ -387,8 +389,7 @@ export const DEFAULT_PIN_DEPS: PinDeps = {
   bayyinatSearch: (q) => searchBayyinat(q, [], 3),
   bayyinatNumbers: (ns) => bayyinatByNumber(ns),
   sourceSearch: (id, q, lang, ms, onError) => search(id, q, lang, ms, onError),
-  tafsir: ayahTafsir,
-  web: webSearchRead,
+  web: webLayer,
   mcpExtra: defaultMcpExtra,
 };
 
@@ -726,10 +727,15 @@ export async function rerank(
       { temperature: 0, schemaName: "relevance", maxTokens: 1000, timeoutMs: 20_000, retries: 1 },
     );
     applyScores(toRate, res.data.scores);
+    for (const c of toRate) c.scoredBy = "llm";
     return { cands, mode: "llm" };
   } catch {
-    // احتياط بلا نموذج: تداخل الكلمات.
-    for (const c of toRate) c.score = keywordScore(c.kw ?? 0);
+    // احتياط بلا نموذج: تداخل كلمات النص الفعلي مع السؤال (لا kw المصطنع للمراجع المحددة ومصادر
+    // «ابحث واقرأ»، فقد كان 50 فيُقبل كل شيء بلا تقييم). والفتوى و«رابط فقط» لا يُقبلان بلا نموذج أبداً.
+    for (const c of toRate) {
+      c.score = c.fatwa || c.linkOnly ? 0 : keywordScore(overlap(c, terms));
+      c.scoredBy = "keywords";
+    }
     return { cands, mode: "keywords" };
   }
 }
@@ -813,24 +819,86 @@ async function runExtra(jobs: ExtraSearch[], deps: PinDeps, diag: SearchDiag[], 
   return results.flat();
 }
 
-/** تفسير Quranpedia لسؤال تفسير يذكر آية بعينها (آية واحدة). */
-async function tafsirCandidates(question: string, deps: PinDeps, diag: SearchDiag[], left: () => number): Promise<Candidate[]> {
-  if (!TAFSIR_ASK.test(question)) return [];
+/**
+ * التفسير لسؤال تفسير يذكر آية بعينها، من خادم MCP (get_quran_verses): للعربية الآية المحددة نفسها
+ * تأتي بالتفسير الميسر (أو المختصر)، ولغير العربية تأتي بالترجمة المعتمدة، فيُضاف معها التفسير
+ * العربي. (تفسير Quranpedia موقوف: خيارات الآية تعود فارغة في الفحص الحي؛ يبقى في صفحة الفحص.)
+ */
+async function tafsirCandidates(c: Classification, question: string, deps: PinDeps, diag: SearchDiag[], left: () => number): Promise<Candidate[]> {
+  if (c.lang === "ar" || !TAFSIR_ASK.test(question)) return [];
   const ref = explicitVerseRef(question) ?? verseRefsInText(question)[0];
   if (!ref || !isValidVerse(ref.surah, ref.ayah)) return [];
   const t0 = Date.now();
-  const run = deps.tafsir ?? DEFAULT_PIN_DEPS.tafsir!;
   let error: string | undefined;
   const found = await withTimeout(
-    run(ref.surah, ref.ayah).catch((e) => {
+    verseCandidate(ref, "ar", deps).catch((e) => {
       error = String((e as Error)?.message ?? e);
-      return [] as SourceResult[];
+      return null;
     }),
-    Math.min(EXTRA_DEADLINE_MS, left()),
-    [] as SourceResult[],
+    Math.min(15_000, left()),
+    null,
   );
-  diag.push({ query: `${ref.surah}:${ref.ayah}`, lang: "ar", source: "quranpedia-tafsir", results: found.length, ms: Date.now() - t0, ...(error ? { error } : {}) });
-  return found.map(fromSource);
+  diag.push({ query: `${ref.surah}:${ref.ayah}`, lang: "ar", source: "mcp-tafsir", results: found ? 1 : 0, ms: Date.now() - t0, ...(error ? { error } : {}) });
+  return found ? [found] : [];
+}
+
+// ---------------------------------------------------------------------------
+// مكتبة IslamHouse عبر MCP (search، sources=["library"]): فتاوى ومقالات معتمدة
+// ---------------------------------------------------------------------------
+
+/** سؤال فقه (باب من الأبواب أو C) أو مسلم جديد: يُبحث معه في مكتبة IslamHouse. */
+export function wantsLibrary(c: Classification): boolean {
+  return Boolean((c.chapter && c.chapter !== "other") || c.level === "C" || c.userType === "new_muslim");
+}
+
+const IH_FATWA = /islamhouse\.com\/[a-z]{2,3}\/fatwa\//i;
+
+/** نتيجة مكتبة مرشحاً؛ وما كان رابطه فتوى IslamHouse يحمل بيانات الفتوى (بطاقة «فتوى منشورة»). */
+function libraryCandidate(it: McpItem, lang: string): Candidate {
+  const name = SOURCE_BY_ID.islamhouse.name;
+  return {
+    title: it.title,
+    text: it.text,
+    url: it.url,
+    source: name,
+    sourceId: "islamhouse",
+    lang: it.lang ?? lang,
+    ...(it.ref ? { ref: it.ref } : {}),
+    ...(IH_FATWA.test(it.url) ? { fatwa: { mufti: name, question: it.title, answer: it.text, host: "islamhouse.com" } } : {}),
+  };
+}
+
+/** البحث في المكتبة بأول عبارتين عربيتين (وبلغة المسلم الجديد إن لم يكن عربياً)، بمهلة 14 ثانية. */
+async function libraryCandidates(
+  c: Classification,
+  question: string,
+  deps: PinDeps,
+  diag: SearchDiag[],
+  left: () => number,
+  onlyFatwas = false,
+): Promise<Candidate[]> {
+  const qs = arabicPhrases(c, question)
+    .slice(0, 2)
+    .map((q) => ({ q, lang: "ar" }));
+  if (c.userType === "new_muslim" && c.lang !== "ar" && c.searchQueries.userLang[0]) qs.push({ q: c.searchQueries.userLang[0], lang: c.lang });
+  const lists = await Promise.all(
+    qs.map(async ({ q, lang }) => {
+      const t0 = Date.now();
+      let error: string | undefined;
+      const items = await withTimeout(
+        deps.searchCorpus(q, lang, "library").catch((e) => {
+          error = String((e as Error)?.message ?? e).slice(0, 200);
+          return [] as McpItem[];
+        }),
+        Math.min(14_000, left()),
+        [] as McpItem[],
+      );
+      diag.push({ query: q, lang, source: "mcp-library", results: items.length, ms: Date.now() - t0, ...(error ? { error } : {}) });
+      return items.slice(0, 5).map((it) => libraryCandidate(it, lang));
+    }),
+  );
+  const all = lists.flat();
+  return onlyFatwas ? all.filter((x) => x.fatwa) : all;
 }
 
 // ---------------------------------------------------------------------------
@@ -915,13 +983,15 @@ async function runWeb(
   timeoutMs: number,
   searches: SearchDiag[],
   onSlow?: () => void,
+  /** طبقة بدأت مبكراً (مع التصنيف): تُنتظر بدل طلب جديد. */
+  early?: Promise<WebResult>,
 ): Promise<{ cands: Candidate[]; diag: WebDiag | null }> {
   const fn = deps.web ?? DEFAULT_PIN_DEPS.web!;
   const slow = onSlow ? setTimeout(onSlow, 6_000) : undefined;
   const t0 = Date.now();
   try {
     const result = await withTimeout(
-      fn(question, { mode, lang, phrases, timeoutMs }).catch(() => null),
+      (early ?? fn(question, { mode, lang, phrases, timeoutMs })).catch(() => null),
       timeoutMs + 1_500,
       null as WebResult | null,
     );
@@ -939,6 +1009,7 @@ async function runWeb(
       dropped: result.dropped.length,
       ms: result.ms,
       costUsd: result.costUsd,
+      ...(result.searchOnly ? { searchOnly: true } : {}),
       ...(result.error ? { error: result.error } : {}),
     };
     searches.push({
@@ -984,6 +1055,8 @@ export type RetrieveOptions = {
   onVerify?: () => void;
   /** «أقرأ المصادر…»: طبقة «ابحث واقرأ» ما زالت تقرأ بعد 6 ثوانٍ. */
   onReading?: () => void;
+  /** طبقة «ابحث واقرأ» بدأت مع التصنيف (respond.ts) لكسب الوقت. */
+  web?: Promise<WebResult>;
 };
 
 export type RetrieveResult = {
@@ -1036,14 +1109,15 @@ export async function retrieve(
   const others = RETRIEVAL_SOURCES.filter((x) => x !== "quranenc");
   const phrases = [...arabicPhrases(c, question), ...c.searchQueries.userLang].slice(0, 5);
   const webMs = Math.min(WEB_DEADLINE_MS, Math.max(2_000, deadline - Date.now() - 8_000));
-  const [pinnedCore, found, bayyinat, published, tafsir, web, mcpExtra] = await Promise.all([
+  const [pinnedCore, found, bayyinat, published, tafsir, web, mcpExtra, library] = await Promise.all([
     withTimeout(pins.core, left(), [] as Candidate[]),
     searchSources(queries, diag.searches, others, left()),
     searchBayyinat(bayyinatQuery, diag.searches).catch(() => [] as Candidate[]),
     runExtra(extra, deps, diag.searches, left),
-    tafsirCandidates(question, deps, diag.searches, left),
-    runWeb(deps, question, "general", c.lang, phrases, webMs, diag.searches, opts.onReading),
+    tafsirCandidates(c, question, deps, diag.searches, left),
+    runWeb(deps, question, "general", c.lang, phrases, webMs, diag.searches, opts.onReading, opts.web),
     runMcpExtra(deps, arabicPhrases(c, question)[0], c.lang, diag.searches, left),
+    wantsLibrary(c) ? libraryCandidates(c, question, deps, diag.searches, left) : Promise.resolve([] as Candidate[]),
   ]);
   if (web.diag) diag.web = web.diag;
   // الفتوى نفسها من Quranpedia ومن «ابحث واقرأ»: يُقدَّم اقتباس الطبقة الموثَّق (أدق موضعاً).
@@ -1077,6 +1151,7 @@ export async function retrieve(
     ...found,
     ...publishedOnly,
     ...mcpExtra,
+    ...library,
     ...(quranSearch.done() ? quranSearch.value() : []),
     ...(shubha ? [] : bayyinat),
   ];
@@ -1124,7 +1199,8 @@ export async function retrieve(
   const byScore = (a: Candidate, b: Candidate) => (b.score ?? 0) - (a.score ?? 0) || (b.kw ?? 0) - (a.kw ?? 0);
   const ranked = cands.filter((x) => (x.score ?? 0) >= MIN_SCORE).sort(byScore);
   // «رابط فقط» لا يُرسل للصياغة أبداً (لا نص موثَّق فيه): الفتوى منه بطاقة بلا مقتطف، وغيره رابط.
-  const fatwaKept = ranked.filter((x) => x.fatwa);
+  // الفتوى لا تُعرض إلا إن قيّمها النموذج ضد السؤال الحالي (≥ 60).
+  const fatwaKept = ranked.filter((x) => x.fatwa && x.scoredBy === "llm");
   const fatwaPassages = fatwaKept.filter((x) => !x.linkOnly).slice(0, MAX_FATWA_PASSAGES);
   const kept = [...ranked.filter((x) => !x.fatwa && !x.linkOnly).slice(0, MAX_PASSAGES - fatwaPassages.length), ...fatwaPassages].sort(byScore);
   diag.counts.kept = kept.length;
@@ -1166,7 +1242,7 @@ export type CaseFatwas = {
 export async function caseFatwas(
   c: Classification,
   question: string,
-  opts: { deps?: PinDeps; deadline?: number; onReading?: () => void } = {},
+  opts: { deps?: PinDeps; deadline?: number; onReading?: () => void; web?: Promise<WebResult> } = {},
 ): Promise<CaseFatwas> {
   const deadline = opts.deadline ?? Date.now() + CASE_FATWA_BUDGET_MS;
   const left = () => Math.max(500, deadline - Date.now());
@@ -1176,14 +1252,16 @@ export async function caseFatwas(
     .slice(0, 3)
     .map((q) => ({ source: "quranpedia" as const, q, lang: "ar" }));
   const webMs = Math.min(WEB_DEADLINE_MS, Math.max(2_000, deadline - Date.now() - 6_000));
-  const [qp, web] = await Promise.all([
+  const [qp, web, library] = await Promise.all([
     runExtra(jobs, deps, searches, left),
-    runWeb(deps, question, "case", c.lang, jobs.map((j) => j.q), webMs, searches, opts.onReading),
+    runWeb(deps, question, "case", c.lang, jobs.map((j) => j.q), webMs, searches, opts.onReading, opts.web),
+    // فتاوى IslamHouse المعتمدة المشابهة (مكتبة MCP).
+    libraryCandidates(c, question, deps, searches, left, true),
   ]);
   const webDiag = web.diag ?? undefined;
   // الفتوى نفسها من المصدرين: اقتباس «ابحث واقرأ» الموثَّق مقدَّم، و«رابط فقط» منها يُترك لنص Quranpedia.
   const verifiedWeb = new Set(web.cands.filter((x) => x.fatwa && !x.linkOnly).map((x) => urlKey(x.url)));
-  const cleaned = clean(qp.filter((x) => x.fatwa && !verifiedWeb.has(urlKey(x.url))), []);
+  const cleaned = clean([...qp, ...library].filter((x) => x.fatwa && !verifiedWeb.has(urlKey(x.url))), []);
   const seen = new Set(cleaned.map((x) => urlKey(x.url)));
   const webFatwas = web.cands.filter((x) => x.fatwa && !seen.has(urlKey(x.url)));
   if (!cleaned.length && !webFatwas.length) return { fatwas: [], diag: { searches, scored: [], web: webDiag } };

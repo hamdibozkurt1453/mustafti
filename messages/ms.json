@@ -254,7 +254,9 @@
     "dorarMuhaddith": "Ahli hadis",
     "dorarSource": "Sumber",
     "dorarGrade": "Hukum ahli hadis",
-    "dorarNote": "Terus daripada Dorar, sebagaimana adanya."
+    "dorarNote": "Terus daripada Dorar, sebagaimana adanya.",
+    "dorarClosest": "Hasil terdekat dalam Ensiklopedia Hadis",
+    "hadithNone": "Saya tidak menemui hukum hadis ini dalam sumber yang diiktiraf."
   },
   "case": {
     "start": "",

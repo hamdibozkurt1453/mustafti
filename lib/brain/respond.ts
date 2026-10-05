@@ -24,6 +24,7 @@ import {
 import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } from "./prompts";
 import type { FatwaCard } from "./fatwa-cards";
 import { suggestQuestions } from "./suggest";
+import { webLayer, type WebResult } from "./web";
 
 /**
  * «عقل» مُستفتي من البداية إلى النهاية لرسالة واحدة:
@@ -70,8 +71,12 @@ export type BrainReply = {
   note?: string;
   /** روابط من المرجعية بلا اقتباس موثَّق («ابحث واقرأ»): تُعرض روابط فقط. */
   links?: WebLink[];
-  /** سؤال تحقق من حديث: عبارة البحث في الدرر، يطلبها متصفح السائل (لا الخادم ولا النموذج). */
-  hadithCheck?: { query: string };
+  /**
+   * سؤال تحقق من حديث: عبارة البحث في الدرر، يطلبها متصفح السائل (لا الخادم ولا النموذج).
+   * fallback: الرد سطر ثابت يسبق البطاقة (لا نص من المصادر الأخرى)، فإن لم تُعِد الدرر شيئاً
+   * يعرض المتصفح الامتناع وزر الإحالة بدله.
+   */
+  hadithCheck?: { query: string; fallback?: boolean };
   diag: {
     retrieval?: RetrievalDiag;
     caseFatwas?: CaseFatwas["diag"];
@@ -161,6 +166,8 @@ export type BrainStage = "understanding" | "searching" | "reading" | "readingFat
  */
 export const QUESTION_BUDGET_MS = 55_000;
 const RETRIEVAL_SHARE_MS = 42_000;
+/** مهلة «ابحث واقرأ» من بداية السؤال (تبقى 8 ثوانٍ قبل نهاية الاسترجاع لتقييم الصلة). */
+const WEB_EARLY_MS = 34_000;
 
 export type RespondOptions = {
   history?: ChatMessage[];
@@ -208,6 +215,15 @@ export async function respond(question: string, options: RespondOptions = {}): P
   }
   const prefix = probe === "manipulation" ? identityReply("manipulation", guessLang(question)) : "";
   const withPrefix = (text: string) => (prefix ? `${prefix}\n\n${text}` : text);
+
+  // «ابحث واقرأ» تبدأ أول شيء، مع التصنيف (R1c): أبطأ المصادر، ونتيجتها تُنتظر في الاسترجاع.
+  // وضع الفتاوى المشابهة للحالة الشخصية الظاهرة بالكود (D)، وإلا العام. لا تُطلب للعاجل.
+  let webEarly: Promise<WebResult> | undefined;
+  if (!looksUrgent(question)) {
+    const mode = looksPersonal(question) || looksCaseRuling(question) ? "case" : "general";
+    webEarly = webLayer(question, { mode, lang: guessLang(question), phrases: [], timeoutMs: WEB_EARLY_MS });
+    webEarly.catch(() => null);
+  }
 
   // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض).
   stage("understanding");
@@ -261,6 +277,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
     const found = await caseFatwas(c, question, {
       deadline: Math.min(Date.now() + CASE_FATWA_BUDGET_MS, started + RETRIEVAL_SHARE_MS),
       onReading: () => stage("readingFatwa"),
+      web: webEarly,
     }).catch(() => null);
     timings.searchMs = Date.now() - t0;
     if (found) diag.caseFatwas = found.diag;
@@ -287,6 +304,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
     deadline: started + RETRIEVAL_SHARE_MS,
     onVerify: () => stage("verifying"),
     onReading: () => stage("reading"),
+    web: webEarly,
   });
   timings.searchMs = Date.now() - t0;
   diag.retrieval = found.diag;
@@ -322,20 +340,40 @@ export async function respond(question: string, options: RespondOptions = {}): P
     });
   };
 
+  /**
+   * التحقق من حديث (R1c): لا امتناع إن كان مع الرد بطاقة الدرر. السطر الثابت «هذه أحكام المحدّثين…»
+   * يسبق البطاقة، والمتصفح يعرض الامتناع وزر الإحالة بدله إن لم تُعِد الدرر شيئاً (BotReply).
+   */
+  const hadithLine = (extra: Partial<BrainReply> = {}) =>
+    done({
+      ...common,
+      timings,
+      ...shared,
+      ...extra,
+      passages: [],
+      kind: "answer",
+      text: withPrefix(message("hadithFromDorar", c.lang)),
+      hadithCheck: { query: hadithQuery!, fallback: true },
+      fatwas: found.fatwas,
+    });
+
   if (!passages.length) {
+    if (hadithQuery) return hadithLine();
     diag.abstainReason = found.diag.counts.cleaned ? "no_relevant" : "no_passages";
     return partial("abstain", `${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`);
   }
 
   // 5) الصياغة من النصوص فقط، ثم الحارس.
   stage("writing");
-  const gen = await generate(question, c, c.level === "C" ? "khilaf" : "general", passages);
+  const gen = await generate(question, c, hadithQuery ? "hadith" : c.level === "C" ? "khilaf" : "general", passages);
   timings.generateMs = gen.ms;
   base.costUsd += gen.cost;
   diag.attempts = gen.attempts;
   diag.abstainReason = gen.reason;
   const extra = { passages, guard: gen.guard, raw: gen.raw, timings };
 
+  // التحقق من حديث بلا صياغة سليمة: السطر الثابت مع بطاقة الدرر بدل الامتناع.
+  if (!gen.ok && hadithQuery) return hadithLine({ guard: gen.guard, raw: gen.raw });
   if (gen.reason === "guard") return partial("refused", gen.text, extra);
   if (!gen.ok) return partial("abstain", `${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`, extra);
   // نص الفهرس والقاموس مرجع يُحال إليه، لا اقتباس: يُزال من «» (والسطر المكرر يُحذف).

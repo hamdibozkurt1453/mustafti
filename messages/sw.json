@@ -254,7 +254,9 @@
     "dorarMuhaddith": "Mtaalamu wa hadithi",
     "dorarSource": "Chanzo",
     "dorarGrade": "Hukumu ya mtaalamu wa hadithi",
-    "dorarNote": "Moja kwa moja kutoka Dorar, kama ilivyo."
+    "dorarNote": "Moja kwa moja kutoka Dorar, kama ilivyo.",
+    "dorarClosest": "Matokeo ya karibu zaidi katika Ensaiklopidia ya Hadithi",
+    "hadithNone": "Sikupata hukumu ya hadithi hii katika vyanzo vilivyoidhinishwa."
   },
   "case": {
     "start": "",

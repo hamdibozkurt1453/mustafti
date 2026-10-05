@@ -68,8 +68,9 @@ function sourcesOf(reply: BrainReply): ChatSource[] {
 /** «فتاوى منشورة ذات صلة»: ما لم يظهر بطاقةَ مصدر في الجواب نفسه (فلا تتكرر الفتوى). */
 function fatwasOf(reply: BrainReply, sources: ChatSource[]): ChatFatwa[] {
   const shown = new Set(sources.map((s) => s.url));
+  // كل فتوى معروضة قيّمها النموذج ضد هذا السؤال (≥ 60)؛ وتحقق أخير هنا قبل الإرسال.
   return (reply.fatwas ?? [])
-    .filter((f) => !shown.has(f.url))
+    .filter((f) => !shown.has(f.url) && (f.score === undefined || f.score >= 60))
     .map((f) => ({ title: f.title, mufti: f.mufti, excerpt: f.excerpt, url: f.url, ...(f.category ? { category: f.category } : {}) }));
 }
 

@@ -292,7 +292,9 @@
     "dorarMuhaddith": "Hadith scholar",
     "dorarSource": "Source",
     "dorarGrade": "Scholar's verdict",
-    "dorarNote": "Directly from Dorar, verbatim."
+    "dorarNote": "Directly from Dorar, verbatim.",
+    "dorarClosest": "Closest results in the Hadith Encyclopedia",
+    "hadithNone": "I did not find a verdict on this hadith in the approved sources."
   },
   "auth": {
     "loginTitle": "Sign in",

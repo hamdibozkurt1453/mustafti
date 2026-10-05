@@ -3,9 +3,20 @@ import "server-only";
 import { matchBasics, verseRefsInText } from "@/lib/brain/basics";
 import { explicitVerseRef } from "@/lib/brain/quran-index";
 import { webSearchRead, type WebResult } from "@/lib/brain/web";
-import { listTools } from "@/lib/mcp";
+import { callTool, listTools, toolData, toolText } from "@/lib/mcp";
 import { clip } from "./html";
-import { mcpLibrary, mcpLibraryCategories, mcpQuranVerses, mcpSearchExtra, mcpSearchSources } from "./mcp-search";
+import {
+  bestCategory,
+  collectItems,
+  findTool,
+  libraryArgCombos,
+  mcpLibraryCategories,
+  mcpLibraryLanguage,
+  mcpQuranVerses,
+  mcpSearch,
+  mcpSearchExtra,
+  mcpSearchSources,
+} from "./mcp-search";
 import { stripMcpChrome } from "./mcp-text";
 import { fatwaResult, fetchAyahTafsir, fetchAyahTranslation, fetchFatwas, fetchItems, type RawTrace } from "./quranpedia";
 import { dorarResult, fetchDorar } from "./dorar";
@@ -30,6 +41,7 @@ export type ProbeSourceId =
   | "mcp_quran"
   | "mcp_verses"
   | "mcp_library"
+  | "mcp_library_search"
   | "mcp_extra"
   | "bayyinat"
   | "basics"
@@ -38,15 +50,16 @@ export type ProbeSourceId =
 export const PROBE_SOURCES: { id: ProbeSourceId; label: string; deadlineMs: number; scoreAll?: boolean }[] = [
   { id: "web", label: "ابحث واقرأ — أدوات OpenRouter (web_search + web_fetch) في نطاقات المرجعية", deadlineMs: 45_000 },
   { id: "qp_fatwas", label: "Quranpedia — فتاوى منشورة (كلها مرتبة بالدرجة)", deadlineMs: 10_000, scoreAll: true },
-  { id: "qp_tafsir", label: "Quranpedia — تفسير آية (من السؤال فقط)", deadlineMs: 15_000 },
-  { id: "qp_translation", label: "Quranpedia — ترجمة معنى آية (من السؤال فقط)", deadlineMs: 10_000 },
+  { id: "qp_tafsir", label: "Quranpedia — تفسير آية (للفحص فقط: موقوف في المحادثة)", deadlineMs: 15_000 },
+  { id: "qp_translation", label: "Quranpedia — ترجمة معنى آية (للفحص فقط: موقوفة في المحادثة)", deadlineMs: 10_000 },
   { id: "qp_topics", label: "Quranpedia — موضوعات", deadlineMs: 8_000 },
   { id: "qp_books", label: "Quranpedia — كتب", deadlineMs: 8_000 },
   { id: "mcp_tools", label: "MCP — كل الأدوات بمخططها (inputSchema)، وقيم sources في search", deadlineMs: 15_000 },
   { id: "mcp_hadith", label: "MCP — search (الحديث) + fetch للدرجة", deadlineMs: 26_000 },
   { id: "mcp_quran", label: "MCP — search (القرآن)", deadlineMs: 26_000 },
   { id: "mcp_verses", label: "MCP — get_quran_verses (آية من السؤال فقط)", deadlineMs: 15_000 },
-  { id: "mcp_library", label: "MCP — list_library_categories ثم browse_library (IslamHouse)", deadlineMs: 25_000 },
+  { id: "mcp_library", label: "MCP — list_library_categories وlist_languages ثم browse_library بثلاث تركيبات", deadlineMs: 40_000 },
+  { id: "mcp_library_search", label: "MCP — search (sources=library): فتاوى ومقالات IslamHouse", deadlineMs: 26_000 },
   { id: "mcp_extra", label: "MCP — search في المجموعات الإضافية (إن أعلنها الخادم)", deadlineMs: 20_000 },
   { id: "bayyinat", label: "بيّنات (Supabase: search_bayyinat)", deadlineMs: 8_000 },
   { id: "basics", label: "الأساسيات (data/basics.json)", deadlineMs: 2_000 },
@@ -149,30 +162,46 @@ export async function runProbeSource(
       };
     }
     case "mcp_library": {
+      // التصنيفات، ثم رمز اللغة من list_languages، ثم 3 تركيبات لـ browse_library برد كل منها.
       const raw: RawTrace[] = [];
       const trace = (tool: string, args: Record<string, unknown>, data: unknown, text: string) =>
         raw.push(mcpTrace(`${tool} ${JSON.stringify(args)}`, data, text));
+      const tool = await findTool("browse_library");
+      if (!tool) return { results: [], notes: ["الأداة browse_library غير موجودة"], skipped: true };
+      notes.push(`inputSchema: ${JSON.stringify({ properties: tool.inputSchema.properties, required: tool.inputSchema.required })}`.slice(0, 900));
       const cats = await mcpLibraryCategories(lang, trace).catch((e) => {
         notes.push(`list_library_categories: ${String((e as Error).message).slice(0, 160)}`);
         return [];
       });
       notes.push(`التصنيفات (${cats.length}): ${cats.slice(0, 12).map((c) => `${c.id}=${c.title}`).join("، ")}`);
-      const items = (
-        await Promise.all(
-          qs.map((q) =>
-            mcpLibrary(q, lang, trace).catch((e) => {
-              notes.push(`browse_library «${q}»: ${String((e as Error).message).slice(0, 160)}`);
-              return [];
-            }),
-          ),
-        )
-      ).flat();
-      return {
-        results: uniqueByUrl(items.map((it) => ({ ...it, source: "IslamHouse (MCP)", sourceId: "islamhouse" as const, lang: it.lang ?? lang }))),
-        notes,
-        raw,
-      };
+      const category = bestCategory(qs[0], cats) ?? cats[0] ?? null;
+      const code = await mcpLibraryLanguage(lang).catch((e) => {
+        notes.push(`list_languages: ${String((e as Error).message).slice(0, 160)}`);
+        return null;
+      });
+      notes.push(`التصنيف المختار: ${category ? `${category.id}=${category.title}` : "—"} · رمز اللغة: ${code ?? "— (لا list_languages أو لا مطابق)"}`);
+      const items: SourceResult[] = [];
+      for (const args of libraryArgCombos(tool, category?.id ?? null, code, qs[0])) {
+        try {
+          const r = await callTool(tool.name, args, { cacheTtlMs: 0 });
+          const text = toolText(r);
+          trace(tool.name, args, toolData(r), text);
+          const found = collectItems(toolData(r), 8, undefined, undefined, { lang });
+          notes.push(`${JSON.stringify(args)} ← ${found.length} نتيجة`);
+          items.push(...found.map((it) => ({ ...it, source: "IslamHouse (MCP)", sourceId: "islamhouse" as const, lang: it.lang ?? lang })));
+        } catch (e) {
+          raw.push({ path: `${tool.name} ${JSON.stringify(args)}`, keys: [], head: "", error: String((e as Error).message).slice(0, 200) });
+        }
+      }
+      return { results: uniqueByUrl(items), notes, raw };
     }
+    case "mcp_library_search":
+      return {
+        results: await each(async (q) =>
+          (await mcpSearch(q, "ar", "library")).map((it) => ({ ...it, source: "IslamHouse (MCP search)", sourceId: "islamhouse" as const, lang: it.lang ?? "ar" })),
+        ),
+        notes,
+      };
     case "mcp_extra": {
       const { extra } = await mcpSearchSources();
       if (!extra.length) return { results: [], notes: ["الخادم لا يعلن مجموعات بحث غير القرآن والحديث والمكتبة."], skipped: true };

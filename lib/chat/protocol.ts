@@ -58,7 +58,7 @@ export type ChatEvent =
       /** روابط من المصادر المعتمدة بلا اقتباس موثَّق. */
       links?: ChatLink[];
       /** سؤال تحقق من حديث: المتصفح يطلب الدرر بهذه العبارة (JSONP). */
-      hadithCheck?: { query: string };
+      hadithCheck?: { query: string; fallback?: boolean };
     }
   | { type: "delta"; text: string }
   | { type: "done" }
