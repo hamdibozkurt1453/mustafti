@@ -1,46 +1,52 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
-import { CaseFileView, CaseStatusBadge } from "@/components/case/CaseFileView";
-import { AnswerCard } from "@/components/experts/AnswerCard";
-import { placeholderMetadata } from "@/components/PagePlaceholder";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { ExpertAvatar } from "@/components/experts/ExpertAvatar";
+import { ExpertProfileCard, VerifiedBadge } from "@/components/experts/ExpertProfileCard";
+import { ProfileEditor } from "@/components/experts/ProfileEditor";
+import { ShareProfile } from "@/components/experts/ShareProfile";
+import { AccountForm } from "@/components/me/AccountForm";
+import { DeleteAccount } from "@/components/me/DeleteAccount";
+import { MePrayerSettings } from "@/components/me/MePrayerSettings";
+import { MyCases } from "@/components/me/MyCases";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
-import { signOut } from "@/lib/auth/actions";
+import { ME_TABS, resolveTab, type MeTab } from "@/lib/account/rules";
 import { getAuthContext, roleSatisfies } from "@/lib/auth/roles";
-import { chapterName } from "@/lib/case/pillars";
-import type { CaseRow, CaseUnknown } from "@/lib/case/types";
-import { dirForText } from "@/lib/chat/protocol";
-import { answerCards } from "@/lib/experts/store";
+import { countryOptions } from "@/lib/experts/countries";
+import { ownExpertProfile } from "@/lib/experts/store";
+import { settingsFromProfile } from "@/lib/prayer/times";
 import { isAdminClientConfigured } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-type Props = { params: Promise<{ locale: string }> };
+type Props = {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ tab?: string | string[] }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  return { ...(await placeholderMetadata(locale, "me")), robots: { index: false } };
+  const t = await getTranslations({ locale: locale as Locale, namespace: "me" });
+  return { title: t("title"), robots: { index: false, follow: false } };
 }
 
-type MyCase = {
-  id: string;
-  status: string;
-  chapter: string | null;
-  created_at: string;
-  case_files: {
-    summary_ar: string | null;
-    summary_user_lang: string | null;
-    pillars: { question?: string; rows?: CaseRow[] } | null;
-    unknowns: CaseUnknown[] | null;
-  }[];
-  expert_answers: { answer_ar: string; answer_translated: string | null; expert_id: string }[];
-};
+/** أصل الموقع للرابط العام (mustafti.com أو رابط المعاينة). */
+async function siteOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "mustafti.com";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
+}
+
+const card = "rounded-[24px] border border-sand-200 bg-white p-6 sm:p-8";
 
 /**
- * `/me` — حساب المستخدم المسجّل وملفاته وحالاتها. القراءة بجلسة المستخدم (RLS: صفوفه فقط)،
- * والرمز السري لا يُخزَّن (بصمته فقط)، فالملف يُعرض هنا مباشرة بدل رابط المتابعة.
+ * `/me` — «حسابي» (R2): «حسابي» و«ملفي الشخصي» في صفحة واحدة بتبويبات (?tab=):
+ * الملف · مسائلي · مشاركاتي في الحوار · ملفي العام (للمختص المقبول فقط) · الإعدادات.
+ * كل قراءة بجلسة المستخدم (RLS)، وحالة المختص تُفحص من القاعدة لكل طلب (getAuthContext).
  */
-export default async function MePage({ params }: Props) {
+export default async function MePage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale as Locale); // اللغة متحقق منها في layout
 
@@ -48,131 +54,167 @@ export default async function MePage({ params }: Props) {
   if (!roleSatisfies(ctx.role, ["user"])) {
     redirect(`/${locale}/login?next=${encodeURIComponent(`/${locale}/me`)}`);
   }
+  const userId = ctx.userId!;
 
-  const t = await getTranslations();
-  const pages = await getTranslations("pages");
-  const tf = await getTranslations("caseFile");
-  const format = await getFormatter();
+  const t = await getTranslations("me");
+  const tr = await getTranslations("auth");
+  const tp = await getTranslations("experts.profile");
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("cases")
-    .select(
-      "id, status, chapter, created_at, case_files(summary_ar, summary_user_lang, pillars, unknowns), expert_answers(answer_ar, answer_translated, expert_id)",
-    )
-    .eq("owner_id", ctx.userId!)
-    .order("created_at", { ascending: false })
-    .limit(50)
-    .returns<MyCase[]>();
-  if (error) console.error("me cases:", error.message);
-  const cases = data ?? [];
-  // بطاقة «أجاب عن مسألتك»: الملفات من جلسة المستخدم (RLS: ملفاته فقط)، وبيانات المختص العامة من الخادم.
-  const cards = isAdminClientConfigured() ? await answerCards(cases.flatMap((c) => c.expert_answers.map((a) => a.expert_id))) : new Map();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, preferred_lang, city, calc_method")
+    .eq("id", userId)
+    .maybeSingle<{ display_name: string | null; preferred_lang: string | null; city: string | null; calc_method: string | null }>();
+
+  const approved = ctx.expertStatus === "approved" && isAdminClientConfigured();
+  const expert = approved ? await ownExpertProfile(userId) : null;
+  const tab: MeTab = resolveTab((await searchParams).tab, Boolean(expert));
+  const name = profile?.display_name || expert?.name || ctx.email?.split("@")[0] || "";
+  const tabs = ME_TABS.filter((k) => k !== "public" || expert);
 
   return (
-    <main className="relative flex-1 px-4 py-10 sm:py-14">
-      <div aria-hidden className="absolute inset-x-0 top-0 -z-10 h-56 bg-green-900" />
-      <div className="mx-auto w-full max-w-3xl space-y-6">
-        <section className="rounded-[var(--radius-mf)] border border-sand-200 bg-ivory-50 p-6 shadow-[0_24px_60px_-30px_rgb(4_48_31/0.45)] sm:p-8">
-          <h1 className="font-display text-[28px] font-bold leading-snug text-green-900 sm:text-[32px]">{pages("me.title")}</h1>
-          <p className="mt-2 text-ink-600">{pages("me.description")}</p>
-          <dl className="mt-6 grid gap-3 text-green-900 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm text-ink-600">{t("auth.signedInAs")}</dt>
-              <dd className="font-semibold" dir="ltr">
-                {ctx.email}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-ink-600">{t("auth.roleLabel")}</dt>
-              <dd className="font-semibold">{t(`auth.roles.${ctx.role}`)}</dd>
-            </div>
-          </dl>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            {ctx.expertStatus ? (
-              <Link href="/expert" className="rounded-full bg-gold-500 px-5 py-2.5 font-semibold text-green-900">
-                {t("experts.dashboardLink")}
-              </Link>
-            ) : (
-              <Link href="/experts/join" className="font-semibold text-green-600 underline underline-offset-4">
-                {t("experts.joinLink")}
-              </Link>
-            )}
-            <form action={signOut}>
-              <input type="hidden" name="locale" value={locale} />
-              <button
-                type="submit"
-                className="rounded-full border border-green-900/20 px-5 py-2.5 font-semibold text-green-900 transition hover:bg-green-900/5"
-              >
-                {t("auth.signOut")}
-              </button>
-            </form>
-          </div>
-        </section>
-
-        <section className="rounded-[var(--radius-mf)] border border-sand-200 bg-white p-6 sm:p-8">
-          <h2 className="text-xl font-bold text-green-900">{tf("meTitle")}</h2>
-          <p className="mt-1 text-sm text-ink-600">{tf("meHint")}</p>
-          {cases.length === 0 ? (
-            <p className="mt-6 rounded-xl border border-dashed border-sand-200 bg-ivory-50 p-4 text-center text-sm text-ink-600">
-              {tf("meEmpty")}
+    <main className="relative flex-1 px-4 pb-14 pt-8 sm:pt-12">
+      <div aria-hidden className="absolute inset-x-0 top-0 -z-10 h-64 bg-green-900" />
+      <div className="mx-auto w-full max-w-4xl">
+        {/* الرأس: الصورة الدائرية والاسم والبريد والدور */}
+        <header className="mf-stagger flex flex-wrap items-center gap-5 text-ivory-50">
+          <ExpertAvatar url={expert?.avatarUrl ?? null} name={name} size={84} />
+          <div className="min-w-0">
+            <h1 className="truncate font-display text-[28px] font-semibold leading-tight sm:text-[34px]">{name}</h1>
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ivory-50/75">
+              <bdi dir="ltr">{ctx.email}</bdi>
+              <span className="rounded-full bg-ivory-50/10 px-2.5 py-0.5 text-xs font-semibold text-gold-500">{tr(`roles.${ctx.role}`)}</span>
             </p>
-          ) : (
-            <ul className="mt-6 space-y-3">
-              {cases.map((c) => {
-                const file = c.case_files[0];
-                const summary = file?.summary_user_lang || file?.summary_ar || "";
-                return (
-                  <li key={c.id} className="rounded-2xl border border-sand-200 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <CaseStatusBadge status={c.status} />
-                      <span className="text-xs text-ink-600">
-                        {chapterName(c.chapter, locale === "ar" ? "ar" : "en")} ·{" "}
-                        {format.dateTime(new Date(c.created_at), { dateStyle: "medium" })}
-                      </span>
-                    </div>
-                    <p dir={dirForText(summary)} className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-green-900">
-                      {summary}
-                    </p>
-                    {c.expert_answers.map((a, i) => (
-                      <div key={i} className="mt-3 space-y-2 rounded-xl bg-ivory-50 p-3 text-sm">
-                        <p className="text-[11px] font-semibold text-green-600">{tf("answerTitle")}</p>
-                        <p dir="rtl" lang="ar" className="whitespace-pre-wrap">
-                          {a.answer_ar}
-                        </p>
-                        {a.answer_translated && (
-                          <div className="border-t border-sand-200 pt-2">
-                            <p className="mb-1 text-[11px] font-semibold text-green-600">{tf("answerTranslated")}</p>
-                            <p dir={dirForText(a.answer_translated)} className="whitespace-pre-wrap">
-                              {a.answer_translated}
-                            </p>
-                          </div>
-                        )}
-                        {cards.get(a.expert_id) && <AnswerCard card={cards.get(a.expert_id)!} />}
-                      </div>
-                    ))}
-                    {file && (
-                      <details className="mt-3">
-                        <summary className="cursor-pointer text-sm font-semibold text-green-600">{tf("showFile")}</summary>
-                        <div className="mt-3">
-                          <CaseFileView
-                            locale={locale}
-                            chapter={c.chapter}
-                            question={file.pillars?.question ?? ""}
-                            summaryAr={file.summary_ar ?? ""}
-                            summaryUser={file.summary_user_lang ?? ""}
-                            rows={file.pillars?.rows ?? []}
-                            unknowns={file.unknowns ?? []}
-                          />
-                        </div>
-                      </details>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+          </div>
+        </header>
+
+        {/* التبويبات */}
+        <nav aria-label={t("tabsLabel")} className="mf-no-scrollbar -mx-4 mt-8 overflow-x-auto px-4">
+          <ul className="flex w-max gap-1 rounded-full bg-ivory-50 p-1 shadow-[0_18px_40px_-24px_rgb(4_48_31/0.5)]">
+            {tabs.map((k) => (
+              <li key={k}>
+                <Link
+                  href={{ pathname: "/me", query: k === "profile" ? {} : { tab: k } }}
+                  aria-current={tab === k ? "page" : undefined}
+                  scroll={false}
+                  className={`mf-press block whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                    tab === k ? "bg-green-900 text-ivory-50" : "text-green-900 hover:bg-green-900/5"
+                  }`}
+                >
+                  {t(`tabs.${k}`)}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div key={tab} className="mf-fade mt-6 space-y-6">
+          {tab === "profile" && (
+            <>
+              <section className={card}>
+                <h2 className="text-lg font-bold text-green-900">{t("profile.title")}</h2>
+                <div className="mt-5">
+                  <AccountForm initial={{ displayName: profile?.display_name ?? "", preferredLang: profile?.preferred_lang ?? locale }} />
+                </div>
+              </section>
+              <section className={card}>
+                <h2 className="text-lg font-bold text-green-900">{t("profile.prayerTitle")}</h2>
+                <p className="mt-1 text-sm text-ink-600">{t("profile.prayerHint")}</p>
+                <div className="mt-5">
+                  <MePrayerSettings initial={settingsFromProfile(profile)} />
+                </div>
+              </section>
+              {expert && (
+                <section className={card}>
+                  <h2 className="text-lg font-bold text-green-900">{t("profile.expertTitle")}</h2>
+                  <p className="mt-1 text-sm text-ink-600">{tp("lead")}</p>
+                  <div className="mt-5">
+                    <ProfileEditor
+                      userId={userId}
+                      countries={countryOptions(locale)}
+                      initial={{
+                        countryCode: expert.countryCode ?? "",
+                        bio: expert.bio ?? "",
+                        avatar: expert.avatarPath && expert.avatarUrl ? { path: expert.avatarPath, url: expert.avatarUrl } : null,
+                        contact: expert.contact,
+                        socials: expert.socials,
+                      }}
+                    />
+                  </div>
+                </section>
+              )}
+              {!expert && (
+                <p className="text-sm text-ink-600">
+                  {ctx.expertStatus ? t("profile.applicationHint") : t("profile.joinHint")}{" "}
+                  <Link href="/experts/join" className="font-semibold text-green-600 underline underline-offset-4">
+                    {ctx.expertStatus ? t("profile.applicationLink") : t("profile.joinLink")}
+                  </Link>
+                </p>
+              )}
+            </>
           )}
-        </section>
+
+          {tab === "cases" && (
+            <div className={card}>
+              <MyCases userId={userId} locale={locale} />
+            </div>
+          )}
+
+          {tab === "forum" && (
+            <section className={`${card} text-center`}>
+              <p className="font-display text-2xl font-semibold text-green-900">{t("forum.title")}</p>
+              <p className="mx-auto mt-2 max-w-md text-ink-600">{t("forum.empty")}</p>
+              <Link href="/forum" className="mf-press mt-6 inline-block rounded-full bg-green-900 px-5 py-2.5 text-sm font-semibold text-ivory-50 hover:bg-green-600">
+                {t("forum.cta")}
+              </Link>
+            </section>
+          )}
+
+          {tab === "public" && expert && (
+            <>
+              <section className="rounded-[24px] border border-sand-200 bg-ivory-50 p-6 sm:p-8">
+                <ExpertProfileCard expert={expert} badge={<VerifiedBadge />} />
+                <p className="mt-5 text-xs text-ink-600">{tp("readOnlyNote")}</p>
+              </section>
+              <section className={`${card} space-y-4`}>
+                <div className="flex flex-wrap items-baseline justify-between gap-3">
+                  <h2 className="text-lg font-bold text-green-900">{tp("publicTitle")}</h2>
+                  <p className="text-sm text-ink-600">
+                    {tp("answered")}: <strong className="font-display text-2xl text-green-900 tabular-nums">{expert.answered}</strong>
+                  </p>
+                </div>
+                {expert.slug && (
+                  <ShareProfile url={`${await siteOrigin()}/${locale}/experts/${expert.slug}`} text={`${tp("shareText")} — ${expert.name}`} />
+                )}
+              </section>
+            </>
+          )}
+
+          {tab === "settings" && (
+            <>
+              <section className={card}>
+                <h2 className="text-lg font-bold text-green-900">{t("settings.downloadTitle")}</h2>
+                <p className="mt-1 text-sm text-ink-600">{t("settings.downloadHint")}</p>
+                <a
+                  href="/api/me/export"
+                  download
+                  className="mf-press mt-5 inline-flex items-center gap-2 rounded-full bg-green-900 px-5 py-2.5 text-sm font-semibold text-ivory-50 hover:bg-green-600"
+                >
+                  {t("settings.download")}
+                  <span aria-hidden>↓</span>
+                </a>
+              </section>
+              <section className="rounded-[24px] border border-alert-600/25 bg-white p-6 sm:p-8">
+                <h2 className="text-lg font-bold text-alert-600">{t("settings.deleteTitle")}</h2>
+                <p className="mt-1 text-sm text-ink-600">{t("settings.deleteHint")}</p>
+                <div className="mt-5">
+                  {ctx.adminRole ? <p className="text-sm text-ink-600">{t("settings.errors.admin")}</p> : <DeleteAccount />}
+                </div>
+              </section>
+            </>
+          )}
+        </div>
       </div>
     </main>
   );
