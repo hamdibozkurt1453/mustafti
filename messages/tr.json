@@ -261,7 +261,9 @@
     "dorarGrade": "Muhaddisin hükmü",
     "dorarNote": "Doğrudan Dorar'dan, aynen.",
     "dorarClosest": "Hadis Ansiklopedisi'nde en yakın sonuçlar",
-    "hadithNone": "Onaylı kaynaklarda bu hadis hakkında bir hüküm bulamadım."
+    "hadithNone": "Onaylı kaynaklarda bu hadis hakkında bir hüküm bulamadım.",
+    "askMentor": "Sorunuzu bir rehbere gönderin",
+    "askDaee": "Bir davetçiyle iletişime geçin"
   },
   "case": {
     "start": "",
@@ -302,7 +304,8 @@
     "notSentYet": "",
     "edit": "",
     "doneEditing": "",
-    "other": ""
+    "other": "",
+    "routeDaee": "Dosya yetkin bir davetçiye ulaşacak."
   },
   "caseFile": {
     "notFoundTitle": "",
@@ -349,12 +352,6 @@
       "title": "Tartışma",
       "lead": "Kullanıcıların kendileri için önemli konuları nezaketle ve açık kurallarla konuşabileceği sakin bir alan. Yakında açılıyor; o zamana kadar sohbette Mustafti'ye sorun.",
       "cta": "Sohbete dön"
-    },
-    "discover": {
-      "kicker": "Mustafti",
-      "title": "İslam'ı Tanıyın",
-      "lead": "İslam'ı kaynaklarından tanımak isteyen herkes için baskısız ve sade bir yol. Yakında tamamlanıyor; o zamana kadar sohbette dilediğinizi sorun.",
-      "cta": "Sohbette sor"
     }
   },
   "library": {
@@ -447,6 +444,35 @@
         "expertAnswers": "Cevapları olan bir uzman hesabı şu anda silinemez; yönetimle iletişime geçin.",
         "confirm": "Onay ifadesini aynen yazın.",
         "generic": "Silinemedi. Tekrar deneyin."
+      }
+    }
+  },
+  "guided": {
+    "newMuslim": {
+      "kicker": "Mustafti · yeni Müslümanlar için",
+      "title": "Yeni Müslümanın rehberi",
+      "lead": "Hoş geldiniz. Kelime-i şehadet, temizlik, namaz ve oruç hakkında sorun; onaylı kaynaklardan sade bir dille.",
+      "q1": "Kelime-i şehadetin anlamı nedir?",
+      "q2": "Adım adım nasıl namaz kılarım?",
+      "q3": "Müslüman olmayan aileme nasıl davranmalıyım?"
+    },
+    "discover": {
+      "kicker": "Mustafti · Müslüman olmayanlar için",
+      "title": "İslam'ı tanıyın",
+      "lead": "İslam hakkındaki sorularınızı baskı olmadan memnuniyetle karşılıyoruz. Onaylı kaynaklardan, bağlantılarıyla cevap veriyoruz.",
+      "q1": "Müslümanlar neye inanır?",
+      "q2": "Hz. Muhammed ﷺ kimdir?",
+      "q3": "İslam, Hz. İsa hakkında ne söyler?"
+    }
+  },
+  "experts": {
+    "dashboard": {
+      "filterTrack": "Yol",
+      "routedTo": "Yönlendirildi",
+      "tracks": {
+        "general": "Genel",
+        "new_muslim": "Yeni Müslüman",
+        "discover": "İslam'ı tanıyın"
       }
     }
   }

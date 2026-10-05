@@ -14,6 +14,8 @@ type Props = {
   reduced: boolean;
   /** يمنع الإرسال (لا الكتابة) أثناء جواب جارٍ. */
   disabled?: boolean;
+  /** النص المتحرك في الواجهة الأولى (أسئلة الرئيسية)؛ المحادثتان الموجّهتان بلا نص متحرك (R3). */
+  typewriter?: boolean;
 };
 
 /**
@@ -21,11 +23,12 @@ type Props = {
  * فتنتقل الخانة بنعومة من وسط الشاشة إلى أسفلها عند أول سؤال.
  */
 export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer(
-  { value, onChange, onSubmit, variant, reduced, disabled = false },
+  { value, onChange, onSubmit, variant, reduced, disabled = false, typewriter = true },
   ref,
 ) {
   const t = useTranslations("composer");
   const hero = variant === "hero";
+  const animated = hero && typewriter;
   const [focused, setFocused] = useState(false);
   const inner = useRef<HTMLTextAreaElement>(null);
   useImperativeHandle(ref, () => inner.current as HTMLTextAreaElement);
@@ -65,7 +68,7 @@ export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer
           {t("label")}
         </label>
         {/* نص متحرك بصري فقط: لا يستقبل الضغط، ويختفي عند التركيز أو الكتابة */}
-        {hero && !value && !focused && (
+        {animated && !value && !focused && (
           <div aria-hidden className="pointer-events-none absolute inset-0 flex items-start px-3 py-3 text-[17px] text-ink-600 sm:text-lg">
             <Typewriter reduced={reduced} />
           </div>
@@ -80,7 +83,7 @@ export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer
           onKeyDown={onKeyDown}
           rows={1}
           dir="auto"
-          placeholder={hero ? undefined : t("placeholder")}
+          placeholder={animated ? undefined : t("placeholder")}
           className={`field-sizing-content relative z-10 block w-full resize-none bg-transparent px-3 outline-none placeholder:text-ink-600 ${
             hero ? "max-h-48 min-h-[3.25rem] py-3 text-[17px] sm:text-lg" : "max-h-40 min-h-11 py-2.5 text-base"
           }`}

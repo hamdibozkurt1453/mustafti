@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isAffirmative } from "@/lib/case/affirm";
+import type { ChatMode } from "@/lib/brain/modes";
 import { nextQuestion } from "@/lib/case/flow";
 import type { CaseAnswer, CaseDraft, CasePlan, PlanQuestion, ReferralKind } from "@/lib/case/types";
 import {
@@ -24,6 +25,9 @@ import {
  * ومسار المستوى D في المحادثة نفسها (lib/case/): بعد رسالة الإحالة، زر «ابدأ» أو ردّ بالموافقة
  * («نعم، ساعدني») يبدأ الاستيضاح: سؤال واحد في كل رسالة (الخطة من /api/case/clarify)، ثم ملف
  * المسألة للمراجعة (/api/case/draft)، ثم «أوافق وأرسل» (/api/case/submit) ورابط المتابعة.
+ *
+ * R3: useChat(mode) للمحادثتين الموجّهتين («المرشد» في /new-muslim، و«الداعية» في /discover):
+ * الوضع يُرسل إلى /api/chat، والمسار (track) إلى الاستيضاح والإرسال، ولكل وضع حفظه المستقل.
  */
 
 /** case: جواب عن سؤال استيضاح (لا يُرسل سياقاً للمصنّف). skipped: «تخطَّ». */
@@ -37,7 +41,7 @@ export type CaseKind = "clarify" | "caseFile" | "caseNote";
 export type CaseFileState = {
   draft: CaseDraft;
   token?: string;
-  routeTo?: "mufti" | "mentor";
+  routeTo?: "mufti" | "mentor" | "daee";
   linked?: boolean;
 };
 
@@ -104,6 +108,8 @@ export type CaseFlow = {
 export type SubmitInput = { draft: CaseDraft; edited: { summary: boolean; rows: string[] }; email: string };
 
 const STORAGE_KEY = "mustafti.chat.v1";
+/** حفظ المحادثة لكل وضع: العامة بمفتاحها القديم (فلا تضيع المحادثات المحفوظة). */
+const storageKey = (mode: ChatMode) => (mode === "general" ? STORAGE_KEY : `mustafti.chat.${mode}.v1`);
 const MAX_STORED = 60;
 
 function newId(): string {
@@ -114,9 +120,9 @@ function newId(): string {
 
 type Stored = { messages: ChatMessage[]; flow: CaseFlow | null };
 
-function load(): Stored {
+function load(key: string): Stored {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(key);
     if (!raw) return { messages: [], flow: null };
     const parsed = JSON.parse(raw) as { v?: number; messages?: ChatMessage[]; flow?: CaseFlow | null };
     if (parsed.v !== 1 || !Array.isArray(parsed.messages)) return { messages: [], flow: null };
@@ -139,10 +145,10 @@ function load(): Stored {
   }
 }
 
-function save(messages: ChatMessage[], flow: CaseFlow | null) {
+function save(key: string, messages: ChatMessage[], flow: CaseFlow | null) {
   try {
-    if (!messages.length) window.localStorage.removeItem(STORAGE_KEY);
-    else window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, messages: messages.slice(-MAX_STORED), flow }));
+    if (!messages.length) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, JSON.stringify({ v: 1, messages: messages.slice(-MAX_STORED), flow }));
   } catch {
     /* تصفح خاص أو مساحة ممتلئة: المحادثة تعمل بلا حفظ */
   }
@@ -159,6 +165,9 @@ async function postJson<T>(url: string, body: unknown): Promise<{ ok: true; data
   }
 }
 
+/** المسار يُرسل مع الاستيضاح والإرسال في الوضعين الموجّهين فقط (الرئيسية كما كانت). */
+const trackOf = (mode: ChatMode) => (mode === "general" ? {} : { track: mode });
+
 const CASE_KINDS: readonly string[] = ["clarify", "caseFile", "caseNote"];
 
 /** آخر الرسائل المكتملة سياقاً للمصنّف (لفهم الإلحاح والمتابعة). */
@@ -170,7 +179,8 @@ function historyOf(messages: ChatMessage[]): ChatHistoryItem[] {
     .map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.text.slice(0, 1500) }));
 }
 
-export function useChat() {
+export function useChat(mode: ChatMode = "general") {
+  const key = storageKey(mode);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [flow, setFlowState] = useState<CaseFlow | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -180,19 +190,19 @@ export function useChat() {
 
   useEffect(() => {
     // القراءة بعد التحميل فقط (localStorage غير متاح في الخادم).
-    const stored = load();
+    const stored = load(key);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMessages(stored.messages);
     setFlowState(stored.flow);
     flowRef.current = stored.flow;
     setLoaded(true);
     return () => abortRef.current?.abort();
-  }, []);
+  }, [key]);
 
   useEffect(() => {
     messagesRef.current = messages;
-    if (loaded) save(messages, flow);
-  }, [messages, flow, loaded]);
+    if (loaded) save(key, messages, flow);
+  }, [messages, flow, loaded, key]);
 
   /** أُلغي هذا الاستيضاح أو بدأ غيره أثناء انتظار الخادم؟ */
   const stale = (f: CaseFlow) => flowRef.current?.id !== f.id || flowRef.current.step === "cancelled";
@@ -218,7 +228,7 @@ export function useChat() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: question, history }),
+          body: JSON.stringify({ message: question, history, ...(mode === "general" ? {} : { mode }) }),
           signal: controller.signal,
         });
         if (!res.ok || !res.body) {
@@ -291,7 +301,7 @@ export function useChat() {
         if (abortRef.current === controller) abortRef.current = null;
       }
     },
-    [patchBot],
+    [patchBot, mode],
   );
 
   // -------------------------------------------------------------------------
@@ -356,6 +366,7 @@ export function useChat() {
         chapter: f.chapter ?? null,
         userType: f.userType ?? null,
         kind: f.kind,
+        ...trackOf(mode),
       });
       if (stale(f)) return;
       if (!res.ok) {
@@ -372,7 +383,7 @@ export function useChat() {
       setFlow(next);
       showQuestion(next, f.botId);
     },
-    [draftStep, patchBot, setFlow, showQuestion],
+    [draftStep, patchBot, setFlow, showQuestion, mode],
   );
 
   /** «ابدأ»: يبدأ الاستيضاح لرسالة إحالة (أو امتناع) في المحادثة نفسها. */
@@ -448,7 +459,7 @@ export function useChat() {
       if (!f || (f.step !== "review" && !(f.step === "submitting" && f.failed))) return "error";
       setFlow({ ...f, step: "submitting", failed: false });
       patchBot(f.botId, (m) => ({ caseStage: "submitting", caseFile: m.caseFile ? { ...m.caseFile, draft: input.draft } : { draft: input.draft } }));
-      const res = await postJson<{ token: string; routeTo: "mufti" | "mentor"; linked: boolean }>("/api/case/submit", {
+      const res = await postJson<{ token: string; routeTo: "mufti" | "mentor" | "daee"; linked: boolean }>("/api/case/submit", {
         approved: true,
         lang: f.plan?.lang ?? f.lang,
         chapter: f.plan?.chapter ?? "other",
@@ -457,6 +468,7 @@ export function useChat() {
         draft: input.draft,
         edited: input.edited,
         email: input.email.trim(),
+        ...trackOf(mode),
       });
       if (stale(f)) return "error";
       if (!res.ok) {
@@ -471,7 +483,7 @@ export function useChat() {
       setFlow({ ...f, step: "submitted", failed: false });
       return "ok";
     },
-    [patchBot, setFlow],
+    [patchBot, setFlow, mode],
   );
 
   /** إعادة خطوة تعذّرت (تجهيز الأسئلة أو الملف). */
@@ -555,7 +567,7 @@ export function useChat() {
 
   const busy = messages.some((m) => m.role === "bot" && (m.status === "pending" || m.status === "streaming"));
 
-  const caseApi = { flow, start: startCase, answer: answerCase, cancel: cancelCase, submit: submitCase, retry: retryCase };
+  const caseApi = { flow, start: startCase, answer: answerCase, cancel: cancelCase, submit: submitCase, retry: retryCase, mode };
 
   return { messages, send, retry, reset, busy, loaded, caseApi };
 }

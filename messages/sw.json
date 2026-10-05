@@ -261,7 +261,9 @@
     "dorarGrade": "Hukumu ya mtaalamu wa hadithi",
     "dorarNote": "Moja kwa moja kutoka Dorar, kama ilivyo.",
     "dorarClosest": "Matokeo ya karibu zaidi katika Ensaiklopidia ya Hadithi",
-    "hadithNone": "Sikupata hukumu ya hadithi hii katika vyanzo vilivyoidhinishwa."
+    "hadithNone": "Sikupata hukumu ya hadithi hii katika vyanzo vilivyoidhinishwa.",
+    "askMentor": "Tuma swali lako kwa mlezi",
+    "askDaee": "Wasiliana na mlinganiaji"
   },
   "case": {
     "start": "",
@@ -302,7 +304,8 @@
     "notSentYet": "",
     "edit": "",
     "doneEditing": "",
-    "other": ""
+    "other": "",
+    "routeDaee": "Faili litamfikia mlinganiaji mwenye sifa."
   },
   "caseFile": {
     "notFoundTitle": "",
@@ -349,12 +352,6 @@
       "title": "Mjadala",
       "lead": "Mahali tulivu pa watumiaji kujadili mambo yanayowahusu, kwa adabu na kanuni zilizo wazi. Panafunguliwa hivi karibuni; hadi hapo, muulize Mustafti kwenye mazungumzo.",
       "cta": "Rudi kwenye mazungumzo"
-    },
-    "discover": {
-      "kicker": "Mustafti",
-      "title": "Ujue Uislamu",
-      "lead": "Njia rahisi kwa yeyote anayetaka kuujua Uislamu kutoka vyanzo vyake, bila shinikizo wala ugumu. Itakamilika hivi karibuni; hadi hapo, uliza chochote kwenye mazungumzo.",
-      "cta": "Uliza kwenye mazungumzo"
     }
   },
   "library": {
@@ -447,6 +444,35 @@
         "expertAnswers": "Akaunti ya mtaalamu yenye majibu haiwezi kufutwa sasa; wasiliana na timu.",
         "confirm": "Andika kauli ya uthibitisho kama ilivyo.",
         "generic": "Imeshindwa kufuta. Jaribu tena."
+      }
+    }
+  },
+  "guided": {
+    "newMuslim": {
+      "kicker": "Mustafti · kwa Waislamu wapya",
+      "title": "Mwenzi wa Muislamu mpya",
+      "lead": "Karibu. Uliza kuhusu shahada, twahara, swala na funga, kwa maneno rahisi kutoka vyanzo vilivyoidhinishwa.",
+      "q1": "Shahada mbili zina maana gani?",
+      "q2": "Ninaswali vipi hatua kwa hatua?",
+      "q3": "Niishi vipi na familia yangu isiyo ya Kiislamu?"
+    },
+    "discover": {
+      "kicker": "Mustafti · kwa wasio Waislamu",
+      "title": "Ujue Uislamu",
+      "lead": "Maswali yako kuhusu Uislamu yanakaribishwa, bila shinikizo. Tunajibu kutoka vyanzo vilivyoidhinishwa, pamoja na viungo vyake.",
+      "q1": "Waislamu wanaamini nini?",
+      "q2": "Mtume Muhammad ﷺ ni nani?",
+      "q3": "Uislamu unasema nini kuhusu Isa (Yesu)?"
+    }
+  },
+  "experts": {
+    "dashboard": {
+      "filterTrack": "Njia",
+      "routedTo": "Imepelekwa kwa",
+      "tracks": {
+        "general": "Jumla",
+        "new_muslim": "Muislamu mpya",
+        "discover": "Ujue Uislamu"
       }
     }
   }

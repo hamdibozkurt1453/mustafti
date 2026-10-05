@@ -1,18 +1,22 @@
 import type { Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
-import { IntroPage, introMetadata } from "@/components/IntroPage";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { GuidedChat } from "@/components/chat/GuidedChat";
 import type { Locale } from "@/i18n/locales";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  return introMetadata(locale, "discover");
+  const t = await getTranslations({ locale: locale as Locale, namespace: "guided.discover" });
+  return { title: t("title"), description: t("lead") };
 }
 
-/** `/discover` — تعرّف على الإسلام (يُبنى في R3). الآن صفحة تعريف بزر يفتح المحادثة بأسئلة «لست مسلماً». */
+/**
+ * `/discover` — محادثة «الداعية» لغير المسلمين (R3): واجهة المحادثة نفسها بوضع discover
+ * (احترام بلا ضغط ولا تهجّم، و«بيّنات» أولاً، والإحالة إلى داعية بدور daee).
+ */
 export default async function Page({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale as Locale); // اللغة متحقق منها في layout
-  return <IntroPage page="discover" href={{ pathname: "/", query: { as: "nonMuslim" } }} />;
+  return <GuidedChat mode="discover" />;
 }

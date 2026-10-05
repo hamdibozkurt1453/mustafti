@@ -55,6 +55,8 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
   const [dorarCount, setDorarCount] = useState<number | null>(null);
   const tc = useTranslations("case");
   const isCase = CASE_KINDS.has(msg.kind ?? "");
+  // R3: «تواصل مع داعية» في /discover، و«أرسل سؤالك لمرشد» في /new-muslim.
+  const askKey = caseApi.mode === "discover" ? "askDaee" : caseApi.mode === "new_muslim" ? "askMentor" : "askExpert";
   const live = msg.status === "streaming";
   const caret = live ? <span aria-hidden className="mf-caret ms-0.5 inline-block h-4 w-0.5 translate-y-0.5 bg-green-600" /> : null;
 
@@ -147,7 +149,7 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
           {caret}
         </p>
         {((withExpert && !caseFatwas) || (hadithNone && !started)) && done && (
-          <StartCaseButton label={msg.kind === "referral" ? tc("start") : t("askExpert")} onStart={() => caseApi.start(msg.id)} />
+          <StartCaseButton label={msg.kind === "referral" ? tc("start") : t(askKey)} onStart={() => caseApi.start(msg.id)} />
         )}
       </div>
 

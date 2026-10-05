@@ -261,7 +261,9 @@
     "dorarGrade": "Hukum ahli hadis",
     "dorarNote": "Langsung dari Dorar, apa adanya.",
     "dorarClosest": "Hasil terdekat di Ensiklopedia Hadis",
-    "hadithNone": "Saya tidak menemukan hukum tentang hadis ini dalam sumber yang diakui."
+    "hadithNone": "Saya tidak menemukan hukum tentang hadis ini dalam sumber yang diakui.",
+    "askMentor": "Kirim pertanyaan Anda ke pembimbing",
+    "askDaee": "Hubungi seorang dai"
   },
   "case": {
     "start": "",
@@ -302,7 +304,8 @@
     "notSentYet": "",
     "edit": "",
     "doneEditing": "",
-    "other": ""
+    "other": "",
+    "routeDaee": "Berkas akan dikirim ke dai yang berkompeten."
   },
   "caseFile": {
     "notFoundTitle": "",
@@ -349,12 +352,6 @@
       "title": "Forum",
       "lead": "Ruang tenang bagi pengguna untuk berdiskusi tentang hal yang penting bagi mereka, dengan santun dan aturan yang jelas. Segera dibuka; sementara itu, tanyakan kepada Mustafti di obrolan.",
       "cta": "Kembali ke obrolan"
-    },
-    "discover": {
-      "kicker": "Mustafti",
-      "title": "Kenali Islam",
-      "lead": "Jalan yang mudah bagi siapa pun yang ingin mengenal Islam dari sumbernya, tanpa tekanan dan tanpa rumit. Segera hadir; sementara itu, tanyakan apa saja di obrolan.",
-      "cta": "Tanya di obrolan"
     }
   },
   "library": {
@@ -447,6 +444,35 @@
         "expertAnswers": "Akun ahli yang memiliki jawaban belum dapat dihapus; hubungi tim.",
         "confirm": "Ketik frasa konfirmasi persis sama.",
         "generic": "Gagal menghapus. Coba lagi."
+      }
+    }
+  },
+  "guided": {
+    "newMuslim": {
+      "kicker": "Mustafti · untuk mualaf",
+      "title": "Pendamping mualaf",
+      "lead": "Selamat datang. Tanyakan tentang syahadat, bersuci, salat, dan puasa, dengan bahasa sederhana dari sumber yang diakui.",
+      "q1": "Apa makna dua kalimat syahadat?",
+      "q2": "Bagaimana cara salat langkah demi langkah?",
+      "q3": "Bagaimana bersikap kepada keluarga saya yang bukan Muslim?"
+    },
+    "discover": {
+      "kicker": "Mustafti · untuk non-Muslim",
+      "title": "Mengenal Islam",
+      "lead": "Pertanyaan Anda tentang Islam kami sambut, tanpa paksaan. Kami menjawab dari sumber yang diakui, beserta tautannya.",
+      "q1": "Apa yang diimani oleh umat Islam?",
+      "q2": "Siapakah Nabi Muhammad ﷺ?",
+      "q3": "Apa kata Islam tentang Isa (Yesus)?"
+    }
+  },
+  "experts": {
+    "dashboard": {
+      "filterTrack": "Jalur",
+      "routedTo": "Diteruskan ke",
+      "tracks": {
+        "general": "Umum",
+        "new_muslim": "Mualaf",
+        "discover": "Mengenal Islam"
       }
     }
   }
