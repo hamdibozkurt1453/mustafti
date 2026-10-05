@@ -18,7 +18,7 @@ import type { SourceResult } from "@/lib/sources/types";
  * لا يُحفظ شيء.
  */
 export const dynamic = "force-dynamic";
-export const maxDuration = 90;
+export const maxDuration = 120;
 
 async function guard(): Promise<Response | null> {
   try {
@@ -67,6 +67,8 @@ export async function POST(request: Request) {
           fatwas: r.fatwas?.length ?? 0,
           links: r.links?.length ?? 0,
           abstained: r.kind === "abstain" || r.kind === "refused",
+          abstainReason: r.diag.abstainReason ?? null,
+          attempts: r.diag.attempts.map((a) => ({ guardOk: a.guardOk, findings: a.findings.slice(0, 3), head: a.raw.slice(0, 160) })),
           ms: Date.now() - t0,
           timings: r.timings,
           stages: r.diag.retrieval?.stages ?? null,
@@ -214,7 +216,7 @@ a{color:var(--mid)}
 <ol id="suite" style="font-size:.85rem;margin:6px 0"></ol>
 <button id="runAll">شغّل الكل</button>
 <table id="table" hidden style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;font-size:.85rem"><thead><tr>
-<th>السؤال</th><th>المستوى</th><th>النوع</th><th>المصادر المقبولة</th><th>فتاوى/روابط</th><th>«ابحث واقرأ»</th><th>الزمن</th><th>امتنع؟</th><th>المراحل</th></tr></thead><tbody></tbody></table>
+<th>السؤال</th><th>المستوى</th><th>النوع</th><th>المصادر المقبولة</th><th>فتاوى/روابط</th><th>«ابحث واقرأ»</th><th>الزمن</th><th>امتنع؟</th><th>سبب الامتناع</th><th>المراحل</th></tr></thead><tbody></tbody></table>
 </details>
 <textarea id="question" placeholder="السؤال"></textarea>
 <button id="run">شغّل الفحص</button>
@@ -241,15 +243,18 @@ const SUITE=[
 SUITE.forEach(([c,q])=>{const li=document.createElement("li");li.textContent=c+": "+q;document.getElementById("suite").appendChild(li)});
 document.getElementById("runAll").onclick=async()=>{const b=document.getElementById("runAll");b.disabled=true;
 const t=document.getElementById("table");t.hidden=false;const tb=t.querySelector("tbody");tb.innerHTML="";
-const rows=SUITE.map(([c,q])=>{const tr=document.createElement("tr");[c+": "+q,"…","","","","","","",""].forEach(x=>{const td=document.createElement("td");td.textContent=x;tr.appendChild(td)});tb.appendChild(tr);return tr});
+const rows=SUITE.map(([c,q])=>{const tr=document.createElement("tr");[c+": "+q,"…","","","","","","","",""].forEach(x=>{const td=document.createElement("td");td.textContent=x;tr.appendChild(td)});tb.appendChild(tr);return tr});
 let next=0;async function w(){while(next<SUITE.length){const i=next++;const [c,q]=SUITE[i];const tds=rows[i].children;
 try{const j=await post({action:"full",question:q});
 if(j.error){tds[1].textContent="خطأ";tds[7].textContent=j.error;continue}
 tds[1].textContent=j.level??"—";tds[2].textContent=j.kind+(j.overrides&&j.overrides.length?" ("+j.overrides.join("، ")+")":"");tds[3].textContent=String(j.accepted);
 tds[4].textContent=j.fatwas+" / "+j.links;tds[5].textContent=j.web?(j.web.verified+" بنص · "+j.web.linkOnly+" رابط"+(j.web.searchOnly?" (بحث فقط)":"")+" · "+j.web.ms+"ms"+(j.web.error?" · "+j.web.error:"")):"—";
 tds[6].textContent=(j.ms/1000).toFixed(1)+" ث";tds[6].style.color=j.ms>20000?"var(--bad)":"var(--mid)";tds[7].textContent=j.abstained?"نعم":"لا";tds[7].style.color=j.abstained?"var(--bad)":"var(--mid)";tds[0].title=j.text||"";
+const RS={no_passages:"لا نصوص من البحث",no_relevant:"لا نص بلغ 60",model_abstained:"النموذج امتنع رغم النصوص",no_citation:"جواب بلا إشارة [n]",guard:"اعتراض الحارس"};
+tds[8].textContent=j.abstainReason?(RS[j.abstainReason]||j.abstainReason)+(j.attempts&&j.attempts.length?" · محاولات: "+j.attempts.length:""):"—";
+tds[8].title=(j.attempts||[]).map((a,i)=>(i+1)+") "+(a.findings.join("، ")||"—")+" ← "+a.head).join("\n");
 const sec=(x)=>x==null?"—":(x/1000).toFixed(1)+"ث";const t=j.timings||{},st=j.stages;
-tds[8].textContent="تصنيف "+sec(t.classifyMs)+" · بحث "+sec(t.searchMs)+(st?" (سريعة "+sec(st.fastMs)+" · تقييم "+sec(st.rerank1Ms)+(st.earlyExit?" · اكتفى بالسريعة":" · انتظار «ابحث واقرأ» "+sec(st.waitMs)+" · تقييم 2 "+sec(st.rerank2Ms))+(st.webInRound1?" · الطبقة في الأولى":"")+(st.laterMs?" · إعادة تخطيط "+sec(st.laterMs):"")+")":"")+" · صياغة "+sec(t.generateMs)+(j.web&&j.web.jsonRecovery?" · JSON: "+j.web.jsonRecovery:"")}
+tds[9].textContent="تصنيف "+sec(t.classifyMs)+" · بحث "+sec(t.searchMs)+(st?" (سريعة "+sec(st.fastMs)+" · تقييم "+sec(st.rerank1Ms)+(st.earlyExit?" · اكتفى بالسريعة":" · انتظار «ابحث واقرأ» "+sec(st.waitMs)+" · تقييم 2 "+sec(st.rerank2Ms))+(st.webInRound1?" · الطبقة في الأولى":"")+(st.laterMs?" · إعادة تخطيط "+sec(st.laterMs):"")+")":"")+" · صياغة "+sec(t.generateMs)+(j.web&&j.web.jsonRecovery?" · JSON: "+j.web.jsonRecovery:"")}
 catch(e){tds[1].textContent="خطأ";tds[7].textContent=String(e)}}}
 await Promise.all([w(),w()]);b.disabled=false};
 const $=(id)=>document.getElementById(id);

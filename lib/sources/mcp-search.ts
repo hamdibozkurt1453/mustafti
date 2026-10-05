@@ -438,6 +438,7 @@ const NOT_RETRIEVED = /NOT\s+RETRIEVED|no (?:results|items) (?:found|retrieved)/
 /**
  * البحث في مكتبة IslamHouse: list_library_categories أولاً، ثم browse_library بتصنيف ولغة صحيحين
  * (وبعبارة البحث إن قبلها المخطط). كان استدعاؤها بالاسم وحده يعيد «NOT RETRIEVED».
+ * R1e: **موقوف في المسار الحي** (HTTP 500 / NOT RETRIEVED بكل التركيبات)؛ لا يستدعيه إلا الفحص.
  */
 export async function mcpLibrary(query: string, lang: string, trace?: McpCallTrace): Promise<McpItem[]> {
   const tool = await findTool("browse_library");

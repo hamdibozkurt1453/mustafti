@@ -261,10 +261,10 @@ describe("السريع أولاً، و«ابحث واقرأ» لا تُنتظر 
     assert.ok(r.fatwas.some((f) => f.url === "https://binbaz.org.sa/fatwas/9" && /يصلي قائماً/.test(f.excerpt)));
   });
 
-  it("islamqa لأسئلة الفقه فقط (باب أو حكم عام)، وبلغة السائل الإنجليزية", () => {
-    assert.equal(mod.wantsIslamqa({ ...C, chapter: undefined, level: "A" }, "من هم أولو العزم من الرسل؟"), false);
-    assert.equal(mod.wantsIslamqa({ ...C, chapter: undefined, level: "A" }, "ما حكم بيع التقسيط بزيادة في الثمن؟"), true);
-    assert.equal(mod.wantsIslamqa(C, QUESTION), true);
+  it("islamqa لكل الأبواب (R1e: العقيدة والسيرة وأسماء الله وغير المسلم)، وبلغة السائل الإنجليزية", () => {
+    assert.equal(mod.wantsIslamqa({ ...C, chapter: undefined, level: "A" }), true);
+    assert.equal(mod.wantsIslamqa({ ...C, chapter: undefined, level: "B", userType: "non_muslim" }), true);
+    assert.equal(mod.wantsIslamqa(C), true);
     const en = mod.islamqaQueries({ ...C, lang: "en", searchQueries: { ar: ["الرهن العقاري"], userLang: ["mortgage ruling"] } }, "What is the ruling on mortgages?");
     assert.deepEqual(en, [
       { q: "الرهن العقاري", lang: "ar" },

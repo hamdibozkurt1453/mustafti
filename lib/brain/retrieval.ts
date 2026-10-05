@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import { cached, DAY } from "@/lib/cache";
-import { chatJson } from "@/lib/llm";
+import { chatJson, reasoningFor } from "@/lib/llm";
 import { callTool, toolData, toolText } from "@/lib/mcp";
 import { search, type SourceId, type SourceResult } from "@/lib/sources";
 import { clip, htmlToText } from "@/lib/sources/html";
@@ -34,7 +34,6 @@ import { webLayer, type WebMode, type WebResult } from "./web";
 import { isFatwaDomain, urlKey, type WebSource } from "./web-parse";
 import { explicitVerseRef, INDEX_SOURCE, indexSummaryLine, isValidVerse, parseVerseText, surahInfoLine, surahUrl, verseTitle } from "./quran-index";
 import { matchKey } from "./guard";
-import { looksGeneralRuling } from "./heuristics";
 import type { Passage } from "./prompts";
 
 /**
@@ -750,7 +749,7 @@ export async function rerank(
         { role: "user", content: `QUESTION: """${question}"""\n\nPASSAGES:\n${rerankList(toRate, terms)}` },
       ],
       RerankSchema,
-      { temperature: 0, schemaName: "relevance", maxTokens: 1000, timeoutMs: 10_000, retries: 1, retryDelayMs: 0 },
+      { temperature: 0, schemaName: "relevance", maxTokens: 1000, timeoutMs: 15_000, retries: 1, retryDelayMs: 0, reasoning: reasoningFor("rerank") },
     );
     applyScores(toRate, res.data.scores);
     for (const c of toRate) c.scoredBy = "llm";
@@ -931,9 +930,12 @@ async function libraryCandidates(
 // «الإسلام سؤال وجواب» محلياً (R1d): جدول islamqa_fatwas في Supabase، سريع وبكل اللغات
 // ---------------------------------------------------------------------------
 
-/** سؤال فقه (باب أو C أو حكم عام) أو مسلم جديد: يُبحث معه في فتاوى «الإسلام سؤال وجواب». */
-export function wantsIslamqa(c: Classification, question: string): boolean {
-  return wantsLibrary(c) || looksGeneralRuling(question);
+/**
+ * «الإسلام سؤال وجواب» لكل الأبواب (R1e): الفقه والعقيدة والسيرة وأسماء الله والمسلم الجديد وغير
+ * المسلم، فالموقع يغطيها كلها، والبحث محلي سريع، وما لا صلة له يسقط في تقييم الصلة.
+ */
+export function wantsIslamqa(c: Classification): boolean {
+  return !c.outOfScope;
 }
 
 /** عبارات البحث: أول عبارتين عربيتين (لكل اللغات) والسؤال نفسه بالعربية، وبالإنجليزية للسائل بها. */
@@ -1032,8 +1034,8 @@ function settle<T>(p: Promise<T>, fallback: T): { promise: Promise<T>; done: () 
 // طبقة «ابحث واقرأ»
 // ---------------------------------------------------------------------------
 
-/** حد زمن الطبقة (R1d: 20 ثانية)، أو ما بقي من الميزانية ناقص 8 ثوانٍ (لتقييم الصلة بعدها). */
-export const WEB_DEADLINE_MS = 20_000;
+/** حد زمن الطبقة (R1e: 35 ثانية)، أو ما بقي من الميزانية ناقص 8 ثوانٍ (لتقييم الصلة بعدها). */
+export const WEB_DEADLINE_MS = 35_000;
 /** المصادر السريعة تُنتظر حتى هذا الحد قبل التقييم الأول (R1d). */
 export const FAST_WAIT_MS = 8_000;
 /** مصدران ذوا صلة (≥ 60) في التقييم الأول يكفيان: لا تُنتظر «ابحث واقرأ». */
@@ -1234,7 +1236,7 @@ export async function retrieve(
     job("pinned", "core", withTimeout(pins.core, left(), none)),
     job("pinned", "quranPins", pins.quran),
     job("pinned", "tafsir", tafsirCandidates(c, question, deps, diag.searches, left).then((xs) => xs.map((x) => ({ ...x, kw: 50, pinned: true })))),
-    job("raw", "islamqa", wantsIslamqa(c, question) ? islamqaCandidates(c, question, terms, deps, diag.searches, left) : Promise.resolve(none)),
+    job("raw", "islamqa", wantsIslamqa(c) ? islamqaCandidates(c, question, terms, deps, diag.searches, left) : Promise.resolve(none)),
     job("raw", "bayyinat", searchBayyinat(bayyinatQuery, diag.searches).catch(() => none)),
     job("raw", "found", searchSources(queries, diag.searches, others, left())),
     job("raw", "quranSearch", searchSources(queries, diag.searches, ["quranenc"], left())),
@@ -1397,7 +1399,7 @@ export async function retrieve(
 // ---------------------------------------------------------------------------
 
 /** مهلة البحث عن فتاوى منشورة قبل الاستيضاح (لا تؤخر الإحالة طويلاً). */
-export const CASE_FATWA_BUDGET_MS = 26_000;
+export const CASE_FATWA_BUDGET_MS = 50_000;
 
 export type CaseFatwas = {
   fatwas: FatwaCard[];

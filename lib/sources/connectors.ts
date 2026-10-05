@@ -3,7 +3,7 @@ import "server-only";
 import { after } from "next/server";
 import { cached, DAY } from "@/lib/cache";
 import { clip, embeddedJson, extractResultLinks, linksFromJson, openSearchHref, searchForms, type ExtractedLink } from "./html";
-import { collectItems, mcpFetchHadith, mcpLibrary, mcpQuranVerses, mcpSearch, type McpCorpus, type McpItem } from "./mcp-search";
+import { collectItems, mcpFetchHadith, mcpQuranVerses, mcpSearch, type McpCorpus, type McpItem } from "./mcp-search";
 import { politeFetch, politeJson } from "./polite-fetch";
 import { fatwaResult, searchFatwas } from "./quranpedia";
 import { QURANENC_TRANSLATIONS } from "./quran";
@@ -65,12 +65,6 @@ const quranVerses: AccessMethod = {
     const ref = verseRef(query);
     return ref ? toResults("quranenc", await mcpQuranVerses(ref.surah, ref.ayah, lang), lang) : [];
   },
-};
-
-const libraryTitles: AccessMethod = {
-  kind: "mcp",
-  via: "MCP: browse_library (name)",
-  search: async (query, lang) => toResults("islamhouse", await mcpLibrary(query, lang), lang),
 };
 
 /**
@@ -273,7 +267,9 @@ const quranpediaFatwas: AccessMethod = {
 export const CONNECTORS: Partial<Record<SourceId, AccessMethod[]>> = {
   quranenc: [quranVerses, mcpCorpus("quranenc", "quran"), quranencApi],
   hadeethenc: [hadithWithGrade],
-  islamhouse: [libraryTitles, mcpCorpus("islamhouse", "library")],
+  // R1e: browse_library موقوف نهائياً (HTTP 500 / NOT RETRIEVED بكل التركيبات حياً)؛ مكتبة IslamHouse
+  // عبر search (sources=["library"]) وحده. تجربة browse_library في صفحة الفحص فقط.
+  islamhouse: [mcpCorpus("islamhouse", "library")],
   byenah: [site("byenah", (s, l) => `https://byenah.com/${l}/search?q=${q(s)}`, NUMERIC_PATH)],
   risala: [risalaApi],
   tafsir_net: [site("tafsir_net", (s) => `https://tafsir.net/search?q=${q(s)}`, NUMERIC_PATH)],

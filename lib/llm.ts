@@ -39,6 +39,8 @@ export type LlmOptions = {
   retryDelayMs?: number;
   /** لا يُستعمل النموذج الاحتياطي (LLM_FALLBACK_MODEL) لهذا الطلب. */
   noFallback?: boolean;
+  /** جهد التفكير لنماذج التفكير (معامل reasoning في OpenRouter). من reasoningFor(). */
+  reasoning?: ReasoningEffort;
   signal?: AbortSignal;
 };
 
@@ -57,7 +59,37 @@ export type LlmResult = {
   model?: string;
   /** الرد الخام كاملاً (لطلبات أدوات الخادم فقط: فيه ما قرأته أداة web_fetch إن أعادته). */
   raw?: unknown;
+  /** سبب انتهاء الجواب كما أعاده المزوّد ("stop"، "length"…)، للتشخيص. */
+  finishReason?: string;
 };
+
+// ---------------------------------------------------------------------------
+// جهد التفكير (R1e): لنماذج التفكير عبر OpenRouter (reasoning.effort). المزوّد يتجاهله للنموذج
+// الذي لا يدعمه. لكل مهمة متغير بيئة: low للتصنيف والتقييم، وmedium للصياغة افتراضياً، و"off"
+// يطفئه (لا يُرسل المعامل). رموز التفكير تُحسب من max_tokens، فيُضاف لها حيّز حتى لا يُقطع الجواب.
+// ---------------------------------------------------------------------------
+
+export type ReasoningEffort = "minimal" | "low" | "medium" | "high";
+export type ReasoningTask = "classify" | "rerank" | "answer";
+
+const REASONING_ENV: Record<ReasoningTask, { key: string; fallback: ReasoningEffort }> = {
+  classify: { key: "LLM_REASONING_CLASSIFY", fallback: "low" },
+  rerank: { key: "LLM_REASONING_RERANK", fallback: "low" },
+  answer: { key: "LLM_REASONING_ANSWER", fallback: "medium" },
+};
+
+/** جهد التفكير للمهمة من متغيرات البيئة، أو undefined إن أُطفئ (off/none/false/0). */
+export function reasoningFor(task: ReasoningTask): ReasoningEffort | undefined {
+  const global = (process.env.LLM_REASONING ?? "").trim().toLowerCase();
+  if (["off", "none", "false", "0"].includes(global)) return undefined;
+  const { key, fallback } = REASONING_ENV[task];
+  const v = (process.env[key] ?? "").trim().toLowerCase();
+  if (["off", "none", "false", "0"].includes(v)) return undefined;
+  return (["minimal", "low", "medium", "high"] as const).find((e) => e === v) ?? fallback;
+}
+
+/** حيّز رموز التفكير المضاف إلى max_tokens. */
+export const REASONING_ALLOWANCE: Record<ReasoningEffort, number> = { minimal: 256, low: 1024, medium: 2048, high: 4096 };
 
 export type LlmErrorCode =
   | "not_configured"
@@ -251,12 +283,15 @@ async function post(body: Body, opts: LlmOptions): Promise<Response> {
   throw lastError;
 }
 
-function baseBody(messages: ChatMessage[], opts: LlmOptions): Body {
+export function baseBody(messages: ChatMessage[], opts: LlmOptions): Body {
+  const extra = opts.reasoning ? REASONING_ALLOWANCE[opts.reasoning] : 0;
   return {
     model: opts.model ?? llmModel(),
     messages,
     temperature: opts.temperature ?? 0.2,
-    ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
+    ...(opts.maxTokens ? { max_tokens: opts.maxTokens + extra } : {}),
+    // التفكير لا يُعاد في الرد (exclude): الجواب وحده في content.
+    ...(opts.reasoning ? { reasoning: { effort: opts.reasoning, exclude: true } } : {}),
     // OpenRouter يعيد عدد الرموز والتكلفة في usage.
     usage: { include: true },
   };
@@ -290,7 +325,7 @@ async function completeOnce(body: Body, opts: LlmOptions): Promise<LlmResult> {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const res = await post(body, { ...opts, retries: 0 });
   let json: {
-    choices?: { message?: { content?: string | null } }[];
+    choices?: { message?: { content?: string | null }; finish_reason?: string | null }[];
     usage?: RawUsage;
     error?: { message?: string; code?: number };
   } | null = null;
@@ -304,8 +339,10 @@ async function completeOnce(body: Body, opts: LlmOptions): Promise<LlmResult> {
   }
   if (!json || json.error) throw new LlmError("unavailable", json?.error?.message ?? "invalid JSON response");
   const text = json.choices?.[0]?.message?.content ?? "";
+  const finishReason = json.choices?.[0]?.finish_reason ?? undefined;
   return {
     text,
+    ...(finishReason ? { finishReason } : {}),
     usage: toUsage(json.usage),
     latencyMs: Date.now() - started,
     model: String(body.model),

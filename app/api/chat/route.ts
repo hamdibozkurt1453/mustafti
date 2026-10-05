@@ -20,7 +20,8 @@ import { cleanForDisplay } from "@/lib/brain/quran-index";
  */
 export const dynamic = "force-dynamic";
 // ميزانية السؤال 55 ث (مع «ابحث واقرأ») ثم البث.
-export const maxDuration = 90;
+// R1e: ميزانية السؤال 80 ث (lib/brain/respond.ts). خطتنا في Vercel تسمح (build-adhkar بـ 300).
+export const maxDuration = 120;
 
 const BodySchema = z.object({
   message: z.string().trim().min(1).max(MAX_QUESTION_CHARS),

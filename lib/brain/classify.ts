@@ -1,7 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { chatJson, type ChatMessage, type LlmOptions } from "@/lib/llm";
+import { chatJson, reasoningFor, type ChatMessage, type LlmOptions } from "@/lib/llm";
 import { CHAPTERS, CLASSIFY_SYSTEM } from "./prompts";
 
 /**
@@ -81,6 +81,7 @@ export async function classify(
   const parsed = await chatJson(messages, LlmClassificationSchema, {
     temperature: 0,
     schemaName: "classification",
+    reasoning: reasoningFor("classify"),
     ...llm,
   });
   const classification = ClassificationSchema.parse(parsed.data);

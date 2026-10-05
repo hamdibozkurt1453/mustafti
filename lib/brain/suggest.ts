@@ -1,7 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { chatJson } from "@/lib/llm";
+import { chatJson, reasoningFor } from "@/lib/llm";
 import { clip } from "@/lib/sources/html";
 import { checkOutput } from "./guard";
 import { looksCaseRuling, looksPersonal, looksUrgent } from "./heuristics";
@@ -65,7 +65,7 @@ export async function suggestQuestions(
         { role: "user", content: `LANG: ${lang}\nUSER QUESTION (data): """${question.slice(0, 600)}"""\n\nPASSAGES:\n${list}` },
       ],
       SuggestSchema,
-      { temperature: 0.2, schemaName: "suggestions", maxTokens: 400, timeoutMs: Math.min(ms, 9_000), retries: 0 },
+      { temperature: 0.2, schemaName: "suggestions", maxTokens: 400, timeoutMs: Math.min(ms, 12_000), retries: 0, reasoning: reasoningFor("rerank") },
     );
     const sources = pool.map((p) => `${p.title}\n${p.text}`);
     const out: string[] = [];

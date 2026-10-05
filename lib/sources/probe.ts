@@ -61,7 +61,7 @@ export const PROBE_SOURCES: { id: ProbeSourceId; label: string; deadlineMs: numb
   { id: "mcp_hadith", label: "MCP — search (الحديث) + fetch للدرجة", deadlineMs: 26_000 },
   { id: "mcp_quran", label: "MCP — search (القرآن)", deadlineMs: 26_000 },
   { id: "mcp_verses", label: "MCP — get_quran_verses (آية من السؤال فقط)", deadlineMs: 15_000 },
-  { id: "mcp_library", label: "MCP — list_library_categories وlist_languages ثم browse_library بثلاث تركيبات", deadlineMs: 40_000 },
+  { id: "mcp_library", label: "MCP — browse_library بثلاث تركيبات (للفحص فقط: موقوف في المحادثة، R1e)", deadlineMs: 40_000 },
   { id: "mcp_library_search", label: "MCP — search (sources=library): فتاوى ومقالات IslamHouse", deadlineMs: 26_000 },
   { id: "mcp_extra", label: "MCP — search في المجموعات الإضافية (إن أعلنها الخادم)", deadlineMs: 20_000 },
   { id: "bayyinat", label: "بيّنات (Supabase: search_bayyinat)", deadlineMs: 8_000 },
