@@ -155,6 +155,27 @@ function api<T = unknown>(path: string): Promise<T> {
   return politeJson<T>(`${QURANPEDIA_API}${path}`, { minIntervalMs: INTERVAL_MS });
 }
 
+/** نطاقات الفتاوى المستبعدة في رد (لصفحة الفحص: للتحقق من الفلتر حياً). */
+export function excludedFatwaHosts(data: unknown): string[] {
+  const hosts = new Set<string>();
+  for (const o of collectObjects(data, (x) => FATWA_KEYS.some((k) => k in x), 100)) {
+    const url = first(o, ["ar_source_url", "source_url", "sourceUrl", "url", "link"]);
+    if (referenceFatwaDomain(url)) continue;
+    try {
+      hosts.add(url ? new URL(url).hostname : "(بلا رابط)");
+    } catch {
+      hosts.add("(رابط غير صالح)");
+    }
+  }
+  return [...hosts];
+}
+
+/** الطلب نفسه بلا ذاكرة (لصفحة الفحص). */
+export async function fetchFatwas(query: string): Promise<{ fatwas: PublishedFatwa[]; excluded: string[]; shape: string[] }> {
+  const data = await api(`/search/${enc(query.trim().slice(0, 120))}/fatwas`);
+  return { fatwas: parseFatwas(data), excluded: excludedFatwaHosts(data), shape: shapeOf(data) };
+}
+
 /** فتاوى منشورة لعبارة بحث (مخزّنة 24 ساعة؛ الفشل يُرمى فلا يُخزَّن). */
 export function searchFatwas(query: string): Promise<PublishedFatwa[]> {
   const q = query.trim().slice(0, 120);
@@ -213,10 +234,15 @@ export function parseItems(data: unknown, kind: "books" | "topics", max = MAX): 
   return out;
 }
 
+export async function fetchItems(query: string, kind: "books" | "topics"): Promise<{ items: SourceResult[]; shape: string[] }> {
+  const data = await api(`/search/${enc(query.trim().slice(0, 120))}/${kind}`);
+  return { items: parseItems(data, kind), shape: shapeOf(data) };
+}
+
 export function searchItems(query: string, kind: "books" | "topics"): Promise<SourceResult[]> {
   const q = query.trim().slice(0, 120);
   if (!q) return Promise.resolve([]);
-  return cached(`qp:${kind}:${q}`, DAY, async () => parseItems(await api(`/search/${enc(q)}/${kind}`), kind));
+  return cached(`qp:${kind}:${q}`, DAY, async () => (await fetchItems(q, kind)).items);
 }
 
 // ---------------------------------------------------------------------------
@@ -263,43 +289,49 @@ export function longestText(data: unknown): string {
   return plain(best);
 }
 
-/** تفسير آية من أفضل كتاب متاح لها. [] إن لم يوجد. */
+/** تفسير آية من أفضل كتاب متاح لها (مخزّن 24 ساعة). [] إن لم يوجد. */
 export function ayahTafsir(surah: number, ayah: number): Promise<SourceResult[]> {
-  return cached(`qp:tafsir:${surah}:${ayah}`, DAY, async () => {
-    const book = pickTafsir(parseOptions(await api(`/ayah/${surah}/${ayah}/options`)));
-    if (!book) return [];
-    const text = longestText(await api(`/ayah/${surah}/${ayah}/book/${enc(book.id)}`));
-    if (text.length < 20) return [];
-    return [
-      {
-        title: `${book.name} — ${surah}:${ayah}`,
-        text: clip(text, 2000),
-        url: `https://quranpedia.net/book/${enc(book.id)}`,
-        source: `${QURANPEDIA_NAME} — ${book.name}`,
-        sourceId: "quranpedia" as const,
-        lang: "ar",
-      },
-    ];
-  });
+  return cached(`qp:tafsir:${surah}:${ayah}`, DAY, () => fetchAyahTafsir(surah, ayah));
 }
 
-/** ترجمة معنى آية بلغة السائل. */
+/** التفسير بلا ذاكرة: خيارات الآية، ثم نص أفضل كتاب. */
+export async function fetchAyahTafsir(surah: number, ayah: number): Promise<SourceResult[]> {
+  const book = pickTafsir(parseOptions(await api(`/ayah/${surah}/${ayah}/options`)));
+  if (!book) return [];
+  const text = longestText(await api(`/ayah/${surah}/${ayah}/book/${enc(book.id)}`));
+  if (text.length < 20) return [];
+  return [
+    {
+      title: `${book.name} — ${surah}:${ayah}`,
+      text: clip(text, 2000),
+      url: `https://quranpedia.net/book/${enc(book.id)}`,
+      source: `${QURANPEDIA_NAME} — ${book.name}`,
+      sourceId: "quranpedia" as const,
+      lang: "ar",
+    },
+  ];
+}
+
+/** ترجمة معنى آية بلغة السائل (مخزّنة 24 ساعة). */
 export function ayahTranslation(surah: number, ayah: number, lang: string): Promise<SourceResult[]> {
   const l = lang.toLowerCase().slice(0, 5);
-  return cached(`qp:translation:${surah}:${ayah}:${l}`, DAY, async () => {
-    const text = longestText(await api(`/translations/${surah}/${ayah}/${enc(l)}`));
-    if (text.length < 5) return [];
-    return [
-      {
-        title: `${QURANPEDIA_NAME} — ${surah}:${ayah} (${l})`,
-        text: clip(text, 1500),
-        url: `https://quranpedia.net/`,
-        source: QURANPEDIA_NAME,
-        sourceId: "quranpedia" as const,
-        lang: l,
-      },
-    ];
-  });
+  return cached(`qp:translation:${surah}:${ayah}:${l}`, DAY, () => fetchAyahTranslation(surah, ayah, l));
+}
+
+export async function fetchAyahTranslation(surah: number, ayah: number, lang: string): Promise<SourceResult[]> {
+  const l = lang.toLowerCase().slice(0, 5);
+  const text = longestText(await api(`/translations/${surah}/${ayah}/${enc(l)}`));
+  if (text.length < 5) return [];
+  return [
+    {
+      title: `${QURANPEDIA_NAME} — ${surah}:${ayah} (${l})`,
+      text: clip(text, 1500),
+      url: `https://quranpedia.net/`,
+      source: QURANPEDIA_NAME,
+      sourceId: "quranpedia" as const,
+      lang: l,
+    },
+  ];
 }
 
 /** مفاتيح أول كائن في الرد (لصفحة الفحص: لضبط القراءة إن اختلفت أسماء الحقول). */

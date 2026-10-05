@@ -4,8 +4,8 @@ import { locales } from "@/i18n/locales";
 import { callTool, listTools, toolData, toolText, type McpTool } from "@/lib/mcp";
 import { cleanToolText } from "@/lib/brain/rank";
 import { clip, htmlToText } from "@/lib/sources/html";
+import { exploreCategories, MAIN_CATEGORIES, treeLines, type CategoryNode } from "./tree";
 import {
-  classifyCategory,
   hadeethencUrl,
   isAcceptedGrade,
   morningEvening,
@@ -95,31 +95,40 @@ async function browse(args: Record<string, unknown>) {
   return { data: toolData(result), text: toolText(result) };
 }
 
-/** يجد بابي «أذكار الصباح والمساء» و«الأذكار بعد الصلاة» بالعربية، نازلاً في أبواب الأذكار حتى 3 مستويات. */
-export async function findCategories(): Promise<CategoryRef[]> {
+/** عقدة حديث (لا باب): فيها نص الحديث أو درجته، ولا عدّاد أحاديث ولا أبواب فرعية. */
+const isHadithNode = (o: Record<string, unknown>) =>
+  !isCategoryNode(o) && Object.keys(o).some((k) => /^(hadeeth|hadith|hadith_text|grade|attribution|translations|explanation)$/i.test(k));
+
+/** الأبواب الفرعية المباشرة لباب (browse_hadith_categories(category_id))، بلا أحاديثه. */
+async function browseChildren(id: string | null): Promise<{ id: string; title: string }[]> {
   const t = await tool("browse_hadith_categories");
-  const found = new Map<string, CategoryRef>();
-  const seen = new Set<string>();
-  let frontier: { args: Record<string, unknown> }[] = [{ args: { ...langArg(t, "ar") } }];
-  for (let level = 0; level < 3 && frontier.length; level++) {
-    const next: typeof frontier = [];
-    for (const f of frontier.slice(0, 8)) {
-      const { data, text } = await browse(f.args);
-      const list = nodes(data).map((o) => ({ id: pick(o, ["id", "category_id"])!, title: pick(o, ["title", "name", "category", "category_name"])! }));
-      for (const c of list.length ? list : nodesFromText(text)) {
-        if (seen.has(c.id)) continue;
-        seen.add(c.id);
-        const kind = classifyCategory(c.title);
-        if (kind) found.set(c.id, { id: c.id, title: c.title, kind });
-        // أبواب الأذكار والأدعية: ننزل فيها بحثاً عن البابين.
-        else if (/الأذكار|الاذكار|الذكر|الدعاء|الأدعية|الادعيه|الفضائل|Remembrance|Dhikr|Supplication/i.test(c.title))
-          next.push({ args: { ...langArg(t, "ar"), ...idArg(t, /^(category_id|category|id|parent_id)$/i, c.id) } });
-      }
-    }
-    if (found.size >= 2) break;
-    frontier = next;
-  }
-  return [...found.values()];
+  const args = { ...langArg(t, "ar"), ...(id ? idArg(t, /^(category_id|category|id|parent_id)$/i, id) : {}) };
+  const { data, text } = await browse(args);
+  const objs = nodes(data);
+  const cats = objs.filter(isCategoryNode);
+  const list = (cats.length ? cats : objs.filter((o) => !isHadithNode(o))).map((o) => ({
+    id: pick(o, ["category_id", "id"])!,
+    title: pick(o, ["title", "name", "category", "category_name"])!,
+  }));
+  const out = list.length || objs.length ? list : nodesFromText(text);
+  return out.filter((c) => c.id && c.title && c.id !== id);
+}
+
+export type Discovery = { categories: CategoryRef[]; tree: CategoryNode[]; calls: number };
+
+/**
+ * يجد بابي «أذكار الصباح والمساء» و«الأذكار بعد الصلاة» بالعربية: من الأبواب الرئيسية السبعة
+ * (من الخادم، ويُكمَّل بالمعروفة إن نقصت)، نازلاً في الأبواب الفرعية تكرارياً حتى عمق 3 (tree.ts).
+ */
+export async function discoverCategories(): Promise<Discovery> {
+  const fromServer = await browseChildren(null).catch(() => [] as { id: string; title: string }[]);
+  const roots = [...fromServer, ...MAIN_CATEGORIES.filter((m) => !fromServer.some((r) => r.id === m.id))];
+  const { found, tree, calls } = await exploreCategories(roots, (id) => browseChildren(id), { maxDepth: 3, maxCalls: 60, concurrency: 3 });
+  return { categories: found, tree, calls: calls + 1 };
+}
+
+export async function findCategories(): Promise<CategoryRef[]> {
+  return (await discoverCategories()).categories;
 }
 
 /** أحاديث باب واحد (بكل صفحاته، حتى 10 صفحات). */
@@ -197,6 +206,8 @@ export async function getHadith(id: string, lang: string): Promise<HadithDoc | n
 export type BuildReport = {
   lang: string;
   categories: CategoryRef[];
+  /** شجرة الأبواب المتصفَّحة (نصاً بمسافات العمق)، حين يُبحث عن البابين. */
+  tree?: string[];
   listed: number;
   saved: number;
   skippedNoGrade: { id: string; title?: string; grade?: string }[];
@@ -209,11 +220,14 @@ export type BuildReport = {
  * categoriesOverride: معرّفات أبواب يدوية من صفحة البناء إن لم يجدها البحث بالعنوان.
  */
 export async function buildArabic(categoriesOverride?: CategoryRef[]): Promise<BuildReport> {
-  const categories = categoriesOverride?.length ? categoriesOverride : await findCategories();
-  if (!categories.length) throw new Error("لم يُعثر على بابي الأذكار في browse_hadith_categories (استعمل «الفحص»).");
+  const discovery = categoriesOverride?.length ? null : await discoverCategories();
+  const categories = categoriesOverride?.length ? categoriesOverride : discovery!.categories;
+  const tree = discovery ? treeLines(discovery.tree) : undefined;
+  // لم يُعثر على البابين: تقرير فارغ بالشجرة المتصفَّحة (لا يُحفظ شيء).
+  if (!categories.length) return { lang: "ar", categories, tree, listed: 0, saved: 0, skippedNoGrade: [], missing: [], rows: [] };
   const refs: HadithRef[] = [];
   for (const c of categories) for (const h of await listCategory(c)) if (!refs.some((r) => r.id === h.id)) refs.push(h);
-  const report: BuildReport = { lang: "ar", categories, listed: refs.length, saved: 0, skippedNoGrade: [], missing: [], rows: [] };
+  const report: BuildReport = { lang: "ar", categories, ...(tree ? { tree } : {}), listed: refs.length, saved: 0, skippedNoGrade: [], missing: [], rows: [] };
   let position = 0;
   // بالتوازي (عميل MCP يحدّ التزامن بـ 3 طلبات)، والترتيب ترتيب الباب.
   const docs = await Promise.all(refs.map((ref) => getHadith(ref.id, "ar").catch(() => null)));
@@ -291,13 +305,18 @@ export async function probe(categoryId?: string) {
     if (categoryId) out.push(await sample(browseTool.name, { ...langArg(browseTool, "ar"), ...idArg(browseTool, /^(category_id|category|id)$/i, categoryId) }));
   }
   let categories: CategoryRef[] = [];
+  let tree: string[] = [];
+  let calls = 0;
   try {
-    categories = await findCategories();
+    const d = await discoverCategories();
+    categories = d.categories;
+    tree = treeLines(d.tree);
+    calls = d.calls;
   } catch (error) {
     out.push({ findCategories: String((error as Error)?.message ?? error) });
   }
   const first = categories[0] ? (await listCategory(categories[0]).catch(() => []))[0] : undefined;
   const getTool = tools.find((t) => t.name === "get_hadith");
   if (getTool && first) out.push(await sample(getTool.name, { ...idArg(getTool, /^(id|hadith_id|hadeeth_id)$/i, first.id), ...langArg(getTool, "ar") }));
-  return { schemas: tools.map((t) => ({ name: t.name, inputSchema: t.inputSchema })), categories, firstHadith: first, samples: out };
+  return { categories, tree, browseCalls: calls, schemas: tools.map((t) => ({ name: t.name, inputSchema: t.inputSchema })), firstHadith: first, samples: out };
 }

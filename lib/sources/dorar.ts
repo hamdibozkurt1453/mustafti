@@ -129,13 +129,17 @@ export function dorarResultHtml(data: unknown): string {
   return "";
 }
 
+/** الطلب بلا ذاكرة (لصفحة الفحص): الأحاديث المحللة، وعدد كتل الحديث في الـ HTML الخام. */
+export async function fetchDorar(query: string): Promise<{ hadiths: DorarHadith[]; rawBlocks: number; htmlChars: number }> {
+  const q = query.trim().slice(0, 150);
+  const html = dorarResultHtml(await politeJson(`${DORAR_API}?skey=${encodeURIComponent(q)}`));
+  return { hadiths: parseDorarHtml(html, q), rawBlocks: [...html.matchAll(HADITH_DIV)].length, htmlChars: html.length };
+}
+
 export function searchDorar(query: string): Promise<DorarHadith[]> {
   const q = query.trim().slice(0, 150);
   if (!q) return Promise.resolve([]);
-  return cached(`dorar:${q}`, DAY, async () => {
-    const data = await politeJson(`${DORAR_API}?skey=${encodeURIComponent(q)}`);
-    return parseDorarHtml(dorarResultHtml(data), q);
-  });
+  return cached(`dorar:${q}`, DAY, async () => (await fetchDorar(q)).hadiths);
 }
 
 /** الحديث بالواجهة الموحدة: النص، ثم سطر المصدر والحكم حرفياً. */

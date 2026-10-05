@@ -25,22 +25,23 @@ Write up to 3 short questions (each under 15 words) that are close to the user's
 Rules: write in the language given as LANG; general knowledge questions only (what/who/why/what is the meaning of…), never a question about the asker's own situation, never a request for a ruling (no "is it permissible", "is it haram", "what is the ruling"), never mention any AI model.
 Return JSON {"questions":[{"q":"…","id":"P1"}]}.`;
 
-/** يصلح السؤال المقترح؟ لا حكم ولا حالة شخصية ولا عاجل، والحارس سليم. */
-export function acceptableSuggestion(q: string): boolean {
+/** يصلح السؤال المقترح؟ لا حكم ولا حالة شخصية ولا عاجل، والحارس سليم (والاقتباس فيه من النصوص). */
+export function acceptableSuggestion(q: string, sources: string[] = []): boolean {
   const t = q.trim();
   if (t.length < 6 || t.length > 160) return false;
   if (looksPersonal(t) || looksCaseRuling(t) || looksUrgent(t)) return false;
   if (/(?:ما|ماهو|ما\s+هو)\s*(?:حكم|الحكم)|\bruling\b|\b(?:halal|haram|permissible)\b/iu.test(t)) return false;
-  return checkOutput(t).findings.length === 0;
+  return checkOutput(t, { sources }).findings.length === 0;
 }
 
 /** أسئلة منشورة بنصها: عناوين الفتاوى وأسئلة «بيّنات» التي هي أسئلة فعلاً. */
-export function titleSuggestions(items: { title: string }[]): string[] {
+export function titleSuggestions(items: { title: string; text?: string }[]): string[] {
+  const sources = items.map((x) => `${x.title}\n${x.text ?? ""}`);
   const out: string[] = [];
   for (const it of items) {
     const t = it.title.replace(/^بيّنات — السؤال رقم \d+(?:، ص \d+)?:\s*/, "").trim();
     if (!/[؟?]\s*$/.test(t) && !/^(?:ما|ماذا|لماذا|كيف|من|متى|هل|أين|كم)\s/.test(t)) continue;
-    if (acceptableSuggestion(t) && !out.includes(t)) out.push(clip(t, 160));
+    if (acceptableSuggestion(t, sources) && !out.includes(t)) out.push(clip(t, 160));
     if (out.length >= MAX_SUGGESTIONS) break;
   }
   return out;
@@ -66,12 +67,13 @@ export async function suggestQuestions(
       SuggestSchema,
       { temperature: 0.2, schemaName: "suggestions", maxTokens: 400, timeoutMs: Math.min(ms, 9_000), retries: 0 },
     );
+    const sources = pool.map((p) => `${p.title}\n${p.text}`);
     const out: string[] = [];
     for (const s of res.data.questions) {
       const n = Number(String(s.id).match(/\d+/)?.[0]);
       if (!n || n > pool.length) continue; // كل سؤال يجيبه نص بعينه
       const q = s.q.trim();
-      if (acceptableSuggestion(q) && !out.includes(q)) out.push(q);
+      if (acceptableSuggestion(q, sources) && !out.includes(q)) out.push(q);
       if (out.length >= MAX_SUGGESTIONS) break;
     }
     return out.length ? out : fallback();

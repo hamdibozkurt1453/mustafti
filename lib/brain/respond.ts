@@ -320,5 +320,6 @@ export async function respond(question: string, options: RespondOptions = {}): P
  */
 export function finalCheck(reply: BrainReply, question: string) {
   const own = [reply.text, reply.note ?? "", ...(reply.suggestions ?? [])].filter(Boolean).join("\n\n");
-  return checkOutput(own, { sources: reply.passages.map((p) => p.text), question });
+  const sources = [...reply.passages, ...(reply.related ?? [])].map((p) => `${p.title}\n${p.text}`);
+  return checkOutput(own, { sources: [...sources, ...(reply.fatwas ?? []).map((f) => `${f.title}\n${f.excerpt}`)], question });
 }
