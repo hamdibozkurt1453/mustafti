@@ -239,7 +239,14 @@
       "searching": "Je cherche dans les sources…",
       "verifying": "Je vérifie les preuves…",
       "writing": "Je rédige la réponse…"
-    }
+    },
+    "fatwasTitle": "Fatwas publiées en rapport",
+    "fatwaBadge": "Fatwa publiée",
+    "fatwaBy": "Mufti ou instance",
+    "viewFatwa": "Voir la fatwa",
+    "sendCase": "Envoyer ma question à un spécialiste",
+    "relatedTitle": "Textes en rapport",
+    "suggestTitle": "Questions voisines auxquelles je peux répondre"
   },
   "case": {
     "start": "",

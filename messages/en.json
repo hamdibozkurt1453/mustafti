@@ -277,7 +277,14 @@
       "close": "Close"
     },
     "noteTafsir": "Al-Muyassar Tafsir",
-    "noteTranslation": "Translation of the meaning"
+    "noteTranslation": "Translation of the meaning",
+    "fatwasTitle": "Related published fatwas",
+    "fatwaBadge": "Published fatwa",
+    "fatwaBy": "Mufti or body",
+    "viewFatwa": "View the fatwa",
+    "sendCase": "Send my question to a specialist",
+    "relatedTitle": "Related texts",
+    "suggestTitle": "Related questions I can answer"
   },
   "auth": {
     "loginTitle": "Sign in",

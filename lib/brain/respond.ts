@@ -10,13 +10,17 @@ import { answerFormatIssues, unquoteReferenceOnly } from "./format";
 import type { ReferralKind } from "@/lib/case/types";
 import { message } from "./messages";
 import { planCitations, type CitationPlan } from "./planner";
-import { retrieve, type RetrievalDiag } from "./retrieval";
+import { caseFatwas, CASE_FATWA_BUDGET_MS, retrieve, type CaseFatwas, type RetrievalDiag } from "./retrieval";
 import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } from "./prompts";
+import type { FatwaCard } from "./fatwa-cards";
+import { suggestQuestions } from "./suggest";
 
 /**
  * «عقل» مُستفتي من البداية إلى النهاية لرسالة واحدة:
  *   فحص الهوية بالكود ← التصنيف ← شبكة الأمان بالكود ← التوجيه:
- *   عاجل · خارج النطاق · هوية · D (إحالة فقط) · A/B/C (استرجاع ← صياغة ← الحارس).
+ *   عاجل · خارج النطاق · هوية · D (فتاوى منشورة قريبة للاطلاع إن وُجدت، ثم الإحالة) ·
+ *   A/B/C (استرجاع ← صياغة ← الحارس، مع «فتاوى منشورة ذات صلة» تحت الجواب).
+ * لا امتناع جاف: إن لم تكفِ النصوص، تُعرض النصوص القريبة وأسئلة قريبة يمكن الجواب عنها، مع الإحالة.
  *
  * يستعمله /api/admin/brain-test الآن، ومسار المحادثة في S5. لا يُعرض للسائل إلا text،
  * و diag للمشرف فقط (لتشخيص الامتناع: هل البحث فارغ، أم امتنع النموذج، أم رُفضت الصياغة).
@@ -43,8 +47,20 @@ export type BrainReply = {
   raw?: string;
   /** تجاوز الكود لقرار المصنّف (رفع المستوى أو العاجل). */
   overrides: string[];
+  /**
+   * فتاوى منشورة بنصها (مقتطف حرفي ورابط): تحت الجواب في A/B/C، وقبل الإحالة في D.
+   * نص منقول لا كلام الأداة، فلا يمر بالحارس، ولا تلخّصه الأداة ولا تطبّقه على حالة السائل.
+   */
+  fatwas?: FatwaCard[];
+  /** عند الامتناع: نصوص قريبة من السؤال (منقولة بحروفها). */
+  related?: Passage[];
+  /** عند الامتناع: أسئلة قريبة يجيب عنها نص مسترجع بعينه. */
+  suggestions?: string[];
+  /** سطر ثابت بعد بطاقات الفتاوى في D («الأفضل لحالتك أن يراها مختص»). */
+  note?: string;
   diag: {
     retrieval?: RetrievalDiag;
+    caseFatwas?: CaseFatwas["diag"];
     abstainReason?: AbstainReason;
     /** محاولات الصياغة (الثانية بعد اعتراض الحارس). */
     attempts: { raw: string; guardOk: boolean; findings: string[] }[];
@@ -140,7 +156,7 @@ export type RespondOptions = {
   cache?: boolean;
 };
 
-const answerKey = (question: string) => `brain:answer:v1:${guessLang(question)}:${matchKey(question).slice(0, 400)}`;
+const answerKey = (question: string) => `brain:answer:v2:${guessLang(question)}:${matchKey(question).slice(0, 400)}`;
 
 export async function respond(question: string, options: RespondOptions = {}): Promise<BrainReply> {
   const started = Date.now();
@@ -212,8 +228,29 @@ export async function respond(question: string, options: RespondOptions = {}): P
   //    (عرض حديث في مسألته يشبه الفتوى). التعريف العام المحايد في رد الإحالة الثابت نفسه.
   //    نوعان: حالة شخصية («طلقت زوجتي…») أو سؤال عن حكم عام («ما حكم من…»)، ثم الاستيضاح
   //    وملف المسألة في المحادثة نفسها (lib/case/).
+  //    المرشدة أجازت (R1): قبل الاستيضاح نبحث عن فتاوى منشورة مشابهة، فإن وُجد ما بلغ 60 (حتى 3)
+  //    عُرض بنصه للاطلاع فقط مع رابطه، ثم «الأفضل لحالتك أن يراها مختص» وزر الاستيضاح نفسه.
+  //    كلام الأداة هنا ردود ثابتة (messages.ts)، والحارس عليها وحدها لا على النص المنقول.
   if (c.level === "D") {
     const referral = referralKindOf(question);
+    stage("searching");
+    const t0 = Date.now();
+    const found = await caseFatwas(c, question, { deadline: Math.min(Date.now() + CASE_FATWA_BUDGET_MS, started + RETRIEVAL_SHARE_MS) }).catch(
+      () => null,
+    );
+    timings.searchMs = Date.now() - t0;
+    if (found) diag.caseFatwas = found.diag;
+    if (found?.fatwas.length) {
+      return done({
+        ...common,
+        kind: "referral",
+        referral,
+        text: withPrefix(message("fatwasFound", c.lang)),
+        fatwas: found.fatwas,
+        note: message("fatwasExpert", c.lang),
+        timings,
+      });
+    }
     const text = message(referral === "ruling" ? "referralRuling" : "referral", c.lang);
     return done({ ...common, kind: "referral", referral, text: withPrefix(text), timings });
   }
@@ -230,10 +267,32 @@ export async function respond(question: string, options: RespondOptions = {}): P
   diag.retrieval = found.diag;
   const passages = found.passages;
 
+  /**
+   * لا امتناع جاف: «لم أجد جواباً كافياً» مع النصوص القريبة (منقولة بحروفها) والفتاوى ذات الصلة،
+   * وأسئلة قريبة يجيب عنها نص منها، وزر الإحالة في الواجهة.
+   */
+  const partial = async (kind: "abstain" | "refused", head: string, extra: Partial<BrainReply> = {}) => {
+    const related = (passages.length ? passages : found.related).slice(0, 3);
+    const pool = [...related, ...found.fatwas.map((f) => ({ title: f.title, text: f.excerpt, source: `فتوى منشورة — ${f.mufti}` }))];
+    const left = started + QUESTION_BUDGET_MS - Date.now();
+    const suggestions = pool.length ? await suggestQuestions(question, c.lang, pool, left - 1_000) : [];
+    const more = related.length || found.fatwas.length || suggestions.length ? `\n\n${message("partialFound", c.lang)}` : "";
+    return done({
+      ...common,
+      timings,
+      passages,
+      ...extra,
+      kind,
+      text: withPrefix(`${head}${more}`),
+      related,
+      fatwas: found.fatwas,
+      suggestions,
+    });
+  };
+
   if (!passages.length) {
     diag.abstainReason = found.diag.counts.cleaned ? "no_relevant" : "no_passages";
-    const text = withPrefix(`${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`);
-    return done({ ...common, kind: "abstain", text, passages, timings });
+    return partial("abstain", `${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`);
   }
 
   // 5) الصياغة من النصوص فقط، ثم الحارس.
@@ -245,20 +304,22 @@ export async function respond(question: string, options: RespondOptions = {}): P
   diag.abstainReason = gen.reason;
   const extra = { passages, guard: gen.guard, raw: gen.raw, timings };
 
-  if (gen.reason === "guard") return done({ ...common, ...extra, kind: "refused", text: withPrefix(gen.text) });
-  if (!gen.ok) {
-    const text = withPrefix(`${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`);
-    return done({ ...common, ...extra, kind: "abstain", text });
-  }
+  if (gen.reason === "guard") return partial("refused", gen.text, extra);
+  if (!gen.ok) return partial("abstain", `${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`, extra);
   // نص الفهرس والقاموس مرجع يُحال إليه، لا اقتباس: يُزال من «» (والسطر المكرر يُحذف).
   const answer = unquoteReferenceOnly(gen.text, passages);
   const body = c.level === "C" ? `${answer}\n\n${message("khilaf", c.lang)}` : answer;
-  const reply = done({ ...common, ...extra, kind: "answer", text: withPrefix(body) });
+  const reply = done({ ...common, ...extra, kind: "answer", text: withPrefix(body), fatwas: found.fatwas });
   if (useCache && !prefix) cacheSet(answerKey(question), reply, DAY);
   return reply;
 }
 
-/** فحص نهائي لما يُعرض (للاختبار): صياغة الأداة كلها، مع النصوص المسترجعة. */
+/**
+ * فحص نهائي لما يُعرض (للاختبار): كلام الأداة كله (الرد، والسطر بعد بطاقات الفتاوى، والأسئلة
+ * المقترحة)، مع النصوص المسترجعة. بطاقات الفتاوى والنصوص المنقولة ليست كلام الأداة فلا تُفحص.
+ */
 export function finalCheck(reply: BrainReply, question: string) {
-  return checkOutput(reply.text, { sources: reply.passages.map((p) => p.text), question });
+  const own = [reply.text, reply.note ?? "", ...(reply.suggestions ?? [])].filter(Boolean).join("\n\n");
+  const sources = [...reply.passages, ...(reply.related ?? [])].map((p) => `${p.title}\n${p.text}`);
+  return checkOutput(own, { sources: [...sources, ...(reply.fatwas ?? []).map((f) => `${f.title}\n${f.excerpt}`)], question });
 }

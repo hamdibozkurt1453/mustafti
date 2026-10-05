@@ -277,7 +277,14 @@
       "close": "إغلاق"
     },
     "noteTafsir": "التفسير الميسر",
-    "noteTranslation": "ترجمة المعنى"
+    "noteTranslation": "ترجمة المعنى",
+    "fatwasTitle": "فتاوى منشورة ذات صلة",
+    "fatwaBadge": "فتوى منشورة",
+    "fatwaBy": "المفتي أو الجهة",
+    "viewFatwa": "عرض الفتوى",
+    "sendCase": "أرسل مسألتي لمختص",
+    "relatedTitle": "نصوص ذات صلة",
+    "suggestTitle": "أسئلة قريبة يمكنني الجواب عنها"
   },
   "auth": {
     "loginTitle": "تسجيل الدخول",

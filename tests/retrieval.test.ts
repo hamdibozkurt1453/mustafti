@@ -28,7 +28,7 @@ globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
     if (name === "relevance") {
       scoringInputs.push(user);
       const ids = [...user.matchAll(/\[(S\d+)\]/g)].map((m) => m[1]);
-      content = JSON.stringify({ scores: ids.map((id) => ({ id, score: 3 })) });
+      content = JSON.stringify({ scores: ids.map((id) => ({ id, score: 90 })) });
     }
     return new Response(JSON.stringify({ choices: [{ message: { content } }], usage: {} }), { status: 200 });
   }
@@ -75,6 +75,9 @@ function deps(overrides: Partial<PinDeps> = {}): PinDeps {
     detail: async () => null,
     bayyinatSearch: async () => [],
     bayyinatNumbers: async () => [],
+    // مصادر HTTP (Quranpedia والدرر) بلا شبكة في الاختبار.
+    sourceSearch: async () => [],
+    tafsir: async () => [],
     ...overrides,
   };
 }
@@ -247,7 +250,7 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
     assert.equal(pinned.length, 1);
   });
 
-  it("إعادة التخطيط مرة واحدة إن لم يبلغ أي موضع درجة 2، مع ذكر المواضع الفاشلة", async () => {
+  it("إعادة التخطيط مرة واحدة إن لم يبلغ أي موضع 60، مع ذكر المواضع الفاشلة", async () => {
     scoringInputs.length = 0;
     const failedSeen: string[][] = [];
     const prev = globalThis.fetch;
@@ -259,7 +262,7 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
         const blocks = user.split(/\n\n(?=\[S\d+\])/);
         const scores = blocks.flatMap((b) => {
           const id = b.match(/\[(S\d+)\]/)?.[1];
-          return id ? [{ id, score: /يَرۡفَعُ/.test(b) ? 3 : 0 }] : [];
+          return id ? [{ id, score: /يَرۡفَعُ/.test(b) ? 90 : 10 }] : [];
         });
         return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ scores }) } }], usage: {} }), { status: 200 });
       }
@@ -316,7 +319,7 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
     assert.match(pinned[0].text, /التفسير الميسر: أكان أمرًا عجبًا للناس/);
   });
 
-  it("بحث القرآن بالكلمات لا يؤخِّر الجواب إن بلغ مرجع محدد درجة 2", async () => {
+  it("بحث القرآن بالكلمات لا يؤخِّر الجواب إن بلغ مرجع محدد 60", async () => {
     const t0 = Date.now();
     const { passages } = await mod.retrieve(C, "من قام ببناء الكعبة", PLAN({ quran: [{ surah: 2, ayah: 127 }], quranQueries: ["يرفع إبراهيم القواعد"] }), {
       deps: deps({ searchCorpus: () => new Promise((r) => setTimeout(() => r([]), 3_000)) }),

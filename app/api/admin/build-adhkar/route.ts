@@ -7,7 +7,8 @@ import { isAdminClientConfigured } from "@/lib/supabase/admin";
  * /api/admin/build-adhkar — بناء الأذكار من موسوعة الأحاديث عبر خادم MCP (S6)، ويحفظها في جدول adhkar.
  * للمشرف الأعلى فقط (requireRole في الخادم لكل طلب)، وكل رد لغيره 404 حتى لا يُعرف وجود المسار.
  *   GET  ← صفحة بزر «ابنِ الأذكار» (العربية أولاً ثم كل لغة واجهة، طلب لكل لغة حتى لا تتجاوز المهلة)،
- *          وزر «فحص» يعرض مخطط الأداتين وردودهما الخام إن لم يُعثر على الأبواب.
+ *          وزر «فحص» يعرض شجرة الأبواب المتصفَّحة (الرئيسية السبعة ثم الفرعية تكرارياً حتى عمق 3)
+ *          ومخطط الأداتين وردودهما الخام.
  *   POST {lang: "ar"} ← يبني العربية ويحفظها (يقرر الإدراج بالدرجة، والوقت والعدد من لفظ الحديث).
  *   POST {lang: "en"…} ← ترجمات الأحاديث المقبولة بالعربية.
  *   POST {probe: true, categoryId?} ← عيّنات خام بلا حفظ.
@@ -37,24 +38,25 @@ export async function GET() {
 <button id="run">ابنِ الأذكار</button> <button id="probe" class="alt">فحص (بلا حفظ)</button>
 <details><summary>معرّفات الأبواب يدوياً (اختياري، إن لم يجدها البحث بالعنوان)</summary>
 <p>الصباح والمساء: <input id="me" inputmode="numeric"> · بعد الصلاة: <input id="ap" inputmode="numeric"></p></details>
-<ul id="log"></ul><pre id="out" hidden></pre>
+<ul id="log"></ul><pre id="tree" hidden style="direction:rtl;text-align:right;font-size:13px"></pre><pre id="out" hidden></pre>
 <script>
 const LANGS=${langs};
-const log=document.getElementById("log"),out=document.getElementById("out"),run=document.getElementById("run"),pr=document.getElementById("probe");
+const log=document.getElementById("log"),out=document.getElementById("out"),tree=document.getElementById("tree"),run=document.getElementById("run"),pr=document.getElementById("probe");
+function showTree(t){if(!t||!t.length)return;tree.hidden=false;tree.textContent="شجرة الأبواب المتصفَّحة (← المطابق، [عدد الفروع]):\\n"+t.join("\\n")}
 function line(t){const li=document.createElement("li");li.textContent=t;log.appendChild(li);return li}
 function cats(){const c=[];const me=document.getElementById("me").value.trim(),ap=document.getElementById("ap").value.trim();
 if(me)c.push({id:me,title:"manual",kind:"morningEvening"});if(ap)c.push({id:ap,title:"manual",kind:"afterPrayer"});return c}
 async function post(body){const r=await fetch(location.pathname,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-const j=await r.json().catch(()=>({error:"HTTP "+r.status}));if(!r.ok||j.error)throw new Error(j.error||("HTTP "+r.status));return j}
-run.onclick=async()=>{run.disabled=pr.disabled=true;log.innerHTML="";out.hidden=true;
+const j=await r.json().catch(()=>({error:"HTTP "+r.status}));if(!r.ok||j.error){const e=new Error(j.error||("HTTP "+r.status));e.data=j;throw e}return j}
+run.onclick=async()=>{run.disabled=pr.disabled=true;log.innerHTML="";out.hidden=true;tree.hidden=true;
 for(const lang of LANGS){const li=line(lang+": جارٍ…");
 try{const j=await post({lang,categories:cats()});
 li.textContent=lang+": حُفظ "+j.saved+" من "+j.listed+(j.skippedNoGrade.length?" · استُبعد لدرجته "+j.skippedNoGrade.length:"")+(j.missing.length?" · لا نص "+j.missing.length:"");
-if(lang==="ar"){out.hidden=false;out.textContent="الأبواب: "+JSON.stringify(j.categories,null,1)+"\\nالمستبعد: "+JSON.stringify(j.skippedNoGrade,null,1)}}
-catch(e){li.textContent=lang+": تعذّر — "+e.message;if(lang==="ar")break}}
+if(lang==="ar"){showTree(j.tree);out.hidden=false;out.textContent="الأبواب: "+JSON.stringify(j.categories,null,1)+"\\nالمستبعد: "+JSON.stringify(j.skippedNoGrade,null,1)}}
+catch(e){li.textContent=lang+": تعذّر — "+e.message;if(lang==="ar"){showTree(e.data&&e.data.tree);break}}}
 run.disabled=pr.disabled=false};
-pr.onclick=async()=>{pr.disabled=true;out.hidden=false;out.textContent="…";
-try{out.textContent=JSON.stringify(await post({probe:true,categoryId:document.getElementById("me").value.trim()||undefined}),null,2)}
+pr.onclick=async()=>{pr.disabled=true;out.hidden=false;out.textContent="…";tree.hidden=true;
+try{const j=await post({probe:true,categoryId:document.getElementById("me").value.trim()||undefined});showTree(j.tree);out.textContent=JSON.stringify(j,null,2)}
 catch(e){out.textContent=String(e)}finally{pr.disabled=false}};
 </script></body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
@@ -92,7 +94,12 @@ export async function POST(request: Request) {
     const report = lang === "ar" ? await buildArabic(parseCategories(body.categories)) : await buildTranslation(lang, await arabicRows());
     // لا نمسح المحفوظ ببناء فارغ (انقطاع، أو لغة غير متاحة في الموسوعة).
     if (report.rows.length) await saveRows(lang, report.rows);
-    else if (lang === "ar") return Response.json({ ...report, rows: undefined, error: "لم يُقبل أي ذكر: لم يُحفظ شيء (استعمل «فحص»)." }, { status: 422 });
+    else if (lang === "ar") {
+      const error = report.categories.length
+        ? "لم يُقبل أي ذكر: لم يُحفظ شيء (استعمل «فحص»)."
+        : "لم يُعثر على بابي الأذكار في شجرة الأبواب حتى عمق 3: لم يُحفظ شيء (الشجرة المتصفَّحة أدناه، ويمكن إدخال المعرّفين يدوياً).";
+      return Response.json({ ...report, rows: undefined, error }, { status: 422 });
+    }
     return Response.json({ ...report, rows: undefined }, noStore);
   } catch (error) {
     return Response.json({ error: String((error as Error)?.message ?? error) }, { status: 502 });

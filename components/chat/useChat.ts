@@ -9,6 +9,7 @@ import {
   MAX_HISTORY,
   MAX_QUESTION_CHARS,
   type ChatEvent,
+  type ChatFatwa,
   type ChatHistoryItem,
   type ChatReplyKind,
   type ChatSource,
@@ -59,6 +60,12 @@ export type BotMessage = {
   level?: string;
   text: string;
   sources: ChatSource[];
+  /** «فتاوى منشورة ذات صلة» بنصها (تحت الجواب، أو قبل الإحالة في الحالة الشخصية). */
+  fatwas?: ChatFatwa[];
+  /** عند الامتناع: أسئلة قريبة يمكن الجواب عنها من المصادر. */
+  suggestions?: string[];
+  /** سطر ثابت بعد بطاقات الفتاوى في الحالة الشخصية. */
+  note?: string;
   /** رسالة الخطأ الثابتة من الخادم (بلغة السائل)، أو مفتاح رسالة الواجهة. */
   error?: { key: BotError; text?: string };
   /** السؤال الذي يجيب عنه (لزر «أعد المحاولة»). */
@@ -233,6 +240,9 @@ export function useChat() {
                 referral: event.referral,
                 chapter: event.chapter ?? undefined,
                 userType: event.userType ?? undefined,
+                fatwas: event.fatwas,
+                suggestions: event.suggestions,
+                note: event.note,
                 text: "",
               }));
               break;
@@ -510,7 +520,17 @@ export function useChat() {
       const index = messagesRef.current.findIndex((m) => m.id === botId);
       const bot = messagesRef.current[index];
       if (!bot || bot.role !== "bot") return;
-      patchBot(botId, () => ({ status: "pending", stage: undefined, error: undefined, text: "", sources: [], kind: undefined }));
+      patchBot(botId, () => ({
+        status: "pending",
+        stage: undefined,
+        error: undefined,
+        text: "",
+        sources: [],
+        kind: undefined,
+        fatwas: undefined,
+        suggestions: undefined,
+        note: undefined,
+      }));
       void run(botId, bot.question, historyOf(messagesRef.current.slice(0, Math.max(0, index - 1))));
     },
     [patchBot, run],

@@ -76,11 +76,16 @@ export function morningEvening(arabic: string): Occasion[] {
   return ["morning", "evening"];
 }
 
-/** باب الأذكار في الموسوعة من عنوانه. */
+/**
+ * باب الأذكار في الموسوعة من عنوانه: فيه «أذكار» (أو «الأذكار») مع «الصباح» أو «المساء» أو
+ * «بعد الصلاة» أو «أدبار الصلوات». فلا يُلتقط باب آخر فيه «الصباح» وحدها (مثل «صلاة الصبح»).
+ */
 export function classifyCategory(title: string): "morningEvening" | "afterPrayer" | null {
-  const s = strip(title);
+  const s = strip(title).replace(/[أإآ]/g, "ا");
+  const adhkar = /(?:^|[\s(«"،-])(?:وال|ال)?اذكار|\b(?:adhkar|azkar|dhikr|remembrances?|supplications?)\b/i.test(s);
+  if (!adhkar) return null;
   if (/الصباح|المساء|morning|evening/i.test(s)) return "morningEvening";
-  if (/بعد الصلاة|أدبار الصلوات|ادبار الصلوات|دبر الصلاة|بعد السلام|after (the )?prayers?/i.test(s)) return "afterPrayer";
+  if (/بعد الصلاه|بعد الصلاة|ادبار الصلوات|دبر الصلاه|دبر الصلاة|بعد السلام|after (the )?prayers?/i.test(s)) return "afterPrayer";
   return null;
 }
 

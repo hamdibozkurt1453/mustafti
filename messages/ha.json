@@ -239,7 +239,14 @@
       "searching": "Ina bincike a cikin madogarai…",
       "verifying": "Ina tabbatar da hujjoji…",
       "writing": "Ina rubuta amsa…"
-    }
+    },
+    "fatwasTitle": "Fatawoyin da aka wallafa masu alaƙa",
+    "fatwaBadge": "Fatawar da aka wallafa",
+    "fatwaBy": "Mufti ko hukuma",
+    "viewFatwa": "Duba fatawar",
+    "sendCase": "Aika matsalata ga ƙwararre",
+    "relatedTitle": "Rubutu masu alaƙa",
+    "suggestTitle": "Tambayoyi masu kusanci da zan iya amsawa"
   },
   "case": {
     "start": "",

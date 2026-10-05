@@ -28,7 +28,7 @@ export const LlmClassificationSchema = z.object({
   needsClarification: z.boolean(),
   misconception: z.string().nullable(),
   searchQueries: z.object({
-    ar: z.array(z.string()).max(3),
+    ar: z.array(z.string()).max(4),
     userLang: z.array(z.string()).max(2),
   }),
 });

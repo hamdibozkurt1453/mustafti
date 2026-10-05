@@ -239,7 +239,14 @@
       "searching": "Kaynaklarda arıyorum…",
       "verifying": "Delilleri doğruluyorum…",
       "writing": "Cevabı yazıyorum…"
-    }
+    },
+    "fatwasTitle": "İlgili yayımlanmış fetvalar",
+    "fatwaBadge": "Yayımlanmış fetva",
+    "fatwaBy": "Müftü veya kurum",
+    "viewFatwa": "Fetvayı görüntüle",
+    "sendCase": "Meselemi bir uzmana gönder",
+    "relatedTitle": "İlgili metinler",
+    "suggestTitle": "Cevaplayabileceğim yakın sorular"
   },
   "case": {
     "start": "",

@@ -17,6 +17,18 @@ export type SourceResult = {
   lang: string;
   /** معرّف النص في خادم MCP (لجلب نصه الكامل ودرجته بأداة fetch). */
   ref?: string;
+  /** فتوى منشورة (عبر Quranpedia): المفتي أو الجهة، ونص السؤال، والجواب كاملاً للمقتطف الحرفي. */
+  fatwa?: FatwaMeta;
+};
+
+export type FatwaMeta = {
+  mufti: string;
+  question: string;
+  /** نص الجواب كما نُشر (بعد نزع وسوم HTML)، ومنه يُقتطع المقتطف الحرفي. */
+  answer: string;
+  category?: string;
+  /** نطاق الفتوى الأصلي (من المرجعية حصراً). */
+  host: string;
 };
 
 /** طرق الوصول بالترتيب المعتمد (الخطة 0.1 البند 4). */

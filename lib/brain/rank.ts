@@ -1,3 +1,4 @@
+import type { FatwaMeta } from "@/lib/sources/types";
 import { matchKey } from "./guard";
 
 /**
@@ -15,11 +16,13 @@ export type Candidate = {
   ref?: string;
   /** درجة التداخل الأولية. */
   kw?: number;
-  /** درجة الصلة من النموذج (0–3). */
+  /** درجة الصلة من النموذج (0–100). */
   score?: number;
   enriched?: boolean;
   /** مرجع محدد (خطة الإحالات أو آية في السؤال): لا يمر بالتنظيف ولا بالترتيب بالكلمات. */
   pinned?: boolean;
+  /** فتوى منشورة (Quranpedia): المفتي والسؤال والجواب كاملاً للمقتطف الحرفي. */
+  fatwa?: FatwaMeta;
 };
 
 export type Dropped = { reason: string; source: string; title: string };
@@ -109,6 +112,10 @@ export function prerank<T extends Candidate>(cands: T[], terms: string[], pool =
 // إعادة الترتيب بالصلة: معرّفات صريحة (S1، S2…) تُطابق بالمعرّف لا بالترتيب
 // ---------------------------------------------------------------------------
 
+/** سلّم الصلة: 0–100، ويُقبل ما بلغ 60 (RELEVANCE_MIN). */
+export const RELEVANCE_MAX = 100;
+export const RELEVANCE_MIN = 60;
+
 /** معرّف قصير للمرشح في طلب التقييم. */
 export const rerankId = (i: number) => `S${i + 1}`;
 
@@ -157,6 +164,11 @@ export function focusExcerpt(text: string, terms: string[], max: number): string
   return from === 1 ? clip(`${segs[0]} ${window}`, max) : `${head} … ${window}`;
 }
 
+/** احتياط بلا نموذج: درجة الصلة من تداخل الكلمات. */
+export function keywordScore(kw: number): number {
+  return kw >= 4 ? 80 : kw >= 2 ? 60 : kw >= 1 ? 30 : 0;
+}
+
 /**
  * يطبّق درجات المقيّم بالمعرّف: «S3» أو «3» أو «[S3]» كلها للمرشح الثالث، وما لم يُقيَّم يأخذ 0.
  * لا يُستعمل ترتيب الرد أبداً، فلا تنزاح الدرجات إن رتّب النموذج أو أسقط بعض النصوص.
@@ -165,7 +177,7 @@ export function applyScores(cands: Candidate[], scores: { id: string; score: num
   const byId = new Map<string, number>();
   for (const s of scores) {
     const n = String(s.id).match(/\d+/)?.[0];
-    if (n) byId.set(`S${Number(n)}`, Math.max(0, Math.min(3, Math.round(s.score))));
+    if (n) byId.set(`S${Number(n)}`, Math.max(0, Math.min(RELEVANCE_MAX, Math.round(Number(s.score) || 0))));
   }
   cands.forEach((c, i) => (c.score = byId.get(rerankId(i)) ?? 0));
 }

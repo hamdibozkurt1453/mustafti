@@ -37,6 +37,33 @@ export const MESSAGES = {
     ur: "آپ اپنا سوال کسی ماہر کو بھیج سکتے ہیں تاکہ وہ جواب دے۔",
     id: "Anda dapat mengirim pertanyaan Anda kepada seorang ahli untuk dijawab.",
   },
+  /** المستوى (د) مع فتاوى منشورة قريبة: سطر الأداة قبل البطاقات (للاطلاع فقط). */
+  fatwasFound: {
+    ar: "وجدت فتاوى منشورة قريبة من سؤالك، للاطلاع فقط، وقد لا تطابق حالتك في كل تفاصيلها.",
+    en: "I found published fatwas close to your question, for your information only; they may not match your situation in every detail.",
+    tr: "Sorunuza yakın, yayımlanmış fetvalar buldum; yalnızca bilgi içindir ve durumunuzun her ayrıntısına uymayabilir.",
+    fr: "J'ai trouvé des fatwas publiées proches de votre question, à titre d'information seulement ; elles peuvent ne pas correspondre à votre situation dans tous ses détails.",
+    ur: "مجھے آپ کے سوال سے ملتے جلتے شائع شدہ فتاویٰ ملے ہیں، صرف معلومات کے لیے؛ ہو سکتا ہے وہ ہر تفصیل میں آپ کی صورتِ حال سے مطابقت نہ رکھیں۔",
+    id: "Saya menemukan fatwa yang telah diterbitkan dan dekat dengan pertanyaan Anda, hanya sebagai informasi; fatwa itu mungkin tidak sesuai dengan keadaan Anda dalam setiap rinciannya.",
+  },
+  /** يلي بطاقات الفتاوى في (د)، ومعه زر «أرسل مسألتي لمختص». */
+  fatwasExpert: {
+    ar: "الأفضل لحالتك أن يراها مختص.",
+    en: "For your own situation, it is best that a specialist looks at it.",
+    tr: "Kendi durumunuz için en iyisi, bir uzmanın onu incelemesidir.",
+    fr: "Pour votre propre situation, le mieux est qu'un spécialiste l'examine.",
+    ur: "آپ کی اپنی صورتِ حال کے لیے بہتر یہ ہے کہ کوئی ماہر اسے دیکھے۔",
+    id: "Untuk keadaan Anda sendiri, sebaiknya seorang ahli yang menelaahnya.",
+  },
+  /** يلي الامتناع حين وُجدت نصوص قريبة أو أسئلة يمكن الجواب عنها (لا امتناع جاف). */
+  partialFound: {
+    ar: "لكن هذه نصوص قريبة من سؤالك في المصادر المعتمدة، وأسئلة قريبة أستطيع الجواب عنها منها.",
+    en: "But here are texts close to your question from the approved sources, and related questions I can answer from them.",
+    tr: "Ancak onaylı kaynaklarda sorunuza yakın metinler ve bunlardan cevaplayabileceğim yakın sorular şunlardır.",
+    fr: "Mais voici des textes proches de votre question tirés des sources approuvées, et des questions voisines auxquelles je peux répondre à partir d'eux.",
+    ur: "لیکن معتمد مصادر میں آپ کے سوال سے قریب یہ نصوص ہیں، اور ملتے جلتے سوالات جن کا جواب میں ان سے دے سکتا ہوں۔",
+    id: "Namun, berikut teks-teks yang dekat dengan pertanyaan Anda dari sumber-sumber yang diakui, serta pertanyaan terkait yang dapat saya jawab darinya.",
+  },
   /** المستوى (د): حالة شخصية أو فتوى. */
   referral: {
     ar: "سؤالك عن حالتك أنت يحتاج إلى مختص يعرف تفاصيلها، ومُستفتي لا يُفتي. سأساعدك في توضيح سؤالك ثم إيصاله إلى مفتٍ مؤهل، دون أن نطلب اسمك.",

@@ -165,6 +165,8 @@ export type PoliteFetchOptions = {
   /** البحث المباشر في الموقع: يُفحص robots.txt. واجهات API العامة الموثقة لا تحتاجه. */
   respectRobots: boolean;
   accept?: string;
+  /** أقل فاصل بين طلبين للموقع نفسه (الافتراضي ثانية). لواجهة تعلن حدها، مثل Quranpedia: 120 في الدقيقة. */
+  minIntervalMs?: number;
 };
 
 const CHALLENGE = /cf-chl|challenge-platform|captcha|Attention Required|Just a moment\.\.\./i;
@@ -190,7 +192,7 @@ export async function politeFetch(url: string, options: PoliteFetchOptions): Pro
   if (target.protocol !== "https:" && target.protocol !== "http:") throw new Error("unsupported protocol");
   if (!isAllowedHost(target.hostname)) throw new BlockedError(`host outside the reference list: ${target.hostname}`);
 
-  let interval = MIN_INTERVAL_MS;
+  let interval = Math.max(250, options.minIntervalMs ?? MIN_INTERVAL_MS);
   if (options.respectRobots) {
     const robots = await getRobots(target.origin);
     if (!robotsAllows(robots, target.pathname + target.search)) {
@@ -224,8 +226,8 @@ export async function politeFetch(url: string, options: PoliteFetchOptions): Pro
 }
 
 /** جلب JSON من واجهة عامة موثقة (بلا مفتاح). */
-export async function politeJson<T = unknown>(url: string): Promise<T> {
-  const { text } = await politeFetch(url, { respectRobots: false, accept: "application/json" });
+export async function politeJson<T = unknown>(url: string, options: { minIntervalMs?: number } = {}): Promise<T> {
+  const { text } = await politeFetch(url, { respectRobots: false, accept: "application/json", ...options });
   return JSON.parse(text) as T;
 }
 
