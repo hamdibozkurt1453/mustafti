@@ -44,6 +44,15 @@ function wordDelay(words: number): number {
 
 /** بطاقات المصادر للجواب فقط: المشار إليها بـ [n] إن وُجدت، وإلا كل النصوص المسترجعة. */
 const MAX_CARDS = 4;
+/** R5b: الجواب العملي الكامل (القائمة) يذكر نصاً لكل خطوة. */
+const MAX_CHECKLIST_CARDS = 10;
+
+/** نوع البطاقة (R5b): الحديث يُطوى في «المرشد»، ومادة مكتبة IslamHouse التعليمية بزر «فتح / تحميل». */
+function cardKind(p: Passage): Pick<ChatSource, "kind"> {
+  if (p.sourceId === "hadeethenc" || p.grade) return { kind: "hadith" };
+  if (p.sourceId === "islamhouse" && !/\/fatwa\//i.test(p.url)) return { kind: "library" };
+  return {};
+}
 
 function toCards(passages: Passage[]): ChatSource[] {
   // النص للعرض بلا علامات الخادم («[Surah 3, …]»، «[3:1]»، «[EXACT]»، «Source: …»)، ولا بطاقة لبقايا كود.
@@ -56,6 +65,7 @@ function toCards(passages: Passage[]): ChatSource[] {
     ...(p.grade ? { grade: p.grade } : {}),
     ...(p.lang ? { lang: p.lang } : {}),
     ...(p.verse ? { verse: cleanForDisplay(p.verse), note: p.note ? cleanForDisplay(p.note) : undefined, noteKind: p.noteKind } : {}),
+    ...cardKind(p),
   })).filter((c) => !looksLikeCode(c.text));
 }
 
@@ -69,7 +79,7 @@ function sourcesOf(reply: BrainReply): ChatSource[] {
   return order
     .map((n) => cards.find((c) => c.n === n))
     .filter((c): c is (typeof cards)[number] => Boolean(c))
-    .slice(0, MAX_CARDS);
+    .slice(0, reply.checklist ? MAX_CHECKLIST_CARDS : MAX_CARDS);
 }
 
 /**

@@ -32,6 +32,8 @@ export type ChatSource = {
   verse?: string;
   note?: string;
   noteKind?: "tafsir" | "translation";
+  /** R5b: نوع البطاقة: حديث (يُطوى في «المرشد»)، أو مادة مكتبة (زر «فتح / تحميل»). */
+  kind?: "hadith" | "library";
 };
 
 /** فتوى منشورة: العنوان، والمفتي أو الجهة، ومقتطف حرفي من الجواب (≤ 400 حرف)، والرابط. */

@@ -98,6 +98,17 @@ export function isMarkedTranslation(text: string, start: number, end: number): b
 
 type Quote = { start: number; end: number; inner: string };
 
+/**
+ * معنى بلغة السائل بين علامات اقتباس في جواب غير عربي (R5b): نص بلا حرف عربي، وبجواره إشارة [n].
+ * ليس اقتباساً حرفياً من المصدر العربي (فلا يُطلب تطابقه)، بل صياغة للأداة تُفحص كغيرها.
+ * («Abdestsiz namaz kabul olmaz» [1] في جواب تركي عن حديث عربي.)
+ */
+function isQuotedMeaning(text: string, q: Quote, ctx: GuardContext): boolean {
+  if (!ctx.lang || ctx.lang === "ar" || /[\u0600-\u06FF]/.test(q.inner)) return false;
+  const around = text.slice(Math.max(0, q.start - 40), q.start) + " " + text.slice(q.end, q.end + 40);
+  return /\[\s*\d{1,2}\s*\]/.test(around);
+}
+
 export function findQuotes(text: string): Quote[] {
   const quotes: Quote[] = [];
   for (const [open, close] of QUOTE_PAIRS) {
@@ -204,8 +215,9 @@ export function separateQuoted(text: string, ctx: GuardContext = {}): { ownText:
     } else if (isVerbatim(q.inner, haystacks)) {
       // شبه الحرفي: الكلمات التي ليست في النص المصدر تبقى صياغةً للأداة فيفحصها الحارس.
       ownText += ` ⟦Q⟧ ${extraWords(q.inner, haystacks)} `;
-    } else if (isMarkedTranslation(text, q.start, q.end)) {
-      // ترجمة معنى موسومة بجوار إشارة [n]: صياغة للأداة (تُفحص كلها)، لا اقتباس بلا أصل.
+    } else if (isMarkedTranslation(text, q.start, q.end) || isQuotedMeaning(text, q, ctx)) {
+      // ترجمة معنى موسومة بجوار إشارة [n]، أو معنى بلغة السائل غير العربية بين علامات اقتباس
+      // (R5b): صياغة للأداة (تُفحص كلها، ونسبة الحديث بلا نص عربي موثَّق تبقى ممنوعة).
       ownText += ` ${q.inner} `;
     } else {
       unverified.push(q.inner.trim());
@@ -321,7 +333,16 @@ const PATTERNS: Pattern[] = [
     w("(?!(?:sor|danış|başvur|ilet|gönder|yaz)m)\\p{L}+(?:malı|meli)(?:sınız|siniz|sın|sin)"),
     w("hüküm\\s+(?:şudur|budur)"),
   ),
-  ...V("tr", w("(?:nikahınız|nikahın|namazınız|namazın|orucunuz|orucun|abdestiniz|abdestin)\\s+(?:geçerli|geçersiz|bozuldu|bozulmuştur|sahih|batıl|kabul)\\p{L}*"), w("fetvam")),
+  // R5b: «namazın/orucun/abdestin/nikahın» في التركية مضاف إليه غالباً («Namazın şartları»: شروط الصلاة)
+  // لا «صلاتك»، و«… geçerli olması için» شرط عام لا حكم على حالة: لا يُعدّان فتوى شخصية.
+  ...V(
+    "tr",
+    w(
+      "(?:nikahınız|namazınız|orucunuz|abdestiniz)\\s+(?:geçerli|geçersiz|bozuldu|bozulmuştur|sahih|batıl|kabul)\\p{L}*(?!\\s+(?:olması|olabilmesi|sayılması|için))",
+    ),
+    w("fetvam"),
+  ),
+  ...P("ruling", "tr", w("(?:geçerli|geçersiz)\\s+(?:olur|değildir|sayılır|sayılmaz)|bozar|bozulur")),
   ...P("tarjih", "tr", w("(?:en\\s+)?(?:doğru|sahih|tercih\\s+edilen|r[aâ]cih|güçlü)\\s+görüş")),
 
   // Français
@@ -640,7 +661,7 @@ export function repairAnswer(text: string, ctx: GuardContext = {}): AnswerRepair
     const key = matchKey(q.inner);
     // الحرفي تماماً يبقى؛ وشبه الحرفي (كلمة زائدة أو ناقصة) يُصحَّح إلى نص المصدر إن أمكن.
     const exact = isExactVerbatim(q.inner, [...sources, ...FIXED_TEXTS]);
-    if (key.length < MIN_QUOTE_KEY || exact || isMarkedTranslation(text, q.start, q.end)) {
+    if (key.length < MIN_QUOTE_KEY || exact || isMarkedTranslation(text, q.start, q.end) || isQuotedMeaning(text, q, ctx)) {
       fixed += whole;
       continue;
     }

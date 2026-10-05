@@ -272,7 +272,9 @@
       "source": "Sumber",
       "translation": "Terjemahan",
       "hadith": "Hadis"
-    }
+    },
+    "openDownload": "Buka / muat turun",
+    "showText": "Papar teks"
   },
   "case": {
     "start": "",

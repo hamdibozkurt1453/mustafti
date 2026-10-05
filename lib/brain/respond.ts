@@ -17,7 +17,7 @@ import {
   type GuardResult,
 } from "./guard";
 import { personaIssues, stripPersonaPhrases } from "./personas";
-import { looksCaseRuling, looksGeneralRuling, looksPersonal, looksPersonalFacts, looksUrgent, referralKindOf } from "./heuristics";
+import { looksCaseRuling, looksGeneralRuling, looksGuidance, looksPersonal, looksPersonalFacts, looksUrgent, referralKindOf } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
 import { normalizeCitations, stripAbstainSentence, unquoteReferenceOnly, validCitations } from "./format";
 import type { ReferralKind } from "@/lib/case/types";
@@ -41,6 +41,7 @@ import type { FatwaCard } from "./fatwa-cards";
 import { suggestQuestions } from "./suggest";
 import { webLayer, type WebResult } from "./web";
 import { ANSWER_CACHE_VERSION, readAnswerCache, writeAnswerCache } from "./answer-cache";
+import { checklistBlock, checklistCoverage, mapChecklist, matchChecklist, type ChecklistCoverage } from "./howto-checklists";
 
 /**
  * «عقل» مُستفتي من البداية إلى النهاية لرسالة واحدة:
@@ -108,6 +109,8 @@ export type BrainReply = {
   persona?: string[];
   /** R5: الجواب بُث إلى الواجهة أثناء كتابته (المسار يرسل بعده الجواب النهائي في حدث final). */
   streamed?: boolean;
+  /** R5b: «الاكتمال» في السؤال العملي: عناصر القائمة المذكورة في الجواب ونسبتها. */
+  checklist?: ChecklistCoverage;
 };
 
 /**
@@ -173,6 +176,8 @@ type Generated = {
 
 /** حد رموز الجواب (يُضاف له حيّز التفكير في llm.ts إن كان مفعّلاً). R5: الجواب الحر أطول. */
 const ANSWER_MAX_TOKENS = 1600;
+/** R5b: الجواب العملي الكامل (خطوات بذكرها العربي ونطقه ومعناه) أطول. */
+const CHECKLIST_MAX_TOKENS = 2600;
 
 /** البث إلى المحادثة (R5): أجزاء الجواب بعد فحص كل جملة، و«ابدأ من جديد» قبل المحاولة الثانية. */
 export type StreamHooks = {
@@ -250,8 +255,9 @@ async function generate(
   deadline = Date.now() + 60_000,
   chatMode: ChatMode = "general",
   hooks: StreamHooks = {},
+  checklist?: string,
 ): Promise<Generated> {
-  const input = { question, lang: c.lang, mode, passages, misconception: c.misconception, userType: c.userType, chatMode };
+  const input = { question, lang: c.lang, mode, passages, misconception: c.misconception, userType: c.userType, chatMode, checklist };
   const messages: ChatMessage[] = [
     { role: "system", content: answerSystem(input) },
     { role: "user", content: answerUser(input) },
@@ -267,7 +273,7 @@ async function generate(
   // مهلة كل طلب: حتى 40 ث، أو ما بقي من الميزانية (12 ث على الأقل). لا قطع يُنتج جواباً ناقصاً.
   const callMs = () => Math.min(40_000, Math.max(12_000, deadline - Date.now()));
   const call = async (msgs: ChatMessage[], temperature: number): Promise<string> => {
-    const opts = { temperature, maxTokens: ANSWER_MAX_TOKENS, reasoning, timeoutMs: callMs() };
+    const opts = { temperature, maxTokens: checklist ? CHECKLIST_MAX_TOKENS : ANSWER_MAX_TOKENS, reasoning, timeoutMs: callMs() };
     if (hooks.onDelta) {
       try {
         const r = await streamAttempt(msgs, opts, ctx, hooks.onDelta);
@@ -526,6 +532,11 @@ export async function respond(question: string, options: RespondOptions = {}): P
     overrides.push("level:D->B:general-ruling");
     c.level = "B";
   }
+  // سؤال إرشاد عملي عام («كيف أصلي؟»، "How should I treat my parents?") ليس D ولو ذكر السائل نفسه (R5b).
+  if (c.level === "D" && looksGuidance(question)) {
+    overrides.push("level:D->B:guidance");
+    c.level = "B";
+  }
   const timings = { classifyMs: cls.latencyMs } as BrainReply["timings"];
   const common = { lang: c.lang, classification: c };
 
@@ -568,7 +579,9 @@ export async function respond(question: string, options: RespondOptions = {}): P
     return done({ ...common, kind: "referral", referral, text: withPrefix(text), timings });
   }
 
-  // 4) A / B / C: الاسترجاع.
+  // 4) A / B / C: الاسترجاع. R5b: السؤال العملي («كيف أصلي؟») يأخذ قائمة عناصره الواجبة وبحوثها
+  //    الفرعية (المحادثة العامة و«المرشد»؛ لا «الداعية»).
+  const list = chatMode !== "discover" ? matchChecklist(question) : null;
   stage("searching");
   const t0 = Date.now();
   const found = await retrieve(c, question, plan, {
@@ -579,6 +592,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
     web: webEarly,
     mode: chatMode,
     prefetch,
+    checklist: list ?? undefined,
   });
   timings.searchMs = Date.now() - t0;
   diag.retrieval = found.diag;
@@ -657,10 +671,17 @@ export async function respond(question: string, options: RespondOptions = {}): P
     }
   }
   const genStarted = Date.now();
-  const gen = await generate(question, c, hadithQuery ? "hadith" : khilaf ? "khilaf" : "general", passages, started + QUESTION_BUDGET_MS, chatMode, {
-    onDelta: options.onDelta,
-    onReset: options.onReset,
-  });
+  const block = list ? checklistBlock(list, mapChecklist(list, passages), c.lang) : undefined;
+  const gen = await generate(
+    question,
+    c,
+    hadithQuery ? "hadith" : khilaf ? "khilaf" : "general",
+    passages,
+    started + QUESTION_BUDGET_MS,
+    chatMode,
+    { onDelta: options.onDelta, onReset: options.onReset },
+    block,
+  );
   timings.generateMs = gen.ms;
   if (gen.firstTokenMs !== undefined) timings.firstTokenMs = genStarted - started + gen.firstTokenMs;
   base.costUsd += gen.cost;
@@ -676,7 +697,16 @@ export async function respond(question: string, options: RespondOptions = {}): P
   const unquoted = unquoteReferenceOnly(gen.text, passages);
   const answer = gen.partial ? `${message("partialAnswer", c.lang)}\n${unquoted}` : unquoted;
   const body = khilaf ? `${answer}\n\n${message("khilaf", c.lang)}` : answer;
-  const reply = done({ ...common, ...shared, ...extra, kind: "answer", text: withPrefix(body), fatwas: found.fatwas, khilaf });
+  const reply = done({
+    ...common,
+    ...shared,
+    ...extra,
+    kind: "answer",
+    text: withPrefix(body),
+    fatwas: found.fatwas,
+    khilaf,
+    ...(list ? { checklist: checklistCoverage(list, body) } : {}),
+  });
   if (useCache && !prefix && !gen.persona.length) {
     cacheSet(answerKey(question, chatMode), cacheable(reply), DAY);
     const save = () => writeAnswerCache(question, chatMode, guessLang(question), cacheable(reply));

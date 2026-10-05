@@ -303,7 +303,9 @@
       "source": "المصدر",
       "translation": "الترجمة",
       "hadith": "الحديث"
-    }
+    },
+    "openDownload": "فتح / تحميل",
+    "showText": "عرض النص"
   },
   "auth": {
     "loginTitle": "تسجيل الدخول",

@@ -303,7 +303,9 @@
       "source": "Source",
       "translation": "Translation",
       "hadith": "Hadith"
-    }
+    },
+    "openDownload": "Open / download",
+    "showText": "Show text"
   },
   "auth": {
     "loginTitle": "Sign in",

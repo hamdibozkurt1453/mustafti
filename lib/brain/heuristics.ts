@@ -19,7 +19,8 @@ const PERSONAL: RegExp[] = [
   /(ماذا|ما\s+الذي)\s+(علي|عليّ|يجب\s+علي)/u,
   /(حلال|حرام|جائز|جائزة|مباح|مباحة)\s+(لي|علي|عليّ|لنا|علينا)(?![\p{L}])/u,
   // English
-  /\b(can|may|should|must)\s+i\b|\bam\s+i\s+(allowed|permitted|obliged|sinning)\b|\bis\s+it\s+(haram|halal|allowed|permissible|ok|okay)\s+for\s+me\b/i,
+  // «How should I…» سؤال إرشاد عام (R5b)، لا طلب حكم على حالة: لا يُعدّ شخصياً بهذا النمط.
+  /(?<!\bhow\s+)\b(can|may|should|must)\s+i\b(?!\s+(?:learn|start|begin|teach|treat|deal|behave|approach|explain|talk|speak|invite|tell)\b)|\bam\s+i\s+(allowed|permitted|obliged|sinning)\b|\bis\s+it\s+(haram|halal|allowed|permissible|ok|okay)\s+for\s+me\b/i,
   /\bmy\s+(prayer|fast|marriage|nikah|divorce|wudu|ablution|hajj|umrah|zakat)\b/i,
   /\bfor\s+me\b.*\b(haram|halal|allowed|permissible)\b|\b(haram|halal|allowed|permissible)\b.*\bfor\s+me\b/i,
   // Türkçe
@@ -125,3 +126,31 @@ export function looksGeneralRuling(text: string): boolean {
   return looksRulingQuestion(text) || GENERAL_RULING.some((r) => r.test(text));
 }
 
+
+/**
+ * سؤال إرشاد عملي عام (R5b): «كيف أصلي؟»، «كيف أتعامل مع والديّ غير المسلمين؟»،
+ * "How should I treat my parents?"، «Namaz nasıl kılınır?». جوابه العام يكفي ولو ذكر السائل نفسه أو
+ * والديه، فهو B لا D. ولا يكون إرشاداً إن طلب حكماً على حالته (looksPersonal) أو على واقعة
+ * (looksCaseRuling)، أو كان عاجلاً، أو سأل عن صحة عمل بعينه.
+ */
+const GUIDANCE: RegExp[] = [
+  /(?<![\p{L}\p{M}])كيف\s+(?:[أان]\p{L}{2,}|يمكنني|يمكن\s+ل[يى]|لي\s+أن|السبيل|أستطيع|استطيع)/u,
+  /(?<![\p{L}\p{M}])(?:ما|ماذا)\s+(?:هي\s+)?(?:طريق[ةه]|كيفي[ةه]|خطوات|آداب|اداب)/u,
+  /\bhow\s+(?:should|can|do|could|would|must|shall)\s+(?:i|we)\b|\bhow\s+to\b|\bwhat\s+is\s+the\s+(?:best\s+)?way\s+to\b|\bsteps?\s+(?:of|to|for)\b/i,
+  wb(/\bnasıl\b/iu),
+  wb(/\bcomment\s+(?:dois[- ]je|puis[- ]je|faire|faut[- ]il|me|bien)\b/iu),
+  wb(/\bbagaimana\s+(?:cara|saya|seharusnya)\b|\bcara\b/iu),
+  /(?:کیسے|کس\s+طرح|طریقہ)/u,
+];
+
+/** صحة عمل بعينه أو وقوع طلاق أو حكم على فعل وقع: ليس إرشاداً عاماً ولو بدأ بـ «كيف». */
+const NOT_GUIDANCE: RegExp[] = [
+  /(?:صحيح[ةه]?|باطل[ةه]?|مقبول[ةه]?|وقع|يقع|كفار[ةه]|أقضي|اقضي|أعيد|اعيد)/u,
+  /\b(?:valid|invalid|void|accepted|expiation|kaffarah|make\s+up|redo|divorce)\b/i,
+];
+
+export function looksGuidance(text: string): boolean {
+  if (looksPersonal(text) || looksCaseRuling(text) || looksUrgent(text)) return false;
+  if (NOT_GUIDANCE.some((r) => r.test(text))) return false;
+  return GUIDANCE.some((r) => r.test(text));
+}

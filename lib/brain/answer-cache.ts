@@ -15,7 +15,7 @@ import type { ChatMode } from "./modes";
  */
 
 /** تتغير مع كل تغيير في الصياغة أو الشخصيات، فلا يُعاد جواب كُتب بقواعد قديمة. */
-export const ANSWER_CACHE_VERSION = "r5";
+export const ANSWER_CACHE_VERSION = "r5b";
 export const ANSWER_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 /** القراءة لا تؤخر الجواب: ما تأخر عن هذا يُعدّ غياباً. */
 const READ_TIMEOUT_MS = 1_500;

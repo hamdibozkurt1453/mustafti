@@ -272,7 +272,9 @@
       "source": "Chanzo",
       "translation": "Tafsiri",
       "hadith": "Hadithi"
-    }
+    },
+    "openDownload": "Fungua / pakua",
+    "showText": "Onyesha maandishi"
   },
   "case": {
     "start": "",

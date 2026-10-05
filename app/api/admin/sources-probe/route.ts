@@ -81,6 +81,8 @@ export async function POST(request: Request) {
           stages: r.diag.retrieval?.stages ?? null,
           // R5: «فحص الشخصية» على الجواب كاملاً: لا «تذكر المصادر» ولا «أكثر من صياغة».
           persona: r.kind === "answer" ? personaIssues(r.text) : [],
+          // R5b: «اكتمال» السؤال العملي (نسبة عناصر القائمة في الجواب، والناقص منها)، وما وُجد له نص.
+          checklist: r.checklist ? { ...r.checklist, found: r.diag.retrieval?.checklist?.found ?? [] } : null,
           fixes: r.guard?.findings.filter((f) => !f.verdict && f.reason !== "identity_leak").map((f) => f.match).slice(0, 4) ?? [],
           web: web
             ? { verified: web.verified, linkOnly: web.linkOnly, ms: web.ms, searchOnly: Boolean(web.searchOnly), jsonRecovery: web.jsonRecovery, error: web.error }
@@ -226,8 +228,8 @@ a{color:var(--mid)}
 <ol id="suite" style="font-size:.85rem;margin:6px 0"></ol>
 <button id="runAll">شغّل الكل</button>
 <table id="table" hidden style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;font-size:.85rem"><thead><tr>
-<th>السؤال</th><th>المستوى</th><th>النوع</th><th>المصادر المقبولة</th><th>فتاوى/روابط</th><th>«ابحث واقرأ»</th><th>الزمن</th><th>امتنع؟</th><th>سبب الامتناع</th><th>المراحل</th><th>التصنيف</th><th>السريعة</th><th>الويب</th><th>الترتيب</th><th>أول كلمة</th><th>الصياغة</th><th>فحص الشخصية</th></tr></thead><tbody></tbody></table>
-<p class="note">الأعمدة الزمنية (R5): التصنيف، والمصادر السريعة، و«ابحث واقرأ» (إن انتُظرت)، والترتيب بالنموذج («تُخطّي» إن كفت المطابقة الواضحة)، وأول كلمة من الجواب من بداية السؤال (الهدف ≈ 8 ث)، والصياغة كاملة. الزمن الكلي أحمر فوق 25 ث. «فحص الشخصية»: غياب «تذكر المصادر» و«أكثر من صياغة» وأخواتهما من الجواب كاملاً.</p>
+<th>السؤال</th><th>المستوى</th><th>النوع</th><th>المصادر المقبولة</th><th>فتاوى/روابط</th><th>«ابحث واقرأ»</th><th>الزمن</th><th>امتنع؟</th><th>سبب الامتناع</th><th>المراحل</th><th>التصنيف</th><th>السريعة</th><th>الويب</th><th>الترتيب</th><th>أول كلمة</th><th>الصياغة</th><th>فحص الشخصية</th><th>اكتمال</th><th>زمن كل مصدر سريع</th></tr></thead><tbody></tbody></table>
+<p class="note">الأعمدة الزمنية (R5): التصنيف، والمصادر السريعة، و«ابحث واقرأ» (إن انتُظرت)، والترتيب بالنموذج («تُخطّي» إن كفت المطابقة الواضحة)، وأول كلمة من الجواب من بداية السؤال (الهدف ≈ 8 ث)، والصياغة كاملة. الزمن الكلي أحمر فوق 25 ث. «فحص الشخصية»: غياب «تذكر المصادر» و«أكثر من صياغة» وأخواتهما من الجواب كاملاً. «اكتمال» (R5b): نسبة عناصر قائمة السؤال العملي في الجواب (الهدف 90% لسؤالي الصلاة والوضوء)، والناقص في التلميح. «زمن كل مصدر سريع»: من بداية الاسترجاع حتى اكتماله، و«—» لما لم يُنتظر (قُطع)، والأبطأ أولاً.</p>
 </details>
 <textarea id="question" placeholder="السؤال"></textarea>
 <button id="run">شغّل الفحص</button>
@@ -262,7 +264,7 @@ const tag=(c,m)=>c+(m?" ["+m+"]":"");
 SUITE.forEach(([c,q,m])=>{const li=document.createElement("li");li.textContent=tag(c,m)+": "+q;document.getElementById("suite").appendChild(li)});
 document.getElementById("runAll").onclick=async()=>{const b=document.getElementById("runAll");b.disabled=true;
 const t=document.getElementById("table");t.hidden=false;const tb=t.querySelector("tbody");tb.innerHTML="";
-const rows=SUITE.map(([c,q,m])=>{const tr=document.createElement("tr");[tag(c,m)+": "+q,"…","","","","","","","","","","","","","","",""].forEach(x=>{const td=document.createElement("td");td.textContent=x;tr.appendChild(td)});tb.appendChild(tr);return tr});
+const rows=SUITE.map(([c,q,m])=>{const tr=document.createElement("tr");[tag(c,m)+": "+q,"…","","","","","","","","","","","","","","","","",""].forEach(x=>{const td=document.createElement("td");td.textContent=x;tr.appendChild(td)});tb.appendChild(tr);return tr});
 let next=0;async function w(){while(next<SUITE.length){const i=next++;const [c,q,m]=SUITE[i];const tds=rows[i].children;
 try{const j=await post(m?{action:"full",question:q,mode:m}:{action:"full",question:q});
 if(j.error){tds[1].textContent="خطأ";tds[7].textContent=j.error;continue}
@@ -276,7 +278,9 @@ const sec=(x)=>x==null?"—":(x/1000).toFixed(1)+"ث";const t=j.timings||{},st=j
 tds[9].textContent="تصنيف "+sec(t.classifyMs)+" · بحث "+sec(t.searchMs)+(st?" (سريعة "+sec(st.fastMs)+" · تقييم "+sec(st.rerank1Ms)+(st.earlyExit?" · اكتفى بالسريعة":" · انتظار «ابحث واقرأ» "+sec(st.waitMs)+" · تقييم 2 "+sec(st.rerank2Ms))+(st.webInRound1?" · الطبقة في الأولى":"")+(st.laterMs?" · إعادة تخطيط "+sec(st.laterMs):"")+")":"")+" · صياغة "+sec(t.generateMs)+(j.web&&j.web.jsonRecovery?" · JSON: "+j.web.jsonRecovery:"");
 tds[10].textContent=sec(t.classifyMs);tds[11].textContent=sec(t.fastMs)+(st&&st.prefetched?" (مسبق)":"");tds[12].textContent=st&&st.earlyExit?"لم يُنتظر":sec(t.webMs);
 tds[13].textContent=t.rerankSkipped?"تُخطّي ("+sec(t.rerankMs)+")":sec(t.rerankMs);tds[14].textContent=sec(t.firstTokenMs);tds[14].style.color=t.firstTokenMs>8000?"var(--bad)":"var(--mid)";tds[15].textContent=sec(t.generateMs);
-const pc=j.persona||[];tds[16].textContent=j.kind!=="answer"?"—":pc.length?"✗ "+pc.join("، "):"✓";tds[16].style.color=pc.length?"var(--bad)":"var(--mid)";if(j.fixes&&j.fixes.length)tds[16].title="صُحح: "+j.fixes.join(" | ")}
+const pc=j.persona||[];tds[16].textContent=j.kind!=="answer"?"—":pc.length?"✗ "+pc.join("، "):"✓";tds[16].style.color=pc.length?"var(--bad)":"var(--mid)";if(j.fixes&&j.fixes.length)tds[16].title="صُحح: "+j.fixes.join(" | ");
+const ck=j.checklist;tds[17].textContent=ck?Math.round(ck.ratio*100)+"% ("+ck.id+")":"—";if(ck){tds[17].style.color=ck.ratio>=0.9?"var(--mid)":"var(--bad)";tds[17].title="الناقص: "+(ck.missing.join("، ")||"—")+"\\nوُجد له نص: "+(ck.found.join("، ")||"—")}
+const fj=st&&st.fastJobs?Object.entries(st.fastJobs).sort((a,b)=>(b[1]??1e9)-(a[1]??1e9)):[];tds[18].textContent=fj.map(([k,v])=>k+" "+(v==null?"—":sec(v))).join(" · ")+(st&&st.enrichMs?" · إثراء "+sec(st.enrichMs):"")+(st&&st.webSkipped?" · الويب لم يُنتظر ("+(st.webSkipped==="pinned"?"آية/حديث مطابق":"كفت السريعة")+")":"")}
 catch(e){tds[1].textContent="خطأ";tds[7].textContent=String(e)}}}
 await Promise.all([w(),w()]);b.disabled=false};
 const $=(id)=>document.getElementById(id);

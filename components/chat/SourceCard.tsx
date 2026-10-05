@@ -11,15 +11,18 @@ const LONG = 320;
  * بطاقة مصدر: شارة «نص منقول»، والنص بحروفه، واسم المصدر، والدرجة للحديث، ورابط «عرض المصدر».
  * R5: تسميات حقول الحديث («Narrator:»، «Grade:»، «Explanation:») بلغة الواجهة، والنص بعدها كما هو.
  */
-export function SourceCard({ source, messageId }: { source: ChatSource; messageId: string }) {
+export function SourceCard({ source, messageId, foldHadith = false }: { source: ChatSource; messageId: string; foldHadith?: boolean }) {
   const t = useTranslations("chat");
   const tl = useTranslations("chat.labels");
   const [open, setOpen] = useState(false);
+  // R5b: في «المرشد» يُطوى نص الحديث الطويل افتراضياً (العنوان والدرجة ظاهران، والنص بزر).
+  const [unfolded, setUnfolded] = useState(false);
   const labels = Object.fromEntries(LABEL_KEYS.map((k) => [k, tl(k)])) as Record<LabelKey, string>;
   const text = localizeLabels(source.text, labels);
   const note = source.note ? localizeLabels(source.note, labels) : undefined;
   const long = text.length > LONG;
   const dir = dirForText(text);
+  const folded = foldHadith && source.kind === "hadith" && long && !unfolded;
 
   return (
     <li
@@ -68,6 +71,14 @@ export function SourceCard({ source, messageId }: { source: ChatSource; messageI
             </div>
           )}
         </>
+      ) : folded ? (
+        <button
+          type="button"
+          onClick={() => setUnfolded(true)}
+          className="mt-2 text-xs font-semibold text-green-600 underline-offset-4 hover:underline"
+        >
+          {t("showText")}
+        </button>
       ) : (
         <blockquote
           dir={dir}
@@ -78,7 +89,7 @@ export function SourceCard({ source, messageId }: { source: ChatSource; messageI
           {text}
         </blockquote>
       )}
-      {(source.verse ? (note?.length ?? 0) > LONG : long) && (
+      {!folded && (source.verse ? (note?.length ?? 0) > LONG : long) && (
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -97,7 +108,7 @@ export function SourceCard({ source, messageId }: { source: ChatSource; messageI
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 rounded-full bg-green-900 px-3 py-1.5 font-semibold text-ivory-50 transition hover:bg-green-600"
         >
-          {t("viewSource")}
+          {source.kind === "library" ? t("openDownload") : t("viewSource")}
           <span aria-hidden>↗</span>
         </a>
       </div>

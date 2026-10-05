@@ -272,7 +272,9 @@
       "source": "منبع",
       "translation": "ترجمه",
       "hadith": "حدیث"
-    }
+    },
+    "openDownload": "باز کردن / دانلود",
+    "showText": "نمایش متن"
   },
   "case": {
     "start": "",
