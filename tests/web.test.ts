@@ -242,15 +242,18 @@ describe("التحقق الموسَّع من الاقتباس (R1c)", () => {
   const TAFSIR = `﴿اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ﴾ [البقرة: 255]. قال ابنُ باز رحمه الله: هذه الآيةُ أعظمُ آيةٍ في كتاب الله، لما اشتملت عليه من أسماء الله وصفاته، والدلالة على توحيده سبحانه.`;
 
   it("الترقيم العربي واللاتيني، والأقواس القرآنية، والهمزات، والتشكيل، والمسافات لا تمنع المطابقة الحرفية", () => {
-    const m = matchQuote("الله لا اله الا هو الحي القيوم. قال ابن باز رحمه الله هذه الايه اعظم ايه في كتاب الله", TAFSIR);
+    const verse = matchQuote("«الله لا اله الا هو، الحي القيوم»", TAFSIR);
+    assert.equal(verse.match, "exact");
+    assert.equal(verse.text, "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ");
+    const m = matchQuote("قال ابن باز - رحمه الله - : هذه الايه اعظم ايه في كتاب الله", TAFSIR);
     assert.equal(m.match, "exact");
-    assert.ok(m.text?.startsWith("اللَّهُ لَا إِلَٰهَ"), m.text ?? "");
-    assert.ok(m.text?.endsWith("في كتاب الله"));
+    assert.equal(m.text, "قال ابنُ باز رحمه الله: هذه الآيةُ أعظمُ آيةٍ في كتاب الله");
   });
 
   it("90% من الكلمات متتابعة ← مقبول شبه حرفي بنص الصفحة؛ وأقل ← مرفوض بنسبته", () => {
-    const quote = "هذه الآية أعظم آية في كتاب الله لما اشتملت عليه من أسماء الله وصفاته والدلالة على توحيد الله سبحانه";
-    const near = matchQuote(quote, TAFSIR); // «توحيده» صارت «توحيد الله»: كلمة من 20
+    const quote = "هذه الآية أعظم آية في كتاب الله لما اشتملت عليه من أسماء الله وصفاته والدلالة على توحيده تعالى";
+    const near = matchQuote(quote, TAFSIR); // «سبحانه» صارت «تعالى»: كلمة من 19 (95%)
+    assert.equal(matchQuote("هذه الآية أعظم آية في كتاب الله لما اشتملت عليه من أسماء الله وصفاته والدلالة على توحيد الله سبحانه", TAFSIR).text, null, "كلمتان من 19 (89%) ← مرفوض");
     assert.equal(near.match, "near");
     assert.ok(near.ratio >= 0.9, String(near.ratio));
     assert.match(near.text!, /^هذه الآيةُ أعظمُ آيةٍ/);
@@ -285,12 +288,13 @@ describe("احتياط البحث وحده: «رابط فقط» بدل الصف�
     const slowRead = () => new Promise<typeof empty>((r) => setTimeout(() => r(empty), 60_000));
     let searched = 0;
     const t0 = Date.now();
-    const r = await web.webLayer("سؤال", { timeoutMs: 6_000 }, { read: slowRead as never, search: (async () => { searched++; return link; }) as never });
+    // المهلة 12 ث: البحث السريع يبدأ عند منتصفها، وتُنتظر القراءة حتى نهايتها، ثم نتائج البحث.
+    const r = await web.webLayer("سؤال", { timeoutMs: 12_000 }, { read: slowRead as never, search: (async () => { searched++; return link; }) as never });
     assert.equal(searched, 1);
     assert.equal(r.sources[0].reason, "search_only");
-    assert.ok(Date.now() - t0 < 7_000, `${Date.now() - t0}ms`);
+    assert.ok(Date.now() - t0 < 13_500, `${Date.now() - t0}ms`);
     const verified = { ...empty, ok: true, sources: [{ ...link.sources[0], status: "verified" as const, quote: "نص", reason: undefined }] };
-    const fast = await web.webLayer("سؤال", { timeoutMs: 6_000 }, { read: (async () => verified) as never, search: (async () => { searched++; return link; }) as never });
+    const fast = await web.webLayer("سؤال", { timeoutMs: 12_000 }, { read: (async () => verified) as never, search: (async () => { searched++; return link; }) as never });
     assert.equal(fast.sources[0].status, "verified");
     assert.equal(searched, 1, "لا بحث سريع إن جاءت القراءة بمصادر");
   });
