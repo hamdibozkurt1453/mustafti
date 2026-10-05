@@ -4,19 +4,25 @@
     "description": ""
   },
   "nav": {
-    "home": "",
-    "prayer": "",
-    "adhkar": "",
-    "newMuslim": "",
-    "about": "",
-    "login": "",
-    "account": "",
-    "menu": "",
-    "openMenu": "",
-    "closeMenu": "",
-    "language": "",
-    "mainNav": "",
-    "homeLink": ""
+    "home": "Hira",
+    "newMuslim": "Sabon Musulmi",
+    "about": "Game da Mustafti",
+    "login": "Shiga",
+    "account": "Asusuna",
+    "menu": "Menu",
+    "openMenu": "Buɗe menu",
+    "closeMenu": "Rufe menu",
+    "language": "Harshe",
+    "mainNav": "Babban kewayawa",
+    "homeLink": "Mustafti — Shafin farko",
+    "forum": "Tattaunawa",
+    "discover": "San Musulunci",
+    "library": "Laburare",
+    "signOut": "Fita",
+    "accountMenu": {
+      "expertDashboard": "Allon ƙwararre",
+      "adminPanel": "Allon mai kula"
+    }
   },
   "disclosure": {
     "text": ""
@@ -38,7 +44,6 @@
   "home": {
     "intro": "",
     "whoAreYou": "",
-    "whoOptional": "",
     "personas": {
       "muslim": "",
       "newMuslim": "",
@@ -328,5 +333,121 @@
     "meTitle": "",
     "meHint": "",
     "showFile": ""
+  },
+  "prayer": {
+    "change": "Canza gari da hanya",
+    "done": "An gama"
+  },
+  "adhkar": {
+    "title": "Azkar",
+    "prev": "Zikirin baya",
+    "next": "Zikiri na gaba"
+  },
+  "intro": {
+    "forum": {
+      "kicker": "Mustafti",
+      "title": "Tattaunawa",
+      "lead": "Wuri mai natsuwa don masu amfani su tattauna abin da ke da muhimmanci a gare su, cikin ladabi da ka'idoji bayyanannu. Za a buɗe shi nan ba da daɗewa ba; kafin nan, tambayi Mustafti a hira.",
+      "cta": "Koma zuwa hira"
+    },
+    "discover": {
+      "kicker": "Mustafti",
+      "title": "San Musulunci",
+      "lead": "Hanya mai sauƙi ga duk wanda yake son sanin Musulunci daga tushensa, ba tare da matsi ko wahala ba. Za a kammala shi nan ba da daɗewa ba; kafin nan, tambayi duk abin da kake so a hira.",
+      "cta": "Tambaya a hira"
+    }
+  },
+  "library": {
+    "kicker": "IslamHouse",
+    "title": "Laburare",
+    "lead": "Littattafai, makaloli da sautuka kyauta daga IslamHouse a harshenka. Buɗe ko sauke su daga mahaɗinsu na hukuma.",
+    "searchLabel": "Bincika a laburare",
+    "placeholder": "Rubuta maudu'i ko sunan littafi",
+    "search": "Bincika",
+    "topicsLabel": "Maudu'ai da aka ba da shawara",
+    "topics": {
+      "aqeedah": "Akida",
+      "prayer": "Sallah",
+      "fasting": "Azumi",
+      "seerah": "Tarihin Annabi",
+      "newMuslim": "Sabon Musulmi",
+      "family": "Iyali"
+    },
+    "resultsFor": "Sakamakon “{q}”",
+    "shamela": "Bincika a Al-Maktaba Al-Shamela",
+    "limited": "Ka yi bincike da yawa cikin ɗan lokaci. Jira kaɗan sannan ka sake gwadawa.",
+    "unavailable": "Ba a iya isa laburare yanzu ba. Sake gwadawa nan da ɗan lokaci.",
+    "empty": "Ba a samu komai ba. Gwada wata kalma ko ɗaya daga cikin maudu'an da aka ba da shawara.",
+    "open": "Buɗe / Sauke",
+    "note": "Kayan sun fito daga IslamHouse (islamhouse.com) kuma suna buɗewa daga mahaɗinsu na hukuma; ba ma adana kowane fayil.",
+    "hint": "Zaɓi maudu'i ko rubuta abin da kake nema.",
+    "types": {
+      "books": "Littafi",
+      "articles": "Makala",
+      "audios": "Sauti",
+      "videos": "Bidiyo",
+      "fatwa": "Fatawa",
+      "posters": "Kati",
+      "other": "Kaya"
+    }
+  },
+  "me": {
+    "title": "Asusuna",
+    "tabsLabel": "Sassan asusu",
+    "tabs": {
+      "profile": "Bayanan martaba",
+      "cases": "Tambayoyina",
+      "forum": "Gudummawata a tattaunawa",
+      "public": "Bayanan martabata na jama'a",
+      "settings": "Saituna"
+    },
+    "profile": {
+      "title": "Bayanaina",
+      "name": "Suna",
+      "language": "Harshen da ka fi so",
+      "save": "Ajiye",
+      "saving": "Ana ajiyewa…",
+      "saved": "An ajiye bayananka.",
+      "error": "Ba a iya ajiyewa ba. Sake gwadawa.",
+      "prayerTitle": "Gari da hanyar lissafin lokutan sallah",
+      "prayerHint": "Yana bayyana a katin lokutan sallah a shafin farko.",
+      "expertTitle": "Hoto da gabatarwa",
+      "applicationHint": "Buƙatarka ta ƙwararre:",
+      "applicationLink": "Matsayin buƙata",
+      "joinHint": "Kai malami ne ko ƙwararre?",
+      "joinLink": "Shiga a matsayin ƙwararre"
+    },
+    "forum": {
+      "title": "Babu gudummawa tukuna",
+      "empty": "Idan aka buɗe tattaunawa, rubuce-rubucenka da amsoshinka za su taru a nan.",
+      "cta": "Game da tattaunawa"
+    },
+    "settings": {
+      "downloadTitle": "Sauke bayanaina",
+      "downloadHint": "Fayil na JSON da ke ɗauke da asusunka, tambayoyinka, fayilolinsu da amsoshinsu.",
+      "download": "Sauke bayanaina",
+      "deleteTitle": "Goge asusuna da bayanaina",
+      "deleteHint": "Za a goge asusunka da bayanan martabarka gaba ɗaya, a raba tambayoyinka da asusun, amsoshin ƙwararru kuwa za su rage.",
+      "delete": "Goge asusuna da bayanaina",
+      "dialogTitle": "Kana son goge asusunka gaba ɗaya?",
+      "willDelete": "Za a goge asusunka, bayanan martaba, hotuna da takardunka.",
+      "willDetach": "Za a raba tambayoyinka da asusunka kuma ba za a danganta su da kai ba.",
+      "willKeep": "Amsoshin ƙwararru za su kasance yadda suke.",
+      "irreversible": "Ba za a iya mayar da wannan ba.",
+      "typeToConfirm": "Don tabbatarwa, rubuta: {phrase}",
+      "confirmPhrase": "goge asusuna",
+      "cancel": "Soke",
+      "deleting": "Ana gogewa…",
+      "confirmDelete": "Goge gaba ɗaya",
+      "errors": {
+        "invalid": "Buƙata mara inganci.",
+        "auth": "Shiga tukuna.",
+        "notConfigured": "Ba a iya gogewa yanzu ba.",
+        "admin": "Ba a goge asusun masu kula daga nan; nemi babban mai kula.",
+        "expertAnswers": "Ba za a iya goge asusun ƙwararre mai amsoshi yanzu ba; tuntuɓi ƙungiya.",
+        "confirm": "Rubuta jimlar tabbatarwa daidai.",
+        "generic": "Ba a iya gogewa ba. Sake gwadawa."
+      }
+    }
   }
 }

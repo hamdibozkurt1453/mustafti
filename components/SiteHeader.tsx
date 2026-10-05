@@ -8,7 +8,11 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MobileMenu } from "./MobileMenu";
 import { NavLinks } from "./NavLinks";
 
-/** الرأس: الشعار، والروابط (حاسوب) أو ☰ (هاتف)، وزر اللغة، وزر الدخول أو «حسابي». */
+/**
+ * الرأس بثلاثة أعمدة (R2): الشعار في البداية، والقائمة في المنتصف تماماً، والدخول واللغة في النهاية.
+ * العمودان الجانبيان متساويان (minmax(0,1fr))، فتبقى القائمة في منتصف الصفحة بأي لغة وفي الاتجاهين،
+ * و«البداية» و«النهاية» تتبعان dir تلقائياً. تحت xl تحل قائمة ☰ محل الروابط.
+ */
 export async function SiteHeader() {
   const t = await getTranslations("nav");
   const locale = await getLocale();
@@ -17,36 +21,38 @@ export async function SiteHeader() {
 
   return (
     <HeaderShell>
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:gap-4">
-        <Link href="/" aria-label={t("homeLink")} className="shrink-0">
-          {arabicLogo ? (
-            <Image
-              src="/brand/logo-ar-on-dark.svg"
-              alt="مُستفتي"
-              width={3918}
-              height={1380}
-              priority
-              className="h-9 w-auto sm:h-10"
-            />
-          ) : (
-            <Image
-              src="/brand/logo-en-on-dark.svg"
-              alt="Mustafti"
-              width={4338}
-              height={910}
-              priority
-              className="h-6 w-auto sm:h-7"
-            />
-          )}
-        </Link>
+      <div className="mx-auto grid h-16 max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:gap-6">
+        <div className="flex min-w-0 justify-start">
+          <Link href="/" aria-label={t("homeLink")} className="mf-press shrink-0 rounded-lg">
+            {arabicLogo ? (
+              <Image
+                src="/brand/logo-ar-on-dark.svg"
+                alt="مُستفتي"
+                width={3918}
+                height={1380}
+                priority
+                className="h-9 w-auto sm:h-10"
+              />
+            ) : (
+              <Image
+                src="/brand/logo-en-on-dark.svg"
+                alt="Mustafti"
+                width={4338}
+                height={910}
+                priority
+                className="h-6 w-auto sm:h-7"
+              />
+            )}
+          </Link>
+        </div>
 
-        <nav aria-label={t("mainNav")} className="ms-4 hidden lg:block">
+        <nav aria-label={t("mainNav")} className="hidden xl:block">
           <NavLinks variant="desktop" />
         </nav>
 
-        <div className="ms-auto flex items-center gap-1.5 sm:gap-2">
-          <LanguageSwitcher />
+        <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2">
           <AccountButton />
+          <LanguageSwitcher />
           <MobileMenu />
         </div>
       </div>

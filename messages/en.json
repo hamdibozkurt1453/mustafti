@@ -5,8 +5,6 @@
   },
   "nav": {
     "home": "Chat",
-    "prayer": "Prayer times",
-    "adhkar": "Adhkar",
     "newMuslim": "New Muslim",
     "about": "About",
     "login": "Sign in",
@@ -20,11 +18,12 @@
     "notifications": "{count} new notifications",
     "accountMenu": {
       "expertDashboard": "Specialist dashboard",
-      "expertProfile": "My profile",
-      "applicationStatus": "My application",
-      "expertApplications": "Specialist applications",
       "adminPanel": "Admin panel"
-    }
+    },
+    "forum": "Forum",
+    "discover": "Discover Islam",
+    "library": "Library",
+    "signOut": "Sign out"
   },
   "disclosure": {
     "text": "Mustafti is an AI tool, not a mufti or a preacher. It answers from trusted sources only."
@@ -46,7 +45,6 @@
   "home": {
     "intro": "I answer from trusted Islamic sources, with links, and carry your personal question to qualified scholars. I never issue religious rulings.",
     "whoAreYou": "Who are you?",
-    "whoOptional": "Optional — it only changes the suggestions",
     "personas": {
       "muslim": "Muslim",
       "newMuslim": "New Muslim",
@@ -753,7 +751,9 @@
     "privacy": "Prayer times are calculated in your browser; your location is never sent to the server.",
     "savedBrowser": "Your choice is saved in this browser.",
     "savedAccount": "Your choice is saved in this browser and in your account (city and method only, never your location).",
-    "saveError": "Couldn't save to your account; it is still saved in this browser."
+    "saveError": "Couldn't save to your account; it is still saved in this browser.",
+    "change": "Change city & method",
+    "done": "Done"
   },
   "adhkar": {
     "note": "Every remembrance here is quoted verbatim from the Encyclopedia of Translated Prophetic Hadiths; only hadiths graded sahih or hasan are included.",
@@ -774,7 +774,10 @@
     "source": "Source",
     "sourceName": "HadeethEnc (Encyclopedia of Translated Hadiths)",
     "grade": "Grade",
-    "viewSource": "View source"
+    "viewSource": "View source",
+    "title": "Adhkar",
+    "prev": "Previous dhikr",
+    "next": "Next dhikr"
   },
   "newMuslim": {
     "kicker": "For new Muslims",
@@ -797,5 +800,112 @@
     "more": "Also on the site:",
     "prayerLink": "Prayer times",
     "adhkarLink": "Remembrances"
+  },
+  "intro": {
+    "forum": {
+      "kicker": "Mustafti",
+      "title": "Forum",
+      "lead": "A calm space for users to discuss what matters to them, with courtesy and clear guidelines. It opens soon; until then, ask Mustafti in the chat.",
+      "cta": "Back to the chat"
+    },
+    "discover": {
+      "kicker": "Mustafti",
+      "title": "Discover Islam",
+      "lead": "A gentle path for anyone who wants to learn about Islam from its sources, without pressure or complexity. Coming soon; until then, ask anything in the chat.",
+      "cta": "Ask in the chat"
+    }
+  },
+  "library": {
+    "kicker": "IslamHouse",
+    "title": "Library",
+    "lead": "Free books, articles and audio from IslamHouse in your language. Open or download them from their official link.",
+    "searchLabel": "Search the library",
+    "placeholder": "Type a topic or a book title",
+    "search": "Search",
+    "topicsLabel": "Suggested topics",
+    "topics": {
+      "aqeedah": "Creed",
+      "prayer": "Prayer",
+      "fasting": "Fasting",
+      "seerah": "Prophet's biography",
+      "newMuslim": "New Muslim",
+      "family": "Family"
+    },
+    "resultsFor": "Results for “{q}”",
+    "shamela": "Search Al-Maktaba Al-Shamela",
+    "limited": "Too many searches in a short time. Please wait a moment and try again.",
+    "unavailable": "The library can't be reached right now. Please try again shortly.",
+    "empty": "No materials found. Try another word or one of the suggested topics.",
+    "open": "Open / Download",
+    "note": "Materials come from IslamHouse (islamhouse.com) and open from their official link. We host no files.",
+    "hint": "Pick a topic or type what you are looking for.",
+    "types": {
+      "books": "Book",
+      "articles": "Article",
+      "audios": "Audio",
+      "videos": "Video",
+      "fatwa": "Fatwa",
+      "posters": "Card",
+      "other": "Material"
+    }
+  },
+  "me": {
+    "title": "My account",
+    "tabsLabel": "Account sections",
+    "tabs": {
+      "profile": "Profile",
+      "cases": "My questions",
+      "forum": "My forum posts",
+      "public": "My public profile",
+      "settings": "Settings"
+    },
+    "profile": {
+      "title": "My details",
+      "name": "Name",
+      "language": "Preferred language",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Your details were saved.",
+      "error": "Couldn't save. Please try again.",
+      "prayerTitle": "City & prayer-time method",
+      "prayerHint": "Shown in the prayer-times card on the home page.",
+      "expertTitle": "Photo & bio",
+      "applicationHint": "Your expert application:",
+      "applicationLink": "Application status",
+      "joinHint": "A scholar or specialist?",
+      "joinLink": "Join as an expert"
+    },
+    "forum": {
+      "title": "No posts yet",
+      "empty": "Once the forum opens, your posts and replies will be gathered here.",
+      "cta": "About the forum"
+    },
+    "settings": {
+      "downloadTitle": "Download my data",
+      "downloadHint": "A JSON file with your account, your questions, their files and their answers.",
+      "download": "Download my data",
+      "deleteTitle": "Delete my account and data",
+      "deleteHint": "Your account and profile are permanently deleted, your questions are detached from it, and experts' answers remain.",
+      "delete": "Delete my account and data",
+      "dialogTitle": "Permanently delete your account?",
+      "willDelete": "Your account, profile, photos and documents will be deleted.",
+      "willDetach": "Your questions will be detached from your account and no longer linked to you.",
+      "willKeep": "Experts' answers stay as they are.",
+      "irreversible": "This cannot be undone.",
+      "typeToConfirm": "To confirm, type: {phrase}",
+      "confirmPhrase": "delete my account",
+      "cancel": "Cancel",
+      "deleting": "Deleting…",
+      "confirmDelete": "Delete permanently",
+      "errors": {
+        "invalid": "Invalid request.",
+        "auth": "Please sign in first.",
+        "notConfigured": "Deletion isn't available right now.",
+        "admin": "Admin accounts can't be deleted here. Ask the super admin.",
+        "expertAnswers": "An expert account with answers can't be deleted right now. Please contact the team.",
+        "confirm": "Type the confirmation phrase exactly.",
+        "generic": "Couldn't delete. Please try again."
+      }
+    }
   }
 }

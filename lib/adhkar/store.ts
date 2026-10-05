@@ -1,8 +1,8 @@
 import "server-only";
 
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createClient as createPublicClient } from "@supabase/supabase-js";
+import { isSupabaseConfigured, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import type { DhikrRow, Occasion } from "./rules";
 
 const COLUMNS = "hadith_id, lang, occasions, position, title, text, explanation, grade, repeat_count, source_url";
@@ -23,11 +23,14 @@ export type Dhikr = {
   explanation: string | null;
 };
 
-/** الأذكار للعرض (قراءة عامة بسياسة RLS). [] إن لم تُبنَ بعد أو لم يُعدّ Supabase. */
+/**
+ * الأذكار للعرض (قراءة عامة بسياسة RLS). [] إن لم تُبنَ بعد أو لم يُعدّ Supabase.
+ * بالمفتاح العام بلا كوكيز الجلسة، فتبقى الرئيسية ثابتة (ISR) ولا تُرسم لكل طلب.
+ */
 export async function listAdhkar(locale: string): Promise<Dhikr[]> {
   if (!isSupabaseConfigured()) return [];
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
     const { data, error } = await supabase
       .from("adhkar")
       .select(COLUMNS)

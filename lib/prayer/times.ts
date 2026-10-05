@@ -99,6 +99,18 @@ export function decodeMethod(value: string | null | undefined): { method: Method
   return { method: m, madhab: mad === "hanafi" ? "hanafi" : "shafi" };
 }
 
+/** إعدادات المواقيت من صف profiles (city وcalc_method)، أو null إن لم يُختر شيء صالح. */
+export function settingsFromProfile(row: { city?: string | null; calc_method?: string | null } | null | undefined): PrayerSettings | null {
+  const decoded = decodeMethod(row?.calc_method);
+  const city = cityById(row?.city);
+  if (!decoded && !city) return null;
+  return {
+    place: city ? { kind: "city", cityId: city.id } : DEFAULT_SETTINGS.place,
+    method: decoded?.method ?? DEFAULT_SETTINGS.method,
+    madhab: decoded?.madhab ?? DEFAULT_SETTINGS.madhab,
+  };
+}
+
 /** يقرأ إعدادات محفوظة (JSON من المتصفح) ويتحقق منها؛ وأي قيمة غير صالحة تعود إلى الافتراضي. */
 export function parseSettings(raw: unknown): PrayerSettings | null {
   if (!raw || typeof raw !== "object") return null;

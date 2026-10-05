@@ -4,19 +4,25 @@
     "description": ""
   },
   "nav": {
-    "home": "",
-    "prayer": "",
-    "adhkar": "",
-    "newMuslim": "",
-    "about": "",
-    "login": "",
-    "account": "",
-    "menu": "",
-    "openMenu": "",
-    "closeMenu": "",
-    "language": "",
-    "mainNav": "",
-    "homeLink": ""
+    "home": "Conversation",
+    "newMuslim": "Nouveau musulman",
+    "about": "À propos",
+    "login": "Connexion",
+    "account": "Mon compte",
+    "menu": "Menu",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "language": "Langue",
+    "mainNav": "Navigation principale",
+    "homeLink": "Mustafti — Accueil",
+    "forum": "Forum",
+    "discover": "Découvrir l'islam",
+    "library": "Bibliothèque",
+    "signOut": "Déconnexion",
+    "accountMenu": {
+      "expertDashboard": "Espace expert",
+      "adminPanel": "Espace admin"
+    }
   },
   "disclosure": {
     "text": ""
@@ -38,7 +44,6 @@
   "home": {
     "intro": "",
     "whoAreYou": "",
-    "whoOptional": "",
     "personas": {
       "muslim": "",
       "newMuslim": "",
@@ -328,5 +333,121 @@
     "meTitle": "",
     "meHint": "",
     "showFile": ""
+  },
+  "prayer": {
+    "change": "Changer la ville et la méthode",
+    "done": "Terminé"
+  },
+  "adhkar": {
+    "title": "Invocations",
+    "prev": "Invocation précédente",
+    "next": "Invocation suivante"
+  },
+  "intro": {
+    "forum": {
+      "kicker": "Mustafti",
+      "title": "Forum",
+      "lead": "Un espace serein où les utilisateurs échangent sur ce qui compte pour eux, avec courtoisie et des règles claires. Ouverture prochaine ; d'ici là, posez vos questions à Mustafti dans la conversation.",
+      "cta": "Retour à la conversation"
+    },
+    "discover": {
+      "kicker": "Mustafti",
+      "title": "Découvrir l'islam",
+      "lead": "Un parcours simple pour qui veut connaître l'islam à partir de ses sources, sans pression ni complexité. Bientôt complet ; d'ici là, demandez ce que vous voulez dans la conversation.",
+      "cta": "Demander dans la conversation"
+    }
+  },
+  "library": {
+    "kicker": "IslamHouse",
+    "title": "Bibliothèque",
+    "lead": "Livres, articles et audios gratuits d'IslamHouse dans votre langue, à ouvrir ou télécharger depuis leur lien officiel.",
+    "searchLabel": "Rechercher dans la bibliothèque",
+    "placeholder": "Saisissez un sujet ou un titre",
+    "search": "Rechercher",
+    "topicsLabel": "Thèmes suggérés",
+    "topics": {
+      "aqeedah": "Croyance",
+      "prayer": "Prière",
+      "fasting": "Jeûne",
+      "seerah": "Biographie du Prophète",
+      "newMuslim": "Nouveau musulman",
+      "family": "Famille"
+    },
+    "resultsFor": "Résultats pour « {q} »",
+    "shamela": "Rechercher dans Al-Maktaba Al-Shamela",
+    "limited": "Trop de recherches en peu de temps. Patientez un instant puis réessayez.",
+    "unavailable": "La bibliothèque est inaccessible pour le moment. Réessayez dans un instant.",
+    "empty": "Aucun document trouvé. Essayez un autre mot ou l'un des thèmes suggérés.",
+    "open": "Ouvrir / Télécharger",
+    "note": "Les documents proviennent d'IslamHouse (islamhouse.com) et s'ouvrent depuis leur lien officiel ; nous n'hébergeons aucun fichier.",
+    "hint": "Choisissez un thème ou saisissez ce que vous cherchez.",
+    "types": {
+      "books": "Livre",
+      "articles": "Article",
+      "audios": "Audio",
+      "videos": "Vidéo",
+      "fatwa": "Fatwa",
+      "posters": "Carte",
+      "other": "Document"
+    }
+  },
+  "me": {
+    "title": "Mon compte",
+    "tabsLabel": "Sections du compte",
+    "tabs": {
+      "profile": "Profil",
+      "cases": "Mes questions",
+      "forum": "Mes messages du forum",
+      "public": "Mon profil public",
+      "settings": "Paramètres"
+    },
+    "profile": {
+      "title": "Mes informations",
+      "name": "Nom",
+      "language": "Langue préférée",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Vos informations ont été enregistrées.",
+      "error": "Échec de l'enregistrement. Réessayez.",
+      "prayerTitle": "Ville et méthode des horaires de prière",
+      "prayerHint": "Affichées dans la carte des horaires sur la page d'accueil.",
+      "expertTitle": "Photo et présentation",
+      "applicationHint": "Votre candidature d'expert :",
+      "applicationLink": "État de la candidature",
+      "joinHint": "Vous êtes savant ou spécialiste ?",
+      "joinLink": "Rejoindre en tant qu'expert"
+    },
+    "forum": {
+      "title": "Aucun message pour l'instant",
+      "empty": "À l'ouverture du forum, vos messages et réponses seront réunis ici.",
+      "cta": "À propos du forum"
+    },
+    "settings": {
+      "downloadTitle": "Télécharger mes données",
+      "downloadHint": "Un fichier JSON avec votre compte, vos questions, leurs dossiers et leurs réponses.",
+      "download": "Télécharger mes données",
+      "deleteTitle": "Supprimer mon compte et mes données",
+      "deleteHint": "Votre compte et votre profil sont supprimés définitivement, vos questions en sont détachées, et les réponses des experts sont conservées.",
+      "delete": "Supprimer mon compte et mes données",
+      "dialogTitle": "Supprimer définitivement votre compte ?",
+      "willDelete": "Votre compte, votre profil, vos photos et vos documents seront supprimés.",
+      "willDetach": "Vos questions seront détachées de votre compte et ne vous seront plus liées.",
+      "willKeep": "Les réponses des experts restent telles quelles.",
+      "irreversible": "Cette action est irréversible.",
+      "typeToConfirm": "Pour confirmer, saisissez : {phrase}",
+      "confirmPhrase": "supprimer mon compte",
+      "cancel": "Annuler",
+      "deleting": "Suppression…",
+      "confirmDelete": "Supprimer définitivement",
+      "errors": {
+        "invalid": "Requête invalide.",
+        "auth": "Connectez-vous d'abord.",
+        "notConfigured": "La suppression n'est pas disponible pour le moment.",
+        "admin": "Les comptes d'administration ne se suppriment pas ici ; adressez-vous au super administrateur.",
+        "expertAnswers": "Un compte d'expert ayant des réponses ne peut pas encore être supprimé ; contactez l'équipe.",
+        "confirm": "Saisissez la phrase de confirmation à l'identique.",
+        "generic": "Échec de la suppression. Réessayez."
+      }
+    }
   }
 }

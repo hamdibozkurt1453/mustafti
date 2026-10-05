@@ -127,7 +127,8 @@ create table if not exists public.case_files (
 create table if not exists public.expert_answers (
   id                uuid primary key default gen_random_uuid(),
   case_id           uuid not null references public.cases (id) on delete cascade,
-  expert_id         uuid not null references public.experts (id) on delete cascade,
+  -- R2: يبقى الجواب إن حُذف حساب المختص (migrations/20261008_account_deletion.sql).
+  expert_id         uuid references public.experts (id) on delete set null,
   answer_ar         text not null,
   answer_translated text,
   created_at        timestamptz not null default now()

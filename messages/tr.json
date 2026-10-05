@@ -4,19 +4,25 @@
     "description": ""
   },
   "nav": {
-    "home": "",
-    "prayer": "",
-    "adhkar": "",
-    "newMuslim": "",
-    "about": "",
-    "login": "",
-    "account": "",
-    "menu": "",
-    "openMenu": "",
-    "closeMenu": "",
-    "language": "",
-    "mainNav": "",
-    "homeLink": ""
+    "home": "Soru-Cevap",
+    "newMuslim": "Yeni Müslüman",
+    "about": "Mustafti hakkında",
+    "login": "Giriş",
+    "account": "Hesabım",
+    "menu": "Menü",
+    "openMenu": "Menüyü aç",
+    "closeMenu": "Menüyü kapat",
+    "language": "Dil",
+    "mainNav": "Ana gezinme",
+    "homeLink": "Mustafti — Ana sayfa",
+    "forum": "Tartışma",
+    "discover": "İslam'ı Tanıyın",
+    "library": "Kütüphane",
+    "signOut": "Çıkış",
+    "accountMenu": {
+      "expertDashboard": "Uzman paneli",
+      "adminPanel": "Yönetici paneli"
+    }
   },
   "disclosure": {
     "text": ""
@@ -38,7 +44,6 @@
   "home": {
     "intro": "",
     "whoAreYou": "",
-    "whoOptional": "",
     "personas": {
       "muslim": "",
       "newMuslim": "",
@@ -328,5 +333,121 @@
     "meTitle": "",
     "meHint": "",
     "showFile": ""
+  },
+  "prayer": {
+    "change": "Şehri ve yöntemi değiştir",
+    "done": "Tamam"
+  },
+  "adhkar": {
+    "title": "Zikirler",
+    "prev": "Önceki zikir",
+    "next": "Sonraki zikir"
+  },
+  "intro": {
+    "forum": {
+      "kicker": "Mustafti",
+      "title": "Tartışma",
+      "lead": "Kullanıcıların kendileri için önemli konuları nezaketle ve açık kurallarla konuşabileceği sakin bir alan. Yakında açılıyor; o zamana kadar sohbette Mustafti'ye sorun.",
+      "cta": "Sohbete dön"
+    },
+    "discover": {
+      "kicker": "Mustafti",
+      "title": "İslam'ı Tanıyın",
+      "lead": "İslam'ı kaynaklarından tanımak isteyen herkes için baskısız ve sade bir yol. Yakında tamamlanıyor; o zamana kadar sohbette dilediğinizi sorun.",
+      "cta": "Sohbette sor"
+    }
+  },
+  "library": {
+    "kicker": "IslamHouse",
+    "title": "Kütüphane",
+    "lead": "IslamHouse'tan kendi dilinizde ücretsiz kitaplar, makaleler ve sesli içerikler; resmî bağlantısından açın veya indirin.",
+    "searchLabel": "Kütüphanede ara",
+    "placeholder": "Bir konu veya kitap adı yazın",
+    "search": "Ara",
+    "topicsLabel": "Önerilen konular",
+    "topics": {
+      "aqeedah": "Akide",
+      "prayer": "Namaz",
+      "fasting": "Oruç",
+      "seerah": "Siyer",
+      "newMuslim": "Yeni Müslüman",
+      "family": "Aile"
+    },
+    "resultsFor": "“{q}” sonuçları",
+    "shamela": "el-Mektebetü'ş-Şâmile'de ara",
+    "limited": "Kısa sürede çok fazla arama yaptınız. Biraz bekleyip tekrar deneyin.",
+    "unavailable": "Kütüphaneye şu anda ulaşılamıyor. Biraz sonra tekrar deneyin.",
+    "empty": "Bu aramayla içerik bulunamadı. Başka bir kelime veya önerilen konulardan birini deneyin.",
+    "open": "Aç / İndir",
+    "note": "İçerikler IslamHouse'tandır (islamhouse.com) ve resmî bağlantısından açılır; hiçbir dosyayı barındırmıyoruz.",
+    "hint": "Bir konu seçin veya aradığınızı yazın.",
+    "types": {
+      "books": "Kitap",
+      "articles": "Makale",
+      "audios": "Ses",
+      "videos": "Video",
+      "fatwa": "Fetva",
+      "posters": "Kart",
+      "other": "İçerik"
+    }
+  },
+  "me": {
+    "title": "Hesabım",
+    "tabsLabel": "Hesap bölümleri",
+    "tabs": {
+      "profile": "Profil",
+      "cases": "Sorularım",
+      "forum": "Tartışmadaki paylaşımlarım",
+      "public": "Herkese açık profilim",
+      "settings": "Ayarlar"
+    },
+    "profile": {
+      "title": "Bilgilerim",
+      "name": "Ad",
+      "language": "Tercih edilen dil",
+      "save": "Kaydet",
+      "saving": "Kaydediliyor…",
+      "saved": "Bilgileriniz kaydedildi.",
+      "error": "Kaydedilemedi. Tekrar deneyin.",
+      "prayerTitle": "Şehir ve namaz vakti hesaplama yöntemi",
+      "prayerHint": "Ana sayfadaki namaz vakitleri kartında görünür.",
+      "expertTitle": "Fotoğraf ve tanıtım",
+      "applicationHint": "Uzman başvurunuz:",
+      "applicationLink": "Başvuru durumu",
+      "joinHint": "İlim ehlinden misiniz?",
+      "joinLink": "Uzman olarak katılın"
+    },
+    "forum": {
+      "title": "Henüz paylaşım yok",
+      "empty": "Tartışma açıldığında paylaşımlarınız ve cevaplarınız burada toplanacak.",
+      "cta": "Tartışma hakkında"
+    },
+    "settings": {
+      "downloadTitle": "Verilerimi indir",
+      "downloadHint": "Hesabınızı, sorularınızı, dosyalarını ve cevaplarını içeren bir JSON dosyası.",
+      "download": "Verilerimi indir",
+      "deleteTitle": "Hesabımı ve verilerimi sil",
+      "deleteHint": "Hesabınız ve profiliniz kalıcı olarak silinir, sorularınız hesaptan ayrılır, uzman cevapları kalır.",
+      "delete": "Hesabımı ve verilerimi sil",
+      "dialogTitle": "Hesabınızı kalıcı olarak silmek istiyor musunuz?",
+      "willDelete": "Hesabınız, profiliniz, fotoğraflarınız ve belgeleriniz silinir.",
+      "willDetach": "Sorularınız hesabınızdan ayrılır ve artık size bağlanmaz.",
+      "willKeep": "Uzmanların cevapları olduğu gibi kalır.",
+      "irreversible": "Bu işlem geri alınamaz.",
+      "typeToConfirm": "Onaylamak için yazın: {phrase}",
+      "confirmPhrase": "hesabımı sil",
+      "cancel": "Vazgeç",
+      "deleting": "Siliniyor…",
+      "confirmDelete": "Kalıcı olarak sil",
+      "errors": {
+        "invalid": "Geçersiz istek.",
+        "auth": "Önce giriş yapın.",
+        "notConfigured": "Silme şu anda kullanılamıyor.",
+        "admin": "Yönetici hesapları buradan silinmez; üst yöneticiden isteyin.",
+        "expertAnswers": "Cevapları olan bir uzman hesabı şu anda silinemez; yönetimle iletişime geçin.",
+        "confirm": "Onay ifadesini aynen yazın.",
+        "generic": "Silinemedi. Tekrar deneyin."
+      }
+    }
   }
 }

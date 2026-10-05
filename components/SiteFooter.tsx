@@ -15,9 +15,10 @@ export function SiteFooter() {
       title: t("footer.colPlatform"),
       links: [
         { href: "/", label: t("nav.home") },
-        { href: "/prayer", label: t("nav.prayer") },
-        { href: "/adhkar", label: t("nav.adhkar") },
+        { href: "/forum", label: t("nav.forum") },
         { href: "/new-muslim", label: t("nav.newMuslim") },
+        { href: "/discover", label: t("nav.discover") },
+        { href: "/library", label: t("nav.library") },
       ].filter((l) => isEnabledHref(l.href)),
     },
     {

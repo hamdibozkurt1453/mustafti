@@ -104,7 +104,7 @@ describe("زر بلد السائل في الاستيضاح", () => {
 });
 
 describe("FEATURE_EXTRAS", () => {
-  it("مُفعّلة (S6): المواقيت والأذكار والمسلم الجديد في الرأس", () => {
+  it("مُفعّلة: المسلم الجديد في الرأس (المواقيت والأذكار بطاقتان في الرئيسية منذ R2)", () => {
     assert.equal(FEATURE_EXTRAS, true);
     for (const p of EXTRAS_PATHS) assert.equal(isEnabledHref(p), true);
     assert.equal(isEnabledHref("/about"), true);

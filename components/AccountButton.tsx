@@ -1,8 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
+import { signOut } from "@/lib/auth/actions";
 import { getAccountMenu, type AccountMenu } from "@/lib/experts/menu";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -27,6 +28,7 @@ export function CountBadge({ count, label }: { count: number; label?: string }) 
  */
 export function AccountButton() {
   const t = useTranslations("nav");
+  const locale = useLocale();
   const [signedIn, setSignedIn] = useState(false);
   const [menu, setMenu] = useState<AccountMenu | null>(null);
   const [open, setOpen] = useState(false);
@@ -73,7 +75,7 @@ export function AccountButton() {
   }, [open]);
 
   const buttonClass =
-    "inline-flex items-center gap-1.5 rounded-full bg-gold-500 px-4 py-2 text-sm font-semibold text-green-900 transition hover:brightness-105";
+    "mf-press inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-gold-500 px-3.5 py-2 text-sm font-semibold text-green-900 transition hover:brightness-105 sm:px-4";
 
   if (!signedIn) {
     return (
@@ -86,14 +88,6 @@ export function AccountButton() {
   const items = menu?.items ?? [];
   const total = menu?.total ?? 0;
 
-  if (!items.length) {
-    return (
-      <Link href="/me" className={buttonClass}>
-        {t("account")}
-      </Link>
-    );
-  }
-
   return (
     <div ref={box} className="relative">
       <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} className={buttonClass}>
@@ -103,7 +97,7 @@ export function AccountButton() {
       {open && (
         <ul
           role="menu"
-          className="absolute end-0 top-full z-50 mt-2 min-w-56 overflow-hidden rounded-2xl border border-sand-200 bg-ivory-50 py-1 text-green-900 shadow-[0_24px_60px_-30px_rgb(4_48_31/0.6)]"
+          className="mf-drop absolute end-0 top-full z-50 mt-2 min-w-56 overflow-hidden rounded-2xl border border-sand-200 bg-ivory-50 py-1 text-green-900 shadow-[0_24px_60px_-30px_rgb(4_48_31/0.6)]"
         >
           <li role="none">
             <Link role="menuitem" href="/me" className="block px-4 py-2.5 text-sm font-semibold hover:bg-green-900/5">
@@ -122,6 +116,14 @@ export function AccountButton() {
               </Link>
             </li>
           ))}
+          <li role="none" className="mt-1 border-t border-sand-200 pt-1">
+            <form action={signOut}>
+              <input type="hidden" name="locale" value={locale} />
+              <button role="menuitem" type="submit" className="block w-full px-4 py-2.5 text-start text-sm font-semibold text-ink-600 hover:bg-green-900/5">
+                {t("signOut")}
+              </button>
+            </form>
+          </li>
         </ul>
       )}
     </div>

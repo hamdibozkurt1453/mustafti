@@ -4,19 +4,25 @@
     "description": ""
   },
   "nav": {
-    "home": "",
-    "prayer": "",
-    "adhkar": "",
-    "newMuslim": "",
-    "about": "",
-    "login": "",
-    "account": "",
-    "menu": "",
-    "openMenu": "",
-    "closeMenu": "",
-    "language": "",
-    "mainNav": "",
-    "homeLink": ""
+    "home": "Obrolan",
+    "newMuslim": "Mualaf",
+    "about": "Tentang Mustafti",
+    "login": "Masuk",
+    "account": "Akun saya",
+    "menu": "Menu",
+    "openMenu": "Buka menu",
+    "closeMenu": "Tutup menu",
+    "language": "Bahasa",
+    "mainNav": "Navigasi utama",
+    "homeLink": "Mustafti — Beranda",
+    "forum": "Forum",
+    "discover": "Kenali Islam",
+    "library": "Perpustakaan",
+    "signOut": "Keluar",
+    "accountMenu": {
+      "expertDashboard": "Dasbor ahli",
+      "adminPanel": "Dasbor admin"
+    }
   },
   "disclosure": {
     "text": ""
@@ -38,7 +44,6 @@
   "home": {
     "intro": "",
     "whoAreYou": "",
-    "whoOptional": "",
     "personas": {
       "muslim": "",
       "newMuslim": "",
@@ -328,5 +333,121 @@
     "meTitle": "",
     "meHint": "",
     "showFile": ""
+  },
+  "prayer": {
+    "change": "Ubah kota & metode",
+    "done": "Selesai"
+  },
+  "adhkar": {
+    "title": "Zikir",
+    "prev": "Zikir sebelumnya",
+    "next": "Zikir berikutnya"
+  },
+  "intro": {
+    "forum": {
+      "kicker": "Mustafti",
+      "title": "Forum",
+      "lead": "Ruang tenang bagi pengguna untuk berdiskusi tentang hal yang penting bagi mereka, dengan santun dan aturan yang jelas. Segera dibuka; sementara itu, tanyakan kepada Mustafti di obrolan.",
+      "cta": "Kembali ke obrolan"
+    },
+    "discover": {
+      "kicker": "Mustafti",
+      "title": "Kenali Islam",
+      "lead": "Jalan yang mudah bagi siapa pun yang ingin mengenal Islam dari sumbernya, tanpa tekanan dan tanpa rumit. Segera hadir; sementara itu, tanyakan apa saja di obrolan.",
+      "cta": "Tanya di obrolan"
+    }
+  },
+  "library": {
+    "kicker": "IslamHouse",
+    "title": "Perpustakaan",
+    "lead": "Buku, artikel, dan audio gratis dari IslamHouse dalam bahasa Anda. Buka atau unduh dari tautan resminya.",
+    "searchLabel": "Cari di perpustakaan",
+    "placeholder": "Ketik topik atau judul buku",
+    "search": "Cari",
+    "topicsLabel": "Topik yang disarankan",
+    "topics": {
+      "aqeedah": "Akidah",
+      "prayer": "Salat",
+      "fasting": "Puasa",
+      "seerah": "Sirah Nabawiyah",
+      "newMuslim": "Mualaf",
+      "family": "Keluarga"
+    },
+    "resultsFor": "Hasil untuk “{q}”",
+    "shamela": "Cari di Al-Maktabah Asy-Syamilah",
+    "limited": "Terlalu banyak pencarian dalam waktu singkat. Tunggu sebentar lalu coba lagi.",
+    "unavailable": "Perpustakaan tidak dapat dijangkau saat ini. Coba lagi sebentar lagi.",
+    "empty": "Tidak ada materi untuk pencarian ini. Coba kata lain atau salah satu topik yang disarankan.",
+    "open": "Buka / Unduh",
+    "note": "Materi berasal dari IslamHouse (islamhouse.com) dan dibuka dari tautan resminya; kami tidak menyimpan file apa pun.",
+    "hint": "Pilih topik atau ketik yang Anda cari.",
+    "types": {
+      "books": "Buku",
+      "articles": "Artikel",
+      "audios": "Audio",
+      "videos": "Video",
+      "fatwa": "Fatwa",
+      "posters": "Kartu",
+      "other": "Materi"
+    }
+  },
+  "me": {
+    "title": "Akun saya",
+    "tabsLabel": "Bagian akun",
+    "tabs": {
+      "profile": "Profil",
+      "cases": "Pertanyaan saya",
+      "forum": "Postingan forum saya",
+      "public": "Profil publik saya",
+      "settings": "Pengaturan"
+    },
+    "profile": {
+      "title": "Data saya",
+      "name": "Nama",
+      "language": "Bahasa pilihan",
+      "save": "Simpan",
+      "saving": "Menyimpan…",
+      "saved": "Data Anda tersimpan.",
+      "error": "Gagal menyimpan. Coba lagi.",
+      "prayerTitle": "Kota & metode waktu salat",
+      "prayerHint": "Ditampilkan di kartu waktu salat di beranda.",
+      "expertTitle": "Foto & biografi",
+      "applicationHint": "Pendaftaran Anda sebagai ahli:",
+      "applicationLink": "Status pendaftaran",
+      "joinHint": "Anda seorang ahli ilmu?",
+      "joinLink": "Bergabung sebagai ahli"
+    },
+    "forum": {
+      "title": "Belum ada postingan",
+      "empty": "Saat forum dibuka, postingan dan balasan Anda akan terkumpul di sini.",
+      "cta": "Tentang forum"
+    },
+    "settings": {
+      "downloadTitle": "Unduh data saya",
+      "downloadHint": "File JSON berisi akun, pertanyaan, berkas, dan jawabannya.",
+      "download": "Unduh data saya",
+      "deleteTitle": "Hapus akun dan data saya",
+      "deleteHint": "Akun dan profil Anda dihapus permanen, pertanyaan dilepas dari akun, dan jawaban para ahli tetap ada.",
+      "delete": "Hapus akun dan data saya",
+      "dialogTitle": "Hapus akun Anda secara permanen?",
+      "willDelete": "Akun, profil, foto, dan dokumen Anda akan dihapus.",
+      "willDetach": "Pertanyaan Anda dilepas dari akun dan tidak lagi dikaitkan dengan Anda.",
+      "willKeep": "Jawaban para ahli tetap seperti semula.",
+      "irreversible": "Tindakan ini tidak dapat dibatalkan.",
+      "typeToConfirm": "Untuk konfirmasi, ketik: {phrase}",
+      "confirmPhrase": "hapus akun saya",
+      "cancel": "Batal",
+      "deleting": "Menghapus…",
+      "confirmDelete": "Hapus permanen",
+      "errors": {
+        "invalid": "Permintaan tidak valid.",
+        "auth": "Silakan masuk terlebih dahulu.",
+        "notConfigured": "Penghapusan tidak tersedia saat ini.",
+        "admin": "Akun admin tidak dapat dihapus di sini; mintalah kepada admin utama.",
+        "expertAnswers": "Akun ahli yang memiliki jawaban belum dapat dihapus; hubungi tim.",
+        "confirm": "Ketik frasa konfirmasi persis sama.",
+        "generic": "Gagal menghapus. Coba lagi."
+      }
+    }
   }
 }

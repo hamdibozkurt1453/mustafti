@@ -11,8 +11,9 @@ import type { ExpertRole } from "./types";
  * ويُحسب العدّ في الخادم بمفتاح service role بعد قراءة دور الطلب نفسه، ولا يعود إلى المتصفح إلا أعداد وروابط.
  */
 
+/** R2: القائمة «حسابي · لوحة المختص (للمختص) · لوحة المشرف (للمشرف) · خروج»؛ «حسابي» و«خروج» ثابتان في الزر. */
 export type AccountMenuItem = {
-  key: "expertDashboard" | "expertProfile" | "applicationStatus" | "expertApplications" | "adminPanel";
+  key: "expertDashboard" | "adminPanel";
   href: string;
   count?: number;
 };
@@ -29,16 +30,15 @@ export async function getAccountMenu(): Promise<AccountMenu> {
     if (ctx.expertStatus === "approved") {
       const { data } = await createAdminClient().from("experts").select("role").eq("id", ctx.userId).maybeSingle<{ role: ExpertRole }>();
       const count = data ? await availableCasesCount(data.role) : 0;
-      items.push({ key: "expertDashboard", href: "/expert", count }, { key: "expertProfile", href: "/expert/profile" });
-    } else if (ctx.expertStatus === "pending" || ctx.expertStatus === "rejected") {
-      items.push({ key: "applicationStatus", href: "/experts/join" });
+      items.push({ key: "expertDashboard", href: "/expert", count });
     }
 
     // المراجعون: الدور من جدول admins (قبل MFA أيضاً، فالعدد وحده لا يكشف شيئاً)، واللوحة نفسها تشترط MFA.
     const adminPath = process.env.ADMIN_PATH;
     if (adminPath && (ctx.adminRole === "super_admin" || ctx.adminRole === "reviewer")) {
+      // المراجعون: «لوحة المشرف» تفتح على طلبات المختصين، بعدد الطلبات المنتظرة.
       items.push({
-        key: "expertApplications",
+        key: "adminPanel",
         href: `/${encodeURIComponent(adminPath)}?tab=experts`,
         count: await pendingApplicationsCount(),
       });
