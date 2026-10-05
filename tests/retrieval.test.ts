@@ -126,7 +126,8 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
     assert.match(v.verse ?? "", /^وَإِذۡ يَرۡفَعُ/);
     assert.equal(v.noteKind, "tafsir");
     assert.equal(v.pinned, true);
-    assert.deepEqual(diag.pinLog?.map((x) => x.status), ["ok"]);
+    // ومعها مراجع «الأساسيات» المطابقة للسؤال (القبلة) تُسجَّل كغيرها.
+    assert.equal(diag.pinLog?.find((x) => x.ref === "آية 2:127")?.status, "ok");
   });
 
   it("retrieve: المرشح نفسه في مدخلات التقييم، ويُحسب «بلغ التقييم» ويُقبل", async () => {
@@ -223,7 +224,10 @@ describe("خطة الإحالات تصل إلى تقييم الصلة", () => {
         detail: async (ref) => (ref === "hadith:3:ar" ? { text: "عن ابن عمر… الشرح: …", grade: "صحيح" } : null),
       }),
     );
-    assert.deepEqual(calls, ["corpus:hadith:بني الإسلام خمس", "any:بني الإسلام خمس"]);
+    // عبارة الخطة، ثم عبارة «الأساسيات» لأركان الإسلام (بلا نتائج هنا).
+    const own = calls.filter((x) => x.endsWith(":بني الإسلام خمس"));
+    assert.deepEqual(own, ["corpus:hadith:بني الإسلام خمس", "any:بني الإسلام خمس"]);
+    assert.ok(calls.includes("corpus:hadith:بني الإسلام على خمس"));
     assert.equal(pinned.length, 2);
     assert.equal(pinned[0].grade, "صحيح");
     assert.ok(pinned.every((p) => p.sourceId === "hadeethenc"));

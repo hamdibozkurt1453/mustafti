@@ -19,7 +19,8 @@ import { cleanForDisplay } from "@/lib/brain/quran-index";
  * لماذا لا نبث التوليد مباشرة؟ لأن الحارس يفحص الجواب كاملاً قبل أن يرى السائل أي كلمة.
  */
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// ميزانية السؤال 55 ث (مع «ابحث واقرأ») ثم البث.
+export const maxDuration = 90;
 
 const BodySchema = z.object({
   message: z.string().trim().min(1).max(MAX_QUESTION_CHARS),
@@ -149,6 +150,8 @@ export async function POST(request: Request) {
           ...(fatwas.length ? { fatwas } : {}),
           ...(reply.suggestions?.length ? { suggestions: reply.suggestions } : {}),
           ...(reply.note ? { note: reply.note } : {}),
+          ...(reply.links?.length ? { links: reply.links } : {}),
+          ...(reply.hadithCheck ? { hadithCheck: reply.hadithCheck } : {}),
           ...(reply.referral ? { referral: reply.referral } : {}),
           ...(reply.kind === "referral" || reply.kind === "abstain" || reply.kind === "refused"
             ? { chapter: reply.classification?.chapter, userType: reply.classification?.userType }

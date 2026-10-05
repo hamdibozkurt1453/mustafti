@@ -4,13 +4,23 @@ import { cacheGet, cacheSet, DAY } from "@/lib/cache";
 import { chat, type ChatMessage } from "@/lib/llm";
 import { classify, type Classification } from "./classify";
 import { checkOutput, guardAndLog, matchKey, type GuardResult } from "./guard";
-import { looksCaseRuling, looksPersonal, looksUrgent, referralKindOf } from "./heuristics";
+import { looksCaseRuling, looksGeneralRuling, looksPersonal, looksPersonalFacts, looksUrgent, referralKindOf } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
 import { answerFormatIssues, unquoteReferenceOnly } from "./format";
 import type { ReferralKind } from "@/lib/case/types";
 import { message } from "./messages";
 import { planCitations, type CitationPlan } from "./planner";
-import { caseFatwas, CASE_FATWA_BUDGET_MS, retrieve, type CaseFatwas, type RetrievalDiag } from "./retrieval";
+import {
+  arabicPhrases,
+  caseFatwas,
+  CASE_FATWA_BUDGET_MS,
+  looksHadithCheck,
+  quotedSegment,
+  retrieve,
+  type CaseFatwas,
+  type RetrievalDiag,
+  type WebLink,
+} from "./retrieval";
 import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } from "./prompts";
 import type { FatwaCard } from "./fatwa-cards";
 import { suggestQuestions } from "./suggest";
@@ -58,6 +68,10 @@ export type BrainReply = {
   suggestions?: string[];
   /** سطر ثابت بعد بطاقات الفتاوى في D («الأفضل لحالتك أن يراها مختص»). */
   note?: string;
+  /** روابط من المرجعية بلا اقتباس موثَّق («ابحث واقرأ»): تُعرض روابط فقط. */
+  links?: WebLink[];
+  /** سؤال تحقق من حديث: عبارة البحث في الدرر، يطلبها متصفح السائل (لا الخادم ولا النموذج). */
+  hadithCheck?: { query: string };
   diag: {
     retrieval?: RetrievalDiag;
     caseFatwas?: CaseFatwas["diag"];
@@ -139,11 +153,14 @@ async function generate(question: string, c: Classification, mode: AnswerMode, p
 }
 
 /** مراحل الرد (لمؤشر «يبحث في المصادر…» في المحادثة). */
-export type BrainStage = "understanding" | "searching" | "verifying" | "writing";
+export type BrainStage = "understanding" | "searching" | "reading" | "readingFatwa" | "verifying" | "writing";
 
-/** ميزانية السؤال كله: لا امتناع بسبب البطء قبلها (الاسترجاع حتى 32 ث، ثم الصياغة). */
-export const QUESTION_BUDGET_MS = 40_000;
-const RETRIEVAL_SHARE_MS = 32_000;
+/**
+ * ميزانية السؤال كله (R1b: 55 ث مع «ابحث واقرأ»): الاسترجاع حتى 42 ث (والطبقة حتى 30 ث منها)،
+ * ثم الصياغة. ما تأخر من المصادر يسقط، ولا امتناع بسبب البطء قبلها.
+ */
+export const QUESTION_BUDGET_MS = 55_000;
+const RETRIEVAL_SHARE_MS = 42_000;
 
 export type RespondOptions = {
   history?: ChatMessage[];
@@ -156,7 +173,7 @@ export type RespondOptions = {
   cache?: boolean;
 };
 
-const answerKey = (question: string) => `brain:answer:v2:${guessLang(question)}:${matchKey(question).slice(0, 400)}`;
+const answerKey = (question: string) => `brain:answer:v3:${guessLang(question)}:${matchKey(question).slice(0, 400)}`;
 
 export async function respond(question: string, options: RespondOptions = {}): Promise<BrainReply> {
   const started = Date.now();
@@ -215,6 +232,12 @@ export async function respond(question: string, options: RespondOptions = {}): P
     overrides.push(`level:${c.level}->D:case-ruling`);
     c.level = "D";
   }
+  // سؤال حكم عام بلا وقائع شخصية (لا في الرسالة ولا فيما سبقها من السائل) ليس D: B (R1b).
+  const personalBefore = (options.history ?? []).some((m) => m.role === "user" && (looksPersonal(m.content) || looksPersonalFacts(m.content)));
+  if (c.level === "D" && !personalBefore && looksGeneralRuling(question)) {
+    overrides.push("level:D->B:general-ruling");
+    c.level = "B";
+  }
   const timings = { classifyMs: cls.latencyMs } as BrainReply["timings"];
   const common = { lang: c.lang, classification: c };
 
@@ -235,9 +258,10 @@ export async function respond(question: string, options: RespondOptions = {}): P
     const referral = referralKindOf(question);
     stage("searching");
     const t0 = Date.now();
-    const found = await caseFatwas(c, question, { deadline: Math.min(Date.now() + CASE_FATWA_BUDGET_MS, started + RETRIEVAL_SHARE_MS) }).catch(
-      () => null,
-    );
+    const found = await caseFatwas(c, question, {
+      deadline: Math.min(Date.now() + CASE_FATWA_BUDGET_MS, started + RETRIEVAL_SHARE_MS),
+      onReading: () => stage("readingFatwa"),
+    }).catch(() => null);
     timings.searchMs = Date.now() - t0;
     if (found) diag.caseFatwas = found.diag;
     if (found?.fatwas.length) {
@@ -262,10 +286,17 @@ export async function respond(question: string, options: RespondOptions = {}): P
     replan: plan ? (failed) => planCitations(question, failed) : undefined,
     deadline: started + RETRIEVAL_SHARE_MS,
     onVerify: () => stage("verifying"),
+    onReading: () => stage("reading"),
   });
   timings.searchMs = Date.now() - t0;
   diag.retrieval = found.diag;
   const passages = found.passages;
+  // التحقق من حديث: بطاقة الدرر من متصفح السائل (الخادم محجوب عنها)، بلا نموذج.
+  const hadithQuery = looksHadithCheck(question) ? (quotedSegment(question) ?? arabicPhrases(c, question)[0]) : undefined;
+  const shared: Partial<BrainReply> = {
+    ...(found.links.length ? { links: found.links } : {}),
+    ...(hadithQuery ? { hadithCheck: { query: hadithQuery } } : {}),
+  };
 
   /**
    * لا امتناع جاف: «لم أجد جواباً كافياً» مع النصوص القريبة (منقولة بحروفها) والفتاوى ذات الصلة،
@@ -281,6 +312,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
       ...common,
       timings,
       passages,
+      ...shared,
       ...extra,
       kind,
       text: withPrefix(`${head}${more}`),
@@ -309,7 +341,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
   // نص الفهرس والقاموس مرجع يُحال إليه، لا اقتباس: يُزال من «» (والسطر المكرر يُحذف).
   const answer = unquoteReferenceOnly(gen.text, passages);
   const body = c.level === "C" ? `${answer}\n\n${message("khilaf", c.lang)}` : answer;
-  const reply = done({ ...common, ...extra, kind: "answer", text: withPrefix(body), fatwas: found.fatwas });
+  const reply = done({ ...common, ...shared, ...extra, kind: "answer", text: withPrefix(body), fatwas: found.fatwas });
   if (useCache && !prefix) cacheSet(answerKey(question), reply, DAY);
   return reply;
 }

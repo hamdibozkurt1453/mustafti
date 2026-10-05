@@ -236,9 +236,11 @@
     "noteTranslation": "Terjemahan makna",
     "stage": {
       "understanding": "Membaca pertanyaan Anda…",
-      "searching": "Mencari di sumber…",
+      "searching": "Mencari di sumber-sumber yang diakui…",
       "verifying": "Memeriksa dalil…",
-      "writing": "Menyusun jawaban…"
+      "writing": "Menyusun jawaban…",
+      "reading": "Membaca sumber…",
+      "readingFatwa": "Membaca fatwa…"
     },
     "fatwasTitle": "Fatwa terbitan yang terkait",
     "fatwaBadge": "Fatwa terbitan",
@@ -246,7 +248,13 @@
     "viewFatwa": "Lihat fatwa",
     "sendCase": "Kirim masalah saya kepada ahli",
     "relatedTitle": "Teks terkait",
-    "suggestTitle": "Pertanyaan terkait yang dapat saya jawab"
+    "suggestTitle": "Pertanyaan terkait yang dapat saya jawab",
+    "linksTitle": "Tautan dari sumber yang diakui",
+    "dorarTitle": "Dorar — Ensiklopedia Hadis",
+    "dorarMuhaddith": "Ahli hadis",
+    "dorarSource": "Sumber",
+    "dorarGrade": "Hukum ahli hadis",
+    "dorarNote": "Langsung dari Dorar, apa adanya."
   },
   "case": {
     "start": "",

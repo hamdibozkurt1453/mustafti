@@ -236,9 +236,11 @@
     "noteTranslation": "Meal (anlamın tercümesi)",
     "stage": {
       "understanding": "Sorunuzu okuyorum…",
-      "searching": "Kaynaklarda arıyorum…",
+      "searching": "Onaylı kaynaklarda arıyorum…",
       "verifying": "Delilleri doğruluyorum…",
-      "writing": "Cevabı yazıyorum…"
+      "writing": "Cevabı yazıyorum…",
+      "reading": "Kaynakları okuyorum…",
+      "readingFatwa": "Fetvayı okuyorum…"
     },
     "fatwasTitle": "İlgili yayımlanmış fetvalar",
     "fatwaBadge": "Yayımlanmış fetva",
@@ -246,7 +248,13 @@
     "viewFatwa": "Fetvayı görüntüle",
     "sendCase": "Meselemi bir uzmana gönder",
     "relatedTitle": "İlgili metinler",
-    "suggestTitle": "Cevaplayabileceğim yakın sorular"
+    "suggestTitle": "Cevaplayabileceğim yakın sorular",
+    "linksTitle": "Onaylı kaynaklardan bağlantılar",
+    "dorarTitle": "Dorar — Hadis Ansiklopedisi",
+    "dorarMuhaddith": "Muhaddis",
+    "dorarSource": "Kaynak",
+    "dorarGrade": "Muhaddisin hükmü",
+    "dorarNote": "Doğrudan Dorar'dan, aynen."
   },
   "case": {
     "start": "",

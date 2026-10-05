@@ -16,6 +16,7 @@
 | [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) | عميل خادم MCP للجمعية | MIT |
 | [Zod](https://github.com/colinhacks/zod) | مخططات JSON لإخراج النموذج | MIT |
 | [unpdf](https://github.com/unjs/unpdf) | استخراج نص ملف «بيّنات» للفهرسة (تطوير) | MIT |
+| [PGlite](https://github.com/electric-sql/pglite) | اختبار دوال Supabase (بحث «بيّنات») على Postgres في الذاكرة (تطوير) | Apache-2.0 |
 | [tsx](https://github.com/privatenumber/tsx) | تشغيل سكربت اختبار النماذج (تطوير) | MIT |
 | [adhan](https://github.com/batoulapps/adhan-js) | حساب مواقيت الصلاة | MIT |
 | [Reem Kufi](https://fonts.google.com/specimen/Reem+Kufi) | خط العناوين، عبر next/font | SIL Open Font License 1.1 |

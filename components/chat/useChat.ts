@@ -11,6 +11,7 @@ import {
   type ChatEvent,
   type ChatFatwa,
   type ChatHistoryItem,
+  type ChatLink,
   type ChatReplyKind,
   type ChatSource,
   type ChatStage,
@@ -66,6 +67,10 @@ export type BotMessage = {
   suggestions?: string[];
   /** سطر ثابت بعد بطاقات الفتاوى في الحالة الشخصية. */
   note?: string;
+  /** روابط من المصادر المعتمدة بلا اقتباس موثَّق. */
+  links?: ChatLink[];
+  /** سؤال تحقق من حديث: بطاقة الدرر يطلبها المتصفح بهذه العبارة. */
+  hadithCheck?: { query: string };
   /** رسالة الخطأ الثابتة من الخادم (بلغة السائل)، أو مفتاح رسالة الواجهة. */
   error?: { key: BotError; text?: string };
   /** السؤال الذي يجيب عنه (لزر «أعد المحاولة»). */
@@ -243,6 +248,8 @@ export function useChat() {
                 fatwas: event.fatwas,
                 suggestions: event.suggestions,
                 note: event.note,
+                links: event.links,
+                hadithCheck: event.hadithCheck,
                 text: "",
               }));
               break;
@@ -530,6 +537,8 @@ export function useChat() {
         fatwas: undefined,
         suggestions: undefined,
         note: undefined,
+        links: undefined,
+        hadithCheck: undefined,
       }));
       void run(botId, bot.question, historyOf(messagesRef.current.slice(0, Math.max(0, index - 1))));
     },

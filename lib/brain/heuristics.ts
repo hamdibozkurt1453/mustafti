@@ -89,3 +89,39 @@ export function looksRulingQuestion(text: string): boolean {
 export function referralKindOf(question: string): ReferralKind {
   return !looksPersonal(question) && (looksCaseRuling(question) || looksRulingQuestion(question)) ? "ruling" : "personal";
 }
+
+/**
+ * وقائع شخصية في السؤال: المتكلم أو قريبه أو شخص بعينه، أو فعل وقع منه («أنا»، «فعلت»، «حدث لي»،
+ * «زوجي»…). وحدها تجعل سؤال الحكم حالةً شخصية (D)؛ وبدونها فسؤال الحكم العام B أو C (R1b).
+ */
+const PERSONAL_FACTS: RegExp[] = [
+  /(?<![\p{L}\p{M}])(?:أنا|انا|نحن|عندي|لدي|لديّ|معي|حدث\s+(?:لي|معي)|وقع\s+(?:لي|مني|علي)|أصابني|اصابني)(?![\p{L}\p{M}])/u,
+  /(?<![\p{L}\p{M}])(?:زوجي|زوجتي|امرأتي|خطيبي|خطيبتي|أبي|ابي|أمي|امي|والدي|والدتي|ابني|ابنتي|بنتي|أخي|اخي|أختي|اختي|ولدي|أولادي|اولادي|جاري|جارتي|صديقي|صديقتي|مديري|عمي|خالي|جدي|جدتي)(?![\p{L}\p{M}])/u,
+  // أفعال المتكلم الماضية الشائعة في الوقائع (نمت، صليت، طلقت، حلفت…).
+  /(?<![\p{L}\p{M}])(?:نمت|صليت|صمت|أفطرت|افطرت|طلقت|حلفت|نذرت|سرقت|شربت|أكلت|اكلت|تزوجت|اشتريت|بعت|اقترضت|أقرضت|اقرضت|ورثت|سافرت|نسيت|تركت|فعلت|قلت|كذبت|زنيت|ضربت|جامعت|احتلمت|حضت|نفست|أجهضت|اجهضت|أسلمت|اسلمت|ارتددت|دخلت|خرجت|عملت|اشتغلت|استلفت|أخذت|اخذت|وجدت|دفعت)(?![\p{L}\p{M}])/u,
+  /\b(?:i|i'm|i've|i'd|me|my|mine|we|our|us)\b/i,
+  wb(/\b(?:ben|benim|bana|beni|biz|bizim|eşim|annem|babam|kocam|karım)\b/iu),
+  wb(/\b(?:je|j'ai|moi|mon|ma|mes|nous|notre|mon\s+mari|ma\s+femme)\b/iu),
+  /(?<![\p{L}])(?:میں|میرا|میری|میرے|ہم|ہمارا|مجھے)(?![\p{L}])/u,
+  wb(/\b(?:saya|aku|kami|suami\s+saya|istri\s+saya)\b/iu),
+];
+
+export function looksPersonalFacts(text: string): boolean {
+  return PERSONAL_FACTS.some((r) => r.test(text));
+}
+
+/** «هل يجوز…؟» و«هل يحل…؟» عموماً (لا «لي»): سؤال حكم عام. */
+const GENERAL_RULING: RegExp[] = [
+  /هل\s+(?:يجوز|يحل|يصح|يحرم|يباح|يشرع|يجب|يلزم)/u,
+  /\bis\s+it\s+(?:allowed|permissible|haram|halal|forbidden|obligatory)\b|\bare\s+muslims\s+allowed\b/i,
+];
+
+/**
+ * سؤال حكم عام بلا وقائع شخصية: «ما حكم قضاء صلاة الفجر بعد طلوع الشمس؟»، «هل يجوز صيام يوم الجمعة
+ * منفرداً؟». هذا B (أو C إن كان فيه خلاف)، لا D. والحكم على «من فعل كذا» (looksCaseRuling) يبقى D.
+ */
+export function looksGeneralRuling(text: string): boolean {
+  if (looksPersonal(text) || looksCaseRuling(text) || looksPersonalFacts(text) || looksUrgent(text)) return false;
+  return looksRulingQuestion(text) || GENERAL_RULING.some((r) => r.test(text));
+}
+

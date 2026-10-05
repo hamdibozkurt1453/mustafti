@@ -171,9 +171,9 @@ export function excludedFatwaHosts(data: unknown): string[] {
 }
 
 /** الطلب نفسه بلا ذاكرة (لصفحة الفحص). */
-export async function fetchFatwas(query: string): Promise<{ fatwas: PublishedFatwa[]; excluded: string[]; shape: string[] }> {
-  const data = await api(`/search/${enc(query.trim().slice(0, 120))}/fatwas`);
-  return { fatwas: parseFatwas(data), excluded: excludedFatwaHosts(data), shape: shapeOf(data) };
+export async function fetchFatwas(query: string, trace?: RawTrace[]): Promise<{ fatwas: PublishedFatwa[]; excluded: string[]; shape: string[] }> {
+  const data = await traced(`/search/${enc(query.trim().slice(0, 120))}/fatwas`, trace);
+  return { fatwas: parseFatwas(data, 50), excluded: excludedFatwaHosts(data), shape: shapeOf(data) };
 }
 
 /** فتاوى منشورة لعبارة بحث (مخزّنة 24 ساعة؛ الفشل يُرمى فلا يُخزَّن). */
@@ -234,8 +234,8 @@ export function parseItems(data: unknown, kind: "books" | "topics", max = MAX): 
   return out;
 }
 
-export async function fetchItems(query: string, kind: "books" | "topics"): Promise<{ items: SourceResult[]; shape: string[] }> {
-  const data = await api(`/search/${enc(query.trim().slice(0, 120))}/${kind}`);
+export async function fetchItems(query: string, kind: "books" | "topics", trace?: RawTrace[]): Promise<{ items: SourceResult[]; shape: string[] }> {
+  const data = await traced(`/search/${enc(query.trim().slice(0, 120))}/${kind}`, trace);
   return { items: parseItems(data, kind), shape: shapeOf(data) };
 }
 
@@ -250,17 +250,42 @@ export function searchItems(query: string, kind: "books" | "topics"): Promise<So
 // ---------------------------------------------------------------------------
 
 /** كتب التفسير المفضلة بالترتيب (إن وُجدت في خيارات الآية). */
-const PREFERRED_TAFSIR = [/الميسر/, /السعدي/, /ابن كثير/, /الطبري/, /البغوي/, /القرطبي/];
+/** كتب التفسير المفضلة بالترتيب: الميسر، ثم السعدي، ثم ابن كثير، ثم الطبري. */
+const PREFERRED_TAFSIR = [/الميسر|muyassar/i, /السعدي|sa'?di/i, /ابن\s*كثير|kathir/i, /الطبري|tabari/i];
 
 export type TafsirOption = { id: string; name: string };
 
-/** خيارات /ayah/{s}/{a}/options: كل كائن فيه معرّف واسم. */
+const OPTION_NAME_KEYS = [...NAME_KEYS, "book_name", "ar_book_name", "bookName", "label", "ar_label", "short_name"];
+
+/** أول نص عربي في كائن (اسم الكتاب قد يأتي بمفتاح غير متوقع). */
+function arabicField(o: Obj): string | undefined {
+  for (const v of Object.values(o)) if (typeof v === "string" && /[\u0600-\u06FF]/.test(v) && v.length <= 120) return v.trim();
+  return undefined;
+}
+
+/**
+ * خيارات /ayah/{s}/{a}/options: كل كتاب بمعرّفه واسمه. القائمة قد تكون في الجذر، أو تحت مفتاح فيه
+ * «tafs» (يُقدَّم)، أو كائنات فيها book: {id, name}. المعرّف من book_id أو id أو bookId.
+ */
 export function parseOptions(data: unknown): TafsirOption[] {
   const out: TafsirOption[] = [];
-  for (const o of collectObjects(data, (x) => (x.id !== undefined || x.book_id !== undefined) && NAME_KEYS.some((k) => textOf(x[k])), 200)) {
-    const id = first(o, ["book_id", "id"]);
-    const name = plain(first(o, NAME_KEYS));
-    if (id && name && !out.some((x) => x.id === id)) out.push({ id, name });
+  const push = (id: string | undefined, name: string | undefined) => {
+    const n = plain(name);
+    if (id && n && !out.some((x) => x.id === id)) out.push({ id, name: n });
+  };
+  // ما تحت مفتاح «tafsir/tafseer/tafasir» أولاً.
+  const preferred: unknown[] = [];
+  collectObjects(data, (x) => Object.keys(x).some((k) => /tafs/i.test(k) && Array.isArray(x[k])), 5).forEach((o) => {
+    for (const [k, v] of Object.entries(o)) if (/tafs/i.test(k) && Array.isArray(v)) preferred.push(v);
+  });
+  const hasId = (x: Obj) => x.book_id !== undefined || x.id !== undefined || x.bookId !== undefined;
+  for (const source of [...preferred, data]) {
+    for (const o of collectObjects(source, (x) => hasId(x) || (typeof x.book === "object" && x.book !== null), 300)) {
+      const book = (typeof o.book === "object" && o.book !== null ? o.book : null) as Obj | null;
+      const id = first(o, ["book_id", "bookId"]) ?? (book ? first(book, ["id", "book_id"]) : undefined) ?? first(o, ["id"]);
+      const name = first(o, OPTION_NAME_KEYS) ?? (book ? first(book, OPTION_NAME_KEYS) ?? arabicField(book) : undefined) ?? arabicField(o);
+      push(id, name);
+    }
   }
   return out;
 }
@@ -270,7 +295,27 @@ export function pickTafsir(options: TafsirOption[]): TafsirOption | undefined {
     const hit = options.find((o) => re.test(o.name));
     if (hit) return hit;
   }
-  return options.find((o) => /تفسير|التفسير/.test(o.name)) ?? options[0];
+  return options.find((o) => /تفسير|التفسير|tafsir/i.test(o.name)) ?? options[0];
+}
+
+/** أثر طلب لصفحة الفحص: المسار، ومفاتيح الرد الخام، وأول 300 حرف منه. */
+export type RawTrace = { path: string; keys: string[]; head: string; error?: string };
+
+function traceOf(path: string, data: unknown): RawTrace {
+  const keys = data && typeof data === "object" ? (Array.isArray(data) ? [`[${data.length}]`, ...shapeOf(data)] : Object.keys(data as Obj)) : [typeof data];
+  return { path, keys: keys.slice(0, 30), head: JSON.stringify(data ?? null).slice(0, 300) };
+}
+
+/** طلب مع أثر (لصفحة الفحص). */
+async function traced<T = unknown>(path: string, trace?: RawTrace[]): Promise<T> {
+  try {
+    const data = await api<T>(path);
+    trace?.push(traceOf(path, data));
+    return data;
+  } catch (error) {
+    trace?.push({ path, keys: [], head: "", error: String((error as Error)?.message ?? error).slice(0, 200) });
+    throw error;
+  }
 }
 
 /** أطول نص في الرد (التفسير قد يأتي في text أو content أو nass…). */
@@ -294,22 +339,26 @@ export function ayahTafsir(surah: number, ayah: number): Promise<SourceResult[]>
   return cached(`qp:tafsir:${surah}:${ayah}`, DAY, () => fetchAyahTafsir(surah, ayah));
 }
 
-/** التفسير بلا ذاكرة: خيارات الآية، ثم نص أفضل كتاب. */
-export async function fetchAyahTafsir(surah: number, ayah: number): Promise<SourceResult[]> {
-  const book = pickTafsir(parseOptions(await api(`/ayah/${surah}/${ayah}/options`)));
-  if (!book) return [];
-  const text = longestText(await api(`/ayah/${surah}/${ayah}/book/${enc(book.id)}`));
-  if (text.length < 20) return [];
-  return [
-    {
-      title: `${book.name} — ${surah}:${ayah}`,
-      text: clip(text, 2000),
-      url: `https://quranpedia.net/book/${enc(book.id)}`,
-      source: `${QURANPEDIA_NAME} — ${book.name}`,
-      sourceId: "quranpedia" as const,
-      lang: "ar",
-    },
-  ];
+/** التفسير بلا ذاكرة: خيارات الآية، ثم نص أفضل كتاب (وإن فرغ، الكتاب التالي بالترتيب، حتى 3). */
+export async function fetchAyahTafsir(surah: number, ayah: number, trace?: RawTrace[]): Promise<SourceResult[]> {
+  const options = parseOptions(await traced(`/ayah/${surah}/${ayah}/options`, trace));
+  const best = pickTafsir(options);
+  const order = best ? [best, ...options.filter((o) => o.id !== best.id && PREFERRED_TAFSIR.some((re) => re.test(o.name)))] : [];
+  for (const book of order.slice(0, 3)) {
+    const text = longestText(await traced(`/ayah/${surah}/${ayah}/book/${enc(book.id)}`, trace).catch(() => null));
+    if (text.length < 20) continue;
+    return [
+      {
+        title: `${book.name} — ${surah}:${ayah}`,
+        text: clip(text, 2000),
+        url: `https://quranpedia.net/book/${enc(book.id)}`,
+        source: `${QURANPEDIA_NAME} — ${book.name}`,
+        sourceId: "quranpedia" as const,
+        lang: "ar",
+      },
+    ];
+  }
+  return [];
 }
 
 /** ترجمة معنى آية بلغة السائل (مخزّنة 24 ساعة). */
@@ -318,9 +367,15 @@ export function ayahTranslation(surah: number, ayah: number, lang: string): Prom
   return cached(`qp:translation:${surah}:${ayah}:${l}`, DAY, () => fetchAyahTranslation(surah, ayah, l));
 }
 
-export async function fetchAyahTranslation(surah: number, ayah: number, lang: string): Promise<SourceResult[]> {
+/** الترجمة: /translations/{s}/{a}/{lang}، وإن فرغ فـ /translations/{s}/{a} ونختار ما يذكر اللغة. */
+export async function fetchAyahTranslation(surah: number, ayah: number, lang: string, trace?: RawTrace[]): Promise<SourceResult[]> {
   const l = lang.toLowerCase().slice(0, 5);
-  const text = longestText(await api(`/translations/${surah}/${ayah}/${enc(l)}`));
+  let text = longestText(await traced(`/translations/${surah}/${ayah}/${enc(l)}`, trace).catch(() => null));
+  if (text.length < 5) {
+    const all = await traced(`/translations/${surah}/${ayah}`, trace).catch(() => null);
+    const mine = collectObjects(all, (x) => Object.values(x).some((v) => typeof v === "string" && v.toLowerCase() === l), 5);
+    text = longestText(mine.length ? mine : null);
+  }
   if (text.length < 5) return [];
   return [
     {

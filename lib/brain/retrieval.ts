@@ -7,7 +7,7 @@ import { callTool, toolData, toolText } from "@/lib/mcp";
 import { search, type SourceId, type SourceResult } from "@/lib/sources";
 import { ayahTafsir } from "@/lib/sources/quranpedia";
 import { clip, htmlToText } from "@/lib/sources/html";
-import { findTool, mcpQuranRange, mcpSearch, mcpSearchAny, type McpItem } from "@/lib/sources/mcp-search";
+import { findTool, mcpQuranRange, mcpSearch, mcpSearchAny, mcpSearchExtra, mcpSearchSources, type McpItem } from "@/lib/sources/mcp-search";
 import { SOURCE_BY_ID } from "@/lib/sources/registry";
 import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin";
 import { matchBasics, parseVerseRef, quotedVerses, verseRefsInText, type VerseRef } from "./basics";
@@ -29,6 +29,8 @@ import {
   type Candidate as RankCandidate,
 } from "./rank";
 import { MAX_FATWA_CARDS, toFatwaCard, type FatwaCard } from "./fatwa-cards";
+import { webSearchRead, type WebMode, type WebResult } from "./web";
+import { isFatwaDomain, urlKey, type WebSource } from "./web-parse";
 import { explicitVerseRef, INDEX_SOURCE, indexSummaryLine, isValidVerse, parseVerseText, surahInfoLine, surahUrl, verseTitle } from "./quran-index";
 import { matchKey } from "./guard";
 import type { Passage } from "./prompts";
@@ -49,8 +51,10 @@ import type { Passage } from "./prompts";
  */
 
 export type Candidate = RankCandidate & {
-  sourceId: SourceId | "bayyinat" | "glossary" | "quran-index";
+  sourceId: SourceId | "bayyinat" | "glossary" | "quran-index" | "web";
   fatwa?: SourceResult["fatwa"];
+  /** من طبقة «ابحث واقرأ» بلا اقتباس موثَّق: رابط فقط، لا يُرسل للصياغة. */
+  linkOnly?: boolean;
   pinned?: boolean;
   /** للآيات: نص الآية العربي، وما بعده (التفسير الميسر أو ترجمة المعنى)، للعرض المنظم. */
   verse?: string;
@@ -80,6 +84,19 @@ export type RetrievalDiag = {
   /** عدد المراجع المحددة التي بلغت تقييم الصلة فعلاً، وسجل كل مرجع (وُجد / فارغ / خطأ / مهلة). */
   pinned?: number;
   pinLog?: PinLog[];
+  /** طبقة «ابحث واقرأ»: العبارات، والمقروء، والموثَّق، و«رابط فقط»، والمحذوف، والزمن، والتكلفة. */
+  web?: WebDiag;
+};
+
+export type WebDiag = {
+  queries: string[];
+  read: number;
+  verified: number;
+  linkOnly: number;
+  dropped: number;
+  ms: number;
+  costUsd: number | null;
+  error?: string;
 };
 
 /**
@@ -356,6 +373,10 @@ export type PinDeps = {
   sourceSearch?: (id: SourceId, q: string, lang: string, ms: number, onError: (e: string) => void) => Promise<SourceResult[]>;
   /** تفسير آية من Quranpedia. */
   tafsir?: (surah: number, ayah: number) => Promise<SourceResult[]>;
+  /** طبقة «ابحث واقرأ» (أدوات OpenRouter). */
+  web?: (question: string, opts: { mode: WebMode; lang: string; phrases: string[]; timeoutMs: number }) => Promise<WebResult>;
+  /** مجموعات بحث MCP الإضافية (أسئلة وأجوبة islamenc، وفتاوى IslamHouse) إن أعلنها الخادم. */
+  mcpExtra?: (q: string, lang: string) => Promise<SourceResult[]>;
 };
 
 export const DEFAULT_PIN_DEPS: PinDeps = {
@@ -367,7 +388,23 @@ export const DEFAULT_PIN_DEPS: PinDeps = {
   bayyinatNumbers: (ns) => bayyinatByNumber(ns),
   sourceSearch: (id, q, lang, ms, onError) => search(id, q, lang, ms, onError),
   tafsir: ayahTafsir,
+  web: webSearchRead,
+  mcpExtra: defaultMcpExtra,
 };
+
+/** مجموعات search الإضافية كما يعلنها الخادم (حتى اثنتين)، بنتائجها منسوبة إلى منصتها. */
+async function defaultMcpExtra(q: string, lang: string): Promise<SourceResult[]> {
+  const { extra } = await mcpSearchSources();
+  if (!extra.length) return [];
+  const lists = await Promise.all(extra.slice(0, 2).map((v) => mcpSearchExtra(q, lang, v).catch(() => [] as McpItem[])));
+  return lists
+    .flat()
+    .slice(0, 8)
+    .map((it) => {
+      const id: SourceId = /islamhouse\.com/.test(it.url) ? "islamhouse" : "islamenc";
+      return { title: it.title, text: it.text, url: it.url, source: SOURCE_BY_ID[id].name, sourceId: id, lang: it.lang ?? lang, ...(it.ref ? { ref: it.ref } : {}) };
+    });
+}
 
 /** سجل كل مرجع محدد: وُجد، أو فارغ، أو خطأ، أو تجاوز المهلة (يظهر في brain-test). */
 export type PinLog = { ref: string; status: "ok" | "empty" | "error" | "timeout"; count: number; detail?: string };
@@ -597,7 +634,9 @@ export function pinnedJobs(
 
   const refsP = planP.then((plan) => {
     const usePlan = !isEmptyPlan(plan);
-    const entries = usePlan ? [] : matchBasics(question);
+    // «الأساسيات» مع الخطة دائماً (كانت احتياطاً للخطة الفارغة فلا تُستعمل أبداً): المطابق الأول
+    // مع خطة، وحتى اثنين بدونها. مراجعها تمر بتقييم الصلة كغيرها.
+    const entries = matchBasics(question, usePlan ? 1 : 2);
     diag.basics = entries.map((e) => e.id);
     diag.plan = plan ?? undefined;
     const explicit = explicitVerseRef(question);
@@ -613,9 +652,10 @@ export function pinnedJobs(
   });
 
   const core = refsP.then(async ({ plan, usePlan, entries, unique }) => {
-    const hadithQs = usePlan ? plan!.hadithQueries : entries.flatMap((e) => e.hadithQueries.slice(0, 2)).slice(0, 3);
+    const basicHadith = entries.flatMap((e) => e.hadithQueries.slice(0, usePlan ? 1 : 2));
+    const hadithQs = [...new Set([...(usePlan ? plan!.hadithQueries : []), ...basicHadith])].slice(0, usePlan ? 4 : 3);
     const bayyinatQs = usePlan ? plan!.bayyinatQueries : [];
-    const bayyinatNs = usePlan ? [] : entries.flatMap((e) => e.bayyinat).slice(0, 3);
+    const bayyinatNs = entries.flatMap((e) => e.bayyinat).slice(0, 3);
     const jobs: Promise<Candidate | Candidate[] | null>[] = [
       ...unique.map((r) =>
         track(log, `آية ${r.surah}:${r.ayah}${r.through ? `-${r.through}` : ""}`, () => verseCandidate(r, c.lang, deps), left()),
@@ -729,9 +769,8 @@ const TAFSIR_ASK = /تفسير|يفسر|فسّر|فسر|معنى|معني|tafsir
 export type ExtraSearch = { source: SourceId; q: string; lang: string };
 
 /**
- * المصادر المناسبة لنوع السؤال:
- * - الفتاوى المنشورة (Quranpedia) بأول 3 عبارات عربية، لكل سؤال A/B/C.
- * - الدرر السنية: متن الحديث المنقول في السؤال أولاً إن كان تحققاً من حديث، ثم أول عبارة.
+ * المصادر المناسبة لنوع السؤال عبر HTTP من الخادم: الفتاوى المنشورة (Quranpedia) بأول 3 عبارات عربية،
+ * لكل سؤال A/B/C. (وطبقة «ابحث واقرأ» ومجموعات MCP الإضافية تعمل بالتوازي في retrieve.)
  */
 export function extraSearches(c: Classification, question: string): ExtraSearch[] {
   const ar = arabicPhrases(c, question);
@@ -741,8 +780,8 @@ export function extraSearches(c: Classification, question: string): ExtraSearch[
     if (t && !out.some((x) => x.source === source && x.q === t)) out.push({ source, q: t, lang: "ar" });
   };
   ar.slice(0, 3).forEach((q) => add("quranpedia", q));
-  if (looksHadithCheck(question)) add("dorar_hadith", quotedSegment(question));
-  add("dorar_hadith", ar[0]);
+  // الدرر لا يُطلب من الخادم (يحجبه بـ 403): التحقق من الحديث من متصفح السائل (DorarCard)،
+  // ومن صفحة الفحص للتوثيق فقط.
   return out;
 }
 
@@ -835,6 +874,105 @@ function settle<T>(p: Promise<T>, fallback: T): { promise: Promise<T>; done: () 
   return { promise, done: () => done, value: () => value };
 }
 
+// ---------------------------------------------------------------------------
+// طبقة «ابحث واقرأ»
+// ---------------------------------------------------------------------------
+
+/** حد زمن الطبقة: 30 ثانية، أو ما بقي من الميزانية ناقص 8 ثوانٍ (لتقييم الصلة بعدها). */
+export const WEB_DEADLINE_MS = 30_000;
+
+/** رابط من المرجعية بلا اقتباس موثَّق (يُعرض رابطاً فقط). */
+export type WebLink = { title: string; url: string; site: string };
+
+/**
+ * مصادر الطبقة مرشحين: الموثَّق نصه الاقتباس بحروف الصفحة، و«رابط فقط» نصه عنوانه ولا يُرسل للصياغة.
+ * ما كان من مواقع الفتاوى يحمل بيانات الفتوى (بطاقة «فتوى منشورة»، والمقتطف هو الاقتباس الموثَّق).
+ */
+export function webCandidates(sources: WebSource[]): Candidate[] {
+  return sources.map((s) => {
+    const quote = s.status === "verified" && s.quote ? s.quote : "";
+    return {
+      title: s.title,
+      text: quote || s.title,
+      url: s.url,
+      source: s.site,
+      sourceId: "web" as const,
+      lang: /[\u0600-\u06FF]/.test(quote || s.title) ? "ar" : undefined,
+      kw: 50,
+      ...(isFatwaDomain(s.domain) ? { fatwa: { mufti: s.site, question: s.title, answer: quote, host: s.domain } } : {}),
+      ...(quote ? {} : { linkOnly: true }),
+    };
+  });
+}
+
+/** تشغيل الطبقة بمهلتها، دون رمي أبداً. onSlow: إشارة «أقرأ…» بعد 6 ثوانٍ. */
+async function runWeb(
+  deps: PinDeps,
+  question: string,
+  mode: WebMode,
+  lang: string,
+  phrases: string[],
+  timeoutMs: number,
+  searches: SearchDiag[],
+  onSlow?: () => void,
+): Promise<{ cands: Candidate[]; diag: WebDiag | null }> {
+  const fn = deps.web ?? DEFAULT_PIN_DEPS.web!;
+  const slow = onSlow ? setTimeout(onSlow, 6_000) : undefined;
+  const t0 = Date.now();
+  try {
+    const result = await withTimeout(
+      fn(question, { mode, lang, phrases, timeoutMs }).catch(() => null),
+      timeoutMs + 1_500,
+      null as WebResult | null,
+    );
+    const ms = Date.now() - t0;
+    if (!result) {
+      searches.push({ query: phrases.join(" | ").slice(0, 120), lang, source: "web", results: 0, ms, error: `timeout ${timeoutMs}ms` });
+      return { cands: [], diag: { queries: [], read: 0, verified: 0, linkOnly: 0, dropped: 0, ms, costUsd: null, error: "timeout" } };
+    }
+    const verified = result.sources.filter((x) => x.status === "verified").length;
+    const diag: WebDiag = {
+      queries: result.queries,
+      read: result.fetched.length,
+      verified,
+      linkOnly: result.sources.length - verified,
+      dropped: result.dropped.length,
+      ms: result.ms,
+      costUsd: result.costUsd,
+      ...(result.error ? { error: result.error } : {}),
+    };
+    searches.push({
+      query: (result.queries.join(" | ") || phrases.join(" | ")).slice(0, 120),
+      lang,
+      source: "web",
+      results: result.sources.length,
+      ms: result.ms,
+      ...(result.error ? { error: result.error } : {}),
+    });
+    return { cands: webCandidates(result.sources), diag };
+  } finally {
+    clearTimeout(slow);
+  }
+}
+
+/** مجموعات MCP الإضافية بمهلة 12 ثانية (تسقط إن تأخرت). */
+async function runMcpExtra(deps: PinDeps, q: string | undefined, lang: string, searches: SearchDiag[], left: () => number): Promise<Candidate[]> {
+  if (!q) return [];
+  const fn = deps.mcpExtra ?? DEFAULT_PIN_DEPS.mcpExtra!;
+  const t0 = Date.now();
+  let error: string | undefined;
+  const found = await withTimeout(
+    fn(q, lang).catch((e) => {
+      error = String((e as Error)?.message ?? e).slice(0, 200);
+      return [] as SourceResult[];
+    }),
+    Math.min(12_000, left()),
+    [] as SourceResult[],
+  );
+  if (found.length || error) searches.push({ query: q, lang, source: "mcp-extra", results: found.length, ms: Date.now() - t0, ...(error ? { error } : {}) });
+  return found.map(fromSource);
+}
+
 export type RetrieveOptions = {
   /** للاختبار المحلي فقط: مصادر المراجع المحددة. */
   deps?: PinDeps;
@@ -844,6 +982,8 @@ export type RetrieveOptions = {
   deadline?: number;
   /** «أتحقق من الأدلة…»: بداية تقييم الصلة. */
   onVerify?: () => void;
+  /** «أقرأ المصادر…»: طبقة «ابحث واقرأ» ما زالت تقرأ بعد 6 ثوانٍ. */
+  onReading?: () => void;
 };
 
 export type RetrieveResult = {
@@ -853,6 +993,8 @@ export type RetrieveResult = {
   fatwas: FatwaCard[];
   /** نصوص قريبة لم تبلغ 60 (40–59، حتى 3): تُعرض عند الامتناع بدل الرد الجاف. */
   related: Passage[];
+  /** روابط ذات صلة (≥ 60) من «ابحث واقرأ» بلا اقتباس موثَّق: تُعرض روابط فقط. */
+  links: WebLink[];
 };
 
 /**
@@ -892,13 +1034,21 @@ export async function retrieve(
   const quranPins = settle(pins.quran, [] as Candidate[]);
   const quranSearch = settle(searchSources(queries, diag.searches, ["quranenc"], left()), [] as Candidate[]);
   const others = RETRIEVAL_SOURCES.filter((x) => x !== "quranenc");
-  const [pinnedCore, found, bayyinat, published, tafsir] = await Promise.all([
+  const phrases = [...arabicPhrases(c, question), ...c.searchQueries.userLang].slice(0, 5);
+  const webMs = Math.min(WEB_DEADLINE_MS, Math.max(2_000, deadline - Date.now() - 8_000));
+  const [pinnedCore, found, bayyinat, published, tafsir, web, mcpExtra] = await Promise.all([
     withTimeout(pins.core, left(), [] as Candidate[]),
     searchSources(queries, diag.searches, others, left()),
     searchBayyinat(bayyinatQuery, diag.searches).catch(() => [] as Candidate[]),
     runExtra(extra, deps, diag.searches, left),
     tafsirCandidates(question, deps, diag.searches, left),
+    runWeb(deps, question, "general", c.lang, phrases, webMs, diag.searches, opts.onReading),
+    runMcpExtra(deps, arabicPhrases(c, question)[0], c.lang, diag.searches, left),
   ]);
+  if (web.diag) diag.web = web.diag;
+  // الفتوى نفسها من Quranpedia ومن «ابحث واقرأ»: يُقدَّم اقتباس الطبقة الموثَّق (أدق موضعاً).
+  const webKeys = new Set(web.cands.filter((x) => !x.linkOnly).map((x) => urlKey(x.url)));
+  const publishedOnly = published.filter((x) => !webKeys.has(urlKey(x.url)));
 
   // «بيّنات» أولاً لأسئلة الشبهات وغير المسلمين (مصدر أساسي للحلول الحوارية في الشبهات).
   const shubha = c.userType === "non_muslim" || Boolean(c.misconception) || c.level === "B";
@@ -925,13 +1075,18 @@ export async function retrieve(
   const round1Raw = [
     ...(shubha ? bayyinat : []),
     ...found,
-    ...published,
+    ...publishedOnly,
+    ...mcpExtra,
     ...(quranSearch.done() ? quranSearch.value() : []),
     ...(shubha ? [] : bayyinat),
   ];
   const enriched = await poolOf(round1Raw, RERANK_POOL);
+  // مصادر «ابحث واقرأ» اختارها النموذج بعد القراءة: تُقيَّم كلها (بلا ترتيب أولي بالكلمات).
+  const webFresh = newPinned(web.cands);
+  diag.counts.raw += webFresh.length;
+  diag.counts.cleaned += webFresh.length;
   opts.onVerify?.();
-  const reranked = await rerank(question, [...round1Pinned, ...enriched], terms);
+  const reranked = await rerank(question, [...round1Pinned, ...webFresh, ...enriched], terms);
   let all = reranked.cands;
 
   // الجولة 2: لا مرجع محدد بلغ 60 ← انتظار بحث القرآن بالكلمات وتقييم ما جاء به.
@@ -968,12 +1123,17 @@ export async function retrieve(
 
   const byScore = (a: Candidate, b: Candidate) => (b.score ?? 0) - (a.score ?? 0) || (b.kw ?? 0) - (a.kw ?? 0);
   const ranked = cands.filter((x) => (x.score ?? 0) >= MIN_SCORE).sort(byScore);
+  // «رابط فقط» لا يُرسل للصياغة أبداً (لا نص موثَّق فيه): الفتوى منه بطاقة بلا مقتطف، وغيره رابط.
   const fatwaKept = ranked.filter((x) => x.fatwa);
-  const fatwaPassages = fatwaKept.slice(0, MAX_FATWA_PASSAGES);
-  const kept = [...ranked.filter((x) => !x.fatwa).slice(0, MAX_PASSAGES - fatwaPassages.length), ...fatwaPassages].sort(byScore);
+  const fatwaPassages = fatwaKept.filter((x) => !x.linkOnly).slice(0, MAX_FATWA_PASSAGES);
+  const kept = [...ranked.filter((x) => !x.fatwa && !x.linkOnly).slice(0, MAX_PASSAGES - fatwaPassages.length), ...fatwaPassages].sort(byScore);
   diag.counts.kept = kept.length;
+  const links = ranked
+    .filter((x) => x.linkOnly && !x.fatwa)
+    .slice(0, 3)
+    .map((x) => ({ title: x.title, url: x.url, site: x.source }));
   const related = cands
-    .filter((x) => !x.fatwa && (x.score ?? 0) >= RELATED_MIN && (x.score ?? 0) < MIN_SCORE)
+    .filter((x) => !x.fatwa && !x.linkOnly && (x.score ?? 0) >= RELATED_MIN && (x.score ?? 0) < MIN_SCORE)
     .sort(byScore)
     .slice(0, 3);
   return {
@@ -981,6 +1141,7 @@ export async function retrieve(
     diag,
     fatwas: fatwaKept.slice(0, MAX_FATWA_CARDS).flatMap((x) => toFatwaCard(x) ?? []),
     related: related.map((x) => toPassage(x, terms)),
+    links,
   };
 }
 
@@ -989,16 +1150,24 @@ export async function retrieve(
 // ---------------------------------------------------------------------------
 
 /** مهلة البحث عن فتاوى منشورة قبل الاستيضاح (لا تؤخر الإحالة طويلاً). */
-export const CASE_FATWA_BUDGET_MS = 16_000;
+export const CASE_FATWA_BUDGET_MS = 38_000;
 
-export type CaseFatwas = { fatwas: FatwaCard[]; diag: { searches: SearchDiag[]; scored: { title: string; score?: number }[]; rerank?: "llm" | "keywords" } };
+export type CaseFatwas = {
+  fatwas: FatwaCard[];
+  diag: { searches: SearchDiag[]; scored: { title: string; score?: number }[]; rerank?: "llm" | "keywords"; web?: WebDiag };
+};
 
 /**
- * D: قبل الاستيضاح، فتاوى منشورة مشابهة لسؤال السائل (Quranpedia، نطاقات المرجعية فقط).
+ * D: قبل الاستيضاح، فتاوى منشورة مشابهة لسؤال السائل: «ابحث واقرأ» في مواقع الفتاوى (islamqa وbinbaz
+ * وbinothaimeen أولاً) مع Quranpedia بالتوازي، ونطاقات المرجعية وحدها.
  * تُقيَّم بقرب سؤالها المنشور من مسألة السائل، ولا يبقى إلا ما بلغ 60 (حتى 3). وإن تعذّر النموذج
  * فلا شيء (لا نعرض فتوى على حالة شخصية بتداخل الكلمات وحده).
  */
-export async function caseFatwas(c: Classification, question: string, opts: { deps?: PinDeps; deadline?: number } = {}): Promise<CaseFatwas> {
+export async function caseFatwas(
+  c: Classification,
+  question: string,
+  opts: { deps?: PinDeps; deadline?: number; onReading?: () => void } = {},
+): Promise<CaseFatwas> {
   const deadline = opts.deadline ?? Date.now() + CASE_FATWA_BUDGET_MS;
   const left = () => Math.max(500, deadline - Date.now());
   const deps = opts.deps ?? DEFAULT_PIN_DEPS;
@@ -1006,18 +1175,27 @@ export async function caseFatwas(c: Classification, question: string, opts: { de
   const jobs: ExtraSearch[] = arabicPhrases(c, question)
     .slice(0, 3)
     .map((q) => ({ source: "quranpedia" as const, q, lang: "ar" }));
-  const raw = (await runExtra(jobs, deps, searches, left)).filter((x) => x.fatwa);
-  const cleaned = clean(raw, []);
-  if (!cleaned.length) return { fatwas: [], diag: { searches, scored: [] } };
+  const webMs = Math.min(WEB_DEADLINE_MS, Math.max(2_000, deadline - Date.now() - 6_000));
+  const [qp, web] = await Promise.all([
+    runExtra(jobs, deps, searches, left),
+    runWeb(deps, question, "case", c.lang, jobs.map((j) => j.q), webMs, searches, opts.onReading),
+  ]);
+  const webDiag = web.diag ?? undefined;
+  // الفتوى نفسها من المصدرين: اقتباس «ابحث واقرأ» الموثَّق مقدَّم، و«رابط فقط» منها يُترك لنص Quranpedia.
+  const verifiedWeb = new Set(web.cands.filter((x) => x.fatwa && !x.linkOnly).map((x) => urlKey(x.url)));
+  const cleaned = clean(qp.filter((x) => x.fatwa && !verifiedWeb.has(urlKey(x.url))), []);
+  const seen = new Set(cleaned.map((x) => urlKey(x.url)));
+  const webFatwas = web.cands.filter((x) => x.fatwa && !seen.has(urlKey(x.url)));
+  if (!cleaned.length && !webFatwas.length) return { fatwas: [], diag: { searches, scored: [], web: webDiag } };
   const terms = [...new Set([...keywords(question), ...jobs.flatMap((j) => keywords(j.q))])];
-  const pool = prerank(cleaned, terms, 8);
+  const pool = [...webFatwas, ...prerank(cleaned, terms, 8)];
   const res = await rerank(question, pool, terms, "case");
   const scored = res.cands.map((x) => ({ title: clip(x.title, 100), score: x.score }));
-  if (res.mode !== "llm") return { fatwas: [], diag: { searches, scored, rerank: res.mode } };
+  if (res.mode !== "llm") return { fatwas: [], diag: { searches, scored, rerank: res.mode, web: webDiag } };
   const fatwas = res.cands
     .filter((x) => (x.score ?? 0) >= MIN_SCORE)
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, MAX_FATWA_CARDS)
     .flatMap((x) => toFatwaCard(x) ?? []);
-  return { fatwas, diag: { searches, scored, rerank: res.mode } };
+  return { fatwas, diag: { searches, scored, rerank: res.mode, web: webDiag } };
 }

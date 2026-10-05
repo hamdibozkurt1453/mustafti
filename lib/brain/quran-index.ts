@@ -1,3 +1,4 @@
+import { stripMcpChrome } from "@/lib/sources/mcp-text";
 import index from "@/data/quran-index.json";
 
 /**
@@ -105,7 +106,7 @@ export function parseVerseText(raw: string): { verses: ParsedVerse[]; sourceUrl?
 
 /** ينظف نص أي مصدر للعرض: بلا علامات الخادم ولا «[3:1]» ولا «Source: …». */
 export function cleanForDisplay(text: string): string {
-  return text
+  return stripMcpChrome(text)
     .replace(/\[Surah\s+\d+[^\]]*\]/gi, " ")
     .replace(/\[\/?[A-Z][A-Z _-]{2,}\][^\n]*?(?=\n|$)/g, (m) => (/reproduce|exactly|attributed|say so/i.test(m) ? " " : m.replace(/\[\/?[A-Z][A-Z _-]{2,}\]/, " ")))
     .replace(/\[\d{1,3}:\d{1,3}\]/g, " ")

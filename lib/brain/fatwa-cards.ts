@@ -13,7 +13,7 @@ export const MAX_FATWA_CARDS = 3;
 export type FatwaCard = {
   title: string;
   mufti: string;
-  /** مقتطف حرفي من أول الجواب المنشور (≤ 400 حرف، ثم «…» إن قُطع). */
+  /** مقتطف حرفي من الجواب المنشور (≤ 400 حرف، ثم «…» إن قُطع). فارغ = «رابط فقط» (لم يُوثَّق اقتباس). */
   excerpt: string;
   url: string;
   category?: string;
@@ -34,9 +34,10 @@ export function toFatwaCard(c: {
   title: string;
   url: string;
   score?: number;
+  linkOnly?: boolean;
   fatwa?: { mufti: string; answer: string; category?: string };
 }): FatwaCard | null {
-  if (!c.fatwa?.answer) return null;
+  if (!c.fatwa || (!c.fatwa.answer && !c.linkOnly)) return null;
   return {
     title: c.title,
     mufti: c.fatwa.mufti,

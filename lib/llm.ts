@@ -55,6 +55,8 @@ export type LlmResult = {
   latencyMs: number;
   /** النموذج الذي أجاب فعلاً (الأساسي أو الاحتياطي). للسجلات والتشخيص فقط. */
   model?: string;
+  /** الرد الخام كاملاً (لطلبات أدوات الخادم فقط: فيه ما قرأته أداة web_fetch إن أعادته). */
+  raw?: unknown;
 };
 
 export type LlmErrorCode =
@@ -302,7 +304,13 @@ async function completeOnce(body: Body, opts: LlmOptions): Promise<LlmResult> {
   }
   if (!json || json.error) throw new LlmError("unavailable", json?.error?.message ?? "invalid JSON response");
   const text = json.choices?.[0]?.message?.content ?? "";
-  return { text, usage: toUsage(json.usage), latencyMs: Date.now() - started, model: String(body.model) };
+  return {
+    text,
+    usage: toUsage(json.usage),
+    latencyMs: Date.now() - started,
+    model: String(body.model),
+    ...(body.tools ? { raw: json } : {}),
+  };
 }
 
 /** المحاولة وإعادتها (للأعطال المؤقتة)، ثم النموذج الاحتياطي مرة واحدة إن ضُبط. */
@@ -332,6 +340,21 @@ async function complete(body: Body, opts: LlmOptions): Promise<LlmResult> {
 export async function chat(messages: ChatMessage[], opts: LlmOptions = {}): Promise<LlmResult> {
   await consumeDailyQuota();
   return complete(baseBody(messages, opts), opts);
+}
+
+/**
+ * أدوات الخادم في OpenRouter (تعمل من خوادم المزوّد لا من خادمنا): مثل
+ * { type: "openrouter:web_search", parameters: {...} } و{ type: "openrouter:web_fetch", parameters: {...} }.
+ */
+export type ServerTool = { type: `openrouter:${string}`; parameters?: Record<string, unknown> };
+
+/**
+ * جواب نصي مع أدوات الخادم (البحث والقراءة): النموذج يقرر متى يبحث ويقرأ، وOpenRouter ينفّذ
+ * الأداة ويعيد نتيجتها إلى النموذج، ثم يعود الجواب النهائي. الرد الخام في raw.
+ */
+export async function chatWithTools(messages: ChatMessage[], tools: ServerTool[], opts: LlmOptions = {}): Promise<LlmResult> {
+  await consumeDailyQuota();
+  return complete({ ...baseBody(messages, opts), tools }, opts);
 }
 
 export type StreamDone = { usage: LlmUsage; latencyMs: number };

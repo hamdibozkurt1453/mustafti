@@ -10,7 +10,7 @@
  * النص المبثوث هو رد مُستفتي بعد الحارس كاملاً (lib/brain/respond.ts)، فلا تصل كلمة لم تُفحص.
  */
 
-export type ChatStage = "understanding" | "searching" | "verifying" | "writing";
+export type ChatStage = "understanding" | "searching" | "reading" | "readingFatwa" | "verifying" | "writing";
 
 export type ChatReplyKind = "identity" | "urgent" | "out_of_scope" | "referral" | "answer" | "abstain" | "refused";
 
@@ -33,6 +33,9 @@ export type ChatSource = {
 /** فتوى منشورة: العنوان، والمفتي أو الجهة، ومقتطف حرفي من الجواب (≤ 400 حرف)، والرابط. */
 export type ChatFatwa = { title: string; mufti: string; excerpt: string; url: string; category?: string };
 
+/** رابط من المرجعية بلا اقتباس (قرأته طبقة «ابحث واقرأ» ولم يُوثَّق نص منه). */
+export type ChatLink = { title: string; url: string; site: string };
+
 export type ChatEvent =
   | { type: "stage"; stage: ChatStage }
   | {
@@ -52,6 +55,10 @@ export type ChatEvent =
       suggestions?: string[];
       /** سطر ثابت بعد بطاقات الفتاوى في الحالة الشخصية («الأفضل لحالتك أن يراها مختص»). */
       note?: string;
+      /** روابط من المصادر المعتمدة بلا اقتباس موثَّق. */
+      links?: ChatLink[];
+      /** سؤال تحقق من حديث: المتصفح يطلب الدرر بهذه العبارة (JSONP). */
+      hadithCheck?: { query: string };
     }
   | { type: "delta"; text: string }
   | { type: "done" }
