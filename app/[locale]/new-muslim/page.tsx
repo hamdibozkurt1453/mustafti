@@ -37,15 +37,15 @@ export default async function Page({ params }: Props) {
         <p className="mt-4 text-ivory-50/85 sm:text-[17px]">{t("lead")}</p>
         <Link
           href={{ pathname: "/", query: { as: "newMuslim" } }}
-          className="mt-8 inline-block rounded-full bg-gold-500 px-6 py-3 font-semibold text-green-900 transition hover:brightness-105"
+          className="mf-press mt-8 inline-block rounded-full bg-gold-500 px-6 py-3 font-semibold text-green-900 transition hover:brightness-105"
         >
           {t("cta")}
         </Link>
       </section>
 
-      <ul className="mt-6 grid gap-3 sm:grid-cols-3">
+      <ul className="mf-stagger mt-6 grid gap-3 sm:grid-cols-3">
         {points.map((k) => (
-          <li key={k} className="rounded-2xl border border-sand-200 bg-white p-5">
+          <li key={k} className="mf-lift rounded-2xl border border-sand-200 bg-white p-5">
             <p className="font-semibold text-green-900">{t(`points.${k}.title`)}</p>
             <p className="mt-1 text-sm leading-relaxed text-ink-600">{t(`points.${k}.body`)}</p>
           </li>
@@ -54,9 +54,9 @@ export default async function Page({ params }: Props) {
 
       <p className="mt-6 text-sm text-ink-600">
         {t("more")}{" "}
-        <Link href="/prayer" className="font-semibold text-green-600 underline underline-offset-4">{t("prayerLink")}</Link>
+        <Link href={{ pathname: "/", hash: "prayer" }} className="font-semibold text-green-600 underline underline-offset-4">{t("prayerLink")}</Link>
         {" · "}
-        <Link href="/adhkar" className="font-semibold text-green-600 underline underline-offset-4">{t("adhkarLink")}</Link>
+        <Link href={{ pathname: "/", hash: "adhkar" }} className="font-semibold text-green-600 underline underline-offset-4">{t("adhkarLink")}</Link>
       </p>
     </main>
   );

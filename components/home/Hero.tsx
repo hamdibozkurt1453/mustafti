@@ -3,6 +3,7 @@
 import { m, useScroll, useTransform } from "motion/react";
 import { useTranslations } from "next-intl";
 import type { RefObject } from "react";
+import { Link } from "@/i18n/navigation";
 import { BubbleMark } from "./BubbleMark";
 import { Composer } from "./Composer";
 import { GeometricPattern } from "./GeometricPattern";
@@ -11,6 +12,8 @@ import { SourcesMarquee } from "./SourcesMarquee";
 export const personas = ["muslim", "newMuslim", "nonMuslim"] as const;
 export type Persona = (typeof personas)[number];
 const questionKeys = ["q1", "q2", "q3", "q4"] as const;
+/** صفحتا «أسلمت حديثاً» و«لست مسلماً». */
+const personaHref = { newMuslim: "/new-muslim", nonMuslim: "/discover" } as const;
 
 type Props = {
   text: string;
@@ -112,27 +115,28 @@ export function Hero({ text, setText, onSubmit, onAsk, persona, setPersona, inpu
           <p className="mt-2 text-[12px] text-ivory-50/60">{t("composer.privacy")}</p>
         </div>
 
-        {/* من أنت؟ */}
+        {/* من أنت؟ (R2): «مسلم» يبقى هنا ويغيّر الاقتراحات، و«أسلمت حديثاً» و«لست مسلماً» ينقلان إلى صفحتيهما. */}
         <fieldset className="mf-rise mt-6 w-full" style={{ animationDelay: "0.85s" }}>
-          <legend className="mx-auto mb-3 text-[13px] text-ivory-50/70">
-            <span className="font-semibold text-ivory-50">{t("home.whoAreYou")}</span>
-            <span aria-hidden> · </span>
-            {t("home.whoOptional")}
-          </legend>
+          <legend className="sr-only">{t("home.whoAreYou")}</legend>
           <div className="flex flex-wrap justify-center gap-2">
             {personas.map((p) => {
               const selected = persona === p;
+              const base = "mf-press rounded-full border px-4 py-2 text-sm transition duration-300";
+              const idle = "border-ivory-50/25 bg-ivory-50/[0.04] text-ivory-50 hover:border-gold-500/70 hover:bg-ivory-50/[0.08]";
+              if (p !== "muslim") {
+                return (
+                  <Link key={p} href={personaHref[p]} className={`${base} ${idle}`}>
+                    {t(`home.personas.${p}`)}
+                  </Link>
+                );
+              }
               return (
                 <button
                   key={p}
                   type="button"
                   aria-pressed={selected}
                   onClick={() => setPersona(selected ? null : p)}
-                  className={`rounded-full border px-4 py-2 text-sm transition duration-300 ${
-                    selected
-                      ? "border-gold-500 bg-gold-500 font-semibold text-green-900"
-                      : "border-ivory-50/25 bg-ivory-50/[0.04] text-ivory-50 hover:border-gold-500/70 hover:bg-ivory-50/[0.08]"
-                  }`}
+                  className={`${base} ${selected ? "border-gold-500 bg-gold-500 font-semibold text-green-900" : idle}`}
                 >
                   {t(`home.personas.${p}`)}
                 </button>
@@ -152,7 +156,7 @@ export function Hero({ text, setText, onSubmit, onAsk, persona, setPersona, inpu
                   <button
                     type="button"
                     onClick={() => onAsk(question)}
-                    className="whitespace-nowrap rounded-full border border-ivory-50/10 bg-green-600/30 px-3.5 py-1.5 text-[13px] text-ivory-50/90 transition hover:border-gold-500/60 hover:text-ivory-50"
+                    className="mf-press whitespace-nowrap rounded-full border border-ivory-50/10 bg-green-600/30 px-3.5 py-1.5 text-[13px] text-ivory-50/90 transition hover:border-gold-500/60 hover:text-ivory-50"
                   >
                     {question}
                   </button>

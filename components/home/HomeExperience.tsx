@@ -7,10 +7,12 @@ import { useChat } from "../chat/useChat";
 import { ChatView } from "./ChatView";
 import { Hero, type Persona } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
-import { PathCards } from "./PathCards";
+import type { Dhikr } from "@/lib/adhkar/store";
 import { FEATURE_EXTRAS } from "@/lib/config";
+import { AdhkarCard } from "./AdhkarCard";
 import { personas } from "./Hero";
 import { PrayerCard } from "./PrayerCard";
+import { Reveal } from "./Reveal";
 import { Stats } from "./Stats";
 
 const loadFeatures = () => import("@/lib/motion-features").then((mod) => mod.default);
@@ -18,8 +20,9 @@ const loadFeatures = () => import("@/lib/motion-features").then((mod) => mod.def
 /**
  * الصفحة الرئيسية: الواجهة الأولى والأقسام، ثم تتحول إلى محادثة حية عند أول سؤال
  * (من الخانة الأولى أو من سؤال مقترح). المحادثة محفوظة في المتصفح، فتعود عند فتح الصفحة.
+ * R2: تحت المحادثة مباشرة بطاقة المواقيت ثم بطاقة الأذكار، ثم «بالأرقام» و«كيف يعمل».
  */
-export function HomeExperience() {
+export function HomeExperience({ adhkar, rtlMeaning }: { adhkar: Dhikr[]; rtlMeaning: boolean }) {
   const reduced = useReducedMotion() ?? false;
   const [persona, setPersona] = useState<Persona | null>(null);
   const [text, setText] = useState("");
@@ -31,6 +34,12 @@ export function HomeExperience() {
     setChatMode(chatting);
   }, [chatting]);
   useEffect(() => () => setChatMode(false), []);
+
+  function askAs(p: Persona) {
+    setPersona(p);
+    document.getElementById("ask")?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    setTimeout(() => inputRef.current?.focus({ preventScroll: true }), reduced ? 0 : 600);
+  }
 
   // ‎/?as=newMuslim (من صفحة /new-muslim): يفتح خانة السؤال بمسار الشخصية المطلوبة.
   useEffect(() => {
@@ -55,11 +64,6 @@ export function HomeExperience() {
     setText("");
   }
 
-  function askAs(p: Persona) {
-    setPersona(p);
-    document.getElementById("ask")?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
-    setTimeout(() => inputRef.current?.focus({ preventScroll: true }), reduced ? 0 : 600);
-  }
 
   return (
     <LazyMotion features={loadFeatures} strict>
@@ -82,10 +86,22 @@ export function HomeExperience() {
                 inputRef={inputRef}
                 reduced={reduced}
               />
+              {FEATURE_EXTRAS && (
+                <div className="bg-ivory-50">
+                  <div className="mx-auto grid max-w-6xl gap-5 px-4 py-10 sm:gap-6 sm:py-14">
+                    <Reveal>
+                      <PrayerCard />
+                    </Reveal>
+                    {adhkar.length > 0 && (
+                      <Reveal delay={0.05}>
+                        <AdhkarCard items={adhkar} rtlMeaning={rtlMeaning} />
+                      </Reveal>
+                    )}
+                  </div>
+                </div>
+              )}
               <Stats reduced={reduced} />
               <HowItWorks reduced={reduced} />
-              <PathCards onAsk={askAs} reduced={reduced} />
-              {FEATURE_EXTRAS && <PrayerCard />}
             </m.div>
           ) : (
             <m.div
