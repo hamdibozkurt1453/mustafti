@@ -1,11 +1,15 @@
 import { isEnabledHref } from "@/lib/config";
 
-/** روابط الرأس والقائمة (القسم 1.3). المفاتيح في messages/*.json تحت "nav". */
+/**
+ * روابط الرأس وقائمة ☰ بالترتيب نفسه (R2). المفاتيح في messages/*.json تحت "nav".
+ * المواقيت والأذكار بطاقتان في الرئيسية، فلا رابط لهما هنا.
+ */
 const allNavItems = [
   { href: "/", key: "home" },
-  { href: "/prayer", key: "prayer" },
-  { href: "/adhkar", key: "adhkar" },
+  { href: "/forum", key: "forum" },
   { href: "/new-muslim", key: "newMuslim" },
+  { href: "/discover", key: "discover" },
+  { href: "/library", key: "library" },
   { href: "/about", key: "about" },
 ] as const;
 

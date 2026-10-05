@@ -27,14 +27,14 @@ export function MobileMenu() {
   }, [open]);
 
   return (
-    <div className="lg:hidden">
+    <div className="xl:hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="mobile-menu"
         aria-label={open ? t("nav.closeMenu") : t("nav.openMenu")}
-        className="flex h-10 w-10 items-center justify-center rounded-full text-ivory-50 hover:bg-ivory-50/10"
+        className="mf-press flex h-10 w-10 items-center justify-center rounded-full text-ivory-50 transition-colors hover:bg-ivory-50/10"
       >
         {open ? <CloseIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
       </button>
@@ -42,7 +42,7 @@ export function MobileMenu() {
       {open && (
         <div
           id="mobile-menu"
-          className="absolute inset-x-0 top-16 border-t border-ivory-50/10 bg-green-900 px-4 pb-6 pt-3 shadow-lg"
+          className="mf-drop absolute inset-x-0 top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-ivory-50/10 bg-green-900 px-4 pb-6 pt-3 shadow-lg"
         >
           <nav aria-label={t("nav.mainNav")}>
             <NavLinks variant="mobile" onNavigate={() => setOpen(false)} />

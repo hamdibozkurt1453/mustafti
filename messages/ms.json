@@ -4,19 +4,25 @@
     "description": ""
   },
   "nav": {
-    "home": "",
-    "prayer": "",
-    "adhkar": "",
-    "newMuslim": "",
-    "about": "",
-    "login": "",
-    "account": "",
-    "menu": "",
-    "openMenu": "",
-    "closeMenu": "",
-    "language": "",
-    "mainNav": "",
-    "homeLink": ""
+    "home": "Sembang",
+    "newMuslim": "Saudara baru",
+    "about": "Tentang Mustafti",
+    "login": "Log masuk",
+    "account": "Akaun saya",
+    "menu": "Menu",
+    "openMenu": "Buka menu",
+    "closeMenu": "Tutup menu",
+    "language": "Bahasa",
+    "mainNav": "Navigasi utama",
+    "homeLink": "Mustafti — Laman utama",
+    "forum": "Forum",
+    "discover": "Kenali Islam",
+    "library": "Perpustakaan",
+    "signOut": "Log keluar",
+    "accountMenu": {
+      "expertDashboard": "Papan pemuka pakar",
+      "adminPanel": "Papan pemuka pentadbir"
+    }
   },
   "disclosure": {
     "text": ""
@@ -38,7 +44,6 @@
   "home": {
     "intro": "",
     "whoAreYou": "",
-    "whoOptional": "",
     "personas": {
       "muslim": "",
       "newMuslim": "",
@@ -328,5 +333,121 @@
     "meTitle": "",
     "meHint": "",
     "showFile": ""
+  },
+  "prayer": {
+    "change": "Tukar bandar & kaedah",
+    "done": "Selesai"
+  },
+  "adhkar": {
+    "title": "Zikir",
+    "prev": "Zikir sebelumnya",
+    "next": "Zikir seterusnya"
+  },
+  "intro": {
+    "forum": {
+      "kicker": "Mustafti",
+      "title": "Forum",
+      "lead": "Ruang tenang untuk pengguna berbincang tentang perkara yang penting bagi mereka, dengan adab dan garis panduan yang jelas. Akan dibuka tidak lama lagi; sementara itu, tanya Mustafti dalam sembang.",
+      "cta": "Kembali ke sembang"
+    },
+    "discover": {
+      "kicker": "Mustafti",
+      "title": "Kenali Islam",
+      "lead": "Laluan mudah bagi sesiapa yang ingin mengenali Islam daripada sumbernya, tanpa tekanan dan tanpa rumit. Akan siap tidak lama lagi; sementara itu, tanya apa sahaja dalam sembang.",
+      "cta": "Tanya dalam sembang"
+    }
+  },
+  "library": {
+    "kicker": "IslamHouse",
+    "title": "Perpustakaan",
+    "lead": "Buku, artikel dan audio percuma daripada IslamHouse dalam bahasa anda. Buka atau muat turun daripada pautan rasminya.",
+    "searchLabel": "Cari dalam perpustakaan",
+    "placeholder": "Taip topik atau tajuk buku",
+    "search": "Cari",
+    "topicsLabel": "Topik dicadangkan",
+    "topics": {
+      "aqeedah": "Akidah",
+      "prayer": "Solat",
+      "fasting": "Puasa",
+      "seerah": "Sirah Nabawi",
+      "newMuslim": "Saudara baru",
+      "family": "Keluarga"
+    },
+    "resultsFor": "Hasil untuk “{q}”",
+    "shamela": "Cari dalam Al-Maktabah Al-Syamilah",
+    "limited": "Terlalu banyak carian dalam masa singkat. Tunggu sebentar dan cuba lagi.",
+    "unavailable": "Perpustakaan tidak dapat dicapai sekarang. Cuba lagi sebentar nanti.",
+    "empty": "Tiada bahan untuk carian ini. Cuba perkataan lain atau salah satu topik dicadangkan.",
+    "open": "Buka / Muat turun",
+    "note": "Bahan daripada IslamHouse (islamhouse.com) dan dibuka daripada pautan rasminya; kami tidak menyimpan sebarang fail.",
+    "hint": "Pilih topik atau taip apa yang anda cari.",
+    "types": {
+      "books": "Buku",
+      "articles": "Artikel",
+      "audios": "Audio",
+      "videos": "Video",
+      "fatwa": "Fatwa",
+      "posters": "Kad",
+      "other": "Bahan"
+    }
+  },
+  "me": {
+    "title": "Akaun saya",
+    "tabsLabel": "Bahagian akaun",
+    "tabs": {
+      "profile": "Profil",
+      "cases": "Soalan saya",
+      "forum": "Hantaran forum saya",
+      "public": "Profil awam saya",
+      "settings": "Tetapan"
+    },
+    "profile": {
+      "title": "Maklumat saya",
+      "name": "Nama",
+      "language": "Bahasa pilihan",
+      "save": "Simpan",
+      "saving": "Menyimpan…",
+      "saved": "Maklumat anda disimpan.",
+      "error": "Gagal menyimpan. Cuba lagi.",
+      "prayerTitle": "Bandar & kaedah waktu solat",
+      "prayerHint": "Dipaparkan dalam kad waktu solat di laman utama.",
+      "expertTitle": "Foto & biodata",
+      "applicationHint": "Permohonan anda sebagai pakar:",
+      "applicationLink": "Status permohonan",
+      "joinHint": "Anda seorang ahli ilmu?",
+      "joinLink": "Sertai sebagai pakar"
+    },
+    "forum": {
+      "title": "Belum ada hantaran",
+      "empty": "Apabila forum dibuka, hantaran dan balasan anda akan dikumpulkan di sini.",
+      "cta": "Tentang forum"
+    },
+    "settings": {
+      "downloadTitle": "Muat turun data saya",
+      "downloadHint": "Fail JSON mengandungi akaun, soalan, fail dan jawapannya.",
+      "download": "Muat turun data saya",
+      "deleteTitle": "Padam akaun dan data saya",
+      "deleteHint": "Akaun dan profil anda dipadam secara kekal, soalan dipisahkan daripada akaun, dan jawapan pakar kekal.",
+      "delete": "Padam akaun dan data saya",
+      "dialogTitle": "Padam akaun anda secara kekal?",
+      "willDelete": "Akaun, profil, foto dan dokumen anda akan dipadam.",
+      "willDetach": "Soalan anda dipisahkan daripada akaun dan tidak lagi dikaitkan dengan anda.",
+      "willKeep": "Jawapan pakar kekal seperti asal.",
+      "irreversible": "Tindakan ini tidak boleh dibatalkan.",
+      "typeToConfirm": "Untuk mengesahkan, taip: {phrase}",
+      "confirmPhrase": "padam akaun saya",
+      "cancel": "Batal",
+      "deleting": "Memadam…",
+      "confirmDelete": "Padam secara kekal",
+      "errors": {
+        "invalid": "Permintaan tidak sah.",
+        "auth": "Sila log masuk dahulu.",
+        "notConfigured": "Pemadaman tidak tersedia sekarang.",
+        "admin": "Akaun pentadbir tidak boleh dipadam di sini; minta kepada pentadbir utama.",
+        "expertAnswers": "Akaun pakar yang mempunyai jawapan belum boleh dipadam; hubungi pasukan.",
+        "confirm": "Taip frasa pengesahan dengan tepat.",
+        "generic": "Gagal memadam. Cuba lagi."
+      }
+    }
   }
 }

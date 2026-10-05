@@ -129,6 +129,65 @@ body {
   mix-blend-mode: overlay;
 }
 
+/* ───────────── R2: حركة هادئة للواجهة كلها ───────────── */
+
+/* انتقال ناعم بين الصفحات (app/[locale]/template.tsx يُعاد تركيبه عند كل تنقل). */
+@keyframes mf-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.mf-page { animation: mf-page-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ظهور تدريجي لأبناء العنصر واحداً بعد الآخر. */
+.mf-stagger > * { animation: mf-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.mf-stagger > :nth-child(2) { animation-delay: 0.06s; }
+.mf-stagger > :nth-child(3) { animation-delay: 0.12s; }
+.mf-stagger > :nth-child(4) { animation-delay: 0.18s; }
+.mf-stagger > :nth-child(5) { animation-delay: 0.24s; }
+.mf-stagger > :nth-child(6) { animation-delay: 0.3s; }
+.mf-stagger > :nth-child(n + 7) { animation-delay: 0.36s; }
+
+/* البطاقات: ترتفع قليلاً مع ظل أعمق عند التمرير. */
+.mf-lift {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.35s;
+}
+@media (hover: hover) {
+  .mf-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 22px 50px -28px rgb(4 48 31 / 0.45);
+  }
+}
+
+/* الأزرار: انضغاط خفيف عند الضغط. */
+.mf-press { transition-property: transform, background-color, border-color, color, filter, box-shadow, opacity; transition-duration: 0.2s; }
+.mf-press:active { transform: scale(0.96); }
+
+/* القوائم المنسدلة. */
+@keyframes mf-drop-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.mf-drop { animation: mf-drop-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both; transform-origin: top; }
+
+/* خط ذهبي تحت رابط الرأس عند التمرير. */
+.mf-navlink::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0.85rem;
+  bottom: 0.2rem;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--mf-gold-500);
+  transform: scaleX(0);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mf-navlink:hover::after { transform: scaleX(1); }
+.mf-navlink[aria-current="page"]::after { transform: scaleX(0); }
+
+/* تبديل محتوى التبويبات. */
+@keyframes mf-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.mf-fade { animation: mf-fade-in 0.35s ease both; }
+
 .mf-no-scrollbar { scrollbar-width: none; }
 .mf-no-scrollbar::-webkit-scrollbar { display: none; }
 
@@ -137,6 +196,9 @@ body {
   .mf-draw { animation: none; stroke-dashoffset: 0; }
   .mf-breathe, .mf-dot, .mf-caret { animation: none; }
   .mf-marquee { animation: none; }
+  .mf-page, .mf-stagger > *, .mf-drop, .mf-fade { animation: none; opacity: 1; }
+  .mf-lift, .mf-lift:hover, .mf-press, .mf-press:active { transform: none; transition: none; }
+  .mf-navlink::after { transition: none; }
   html { scroll-behavior: auto; }
 }
 

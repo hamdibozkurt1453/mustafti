@@ -4,19 +4,25 @@
     "description": ""
   },
   "nav": {
-    "home": "",
-    "prayer": "",
-    "adhkar": "",
-    "newMuslim": "",
-    "about": "",
-    "login": "",
-    "account": "",
-    "menu": "",
-    "openMenu": "",
-    "closeMenu": "",
-    "language": "",
-    "mainNav": "",
-    "homeLink": ""
+    "home": "Mazungumzo",
+    "newMuslim": "Muislamu mpya",
+    "about": "Kuhusu Mustafti",
+    "login": "Ingia",
+    "account": "Akaunti yangu",
+    "menu": "Menyu",
+    "openMenu": "Fungua menyu",
+    "closeMenu": "Funga menyu",
+    "language": "Lugha",
+    "mainNav": "Urambazaji mkuu",
+    "homeLink": "Mustafti — Ukurasa wa mwanzo",
+    "forum": "Mjadala",
+    "discover": "Ujue Uislamu",
+    "library": "Maktaba",
+    "signOut": "Ondoka",
+    "accountMenu": {
+      "expertDashboard": "Dashibodi ya mtaalamu",
+      "adminPanel": "Dashibodi ya msimamizi"
+    }
   },
   "disclosure": {
     "text": ""
@@ -38,7 +44,6 @@
   "home": {
     "intro": "",
     "whoAreYou": "",
-    "whoOptional": "",
     "personas": {
       "muslim": "",
       "newMuslim": "",
@@ -328,5 +333,121 @@
     "meTitle": "",
     "meHint": "",
     "showFile": ""
+  },
+  "prayer": {
+    "change": "Badilisha mji na njia",
+    "done": "Imekamilika"
+  },
+  "adhkar": {
+    "title": "Adhkar",
+    "prev": "Dhikr iliyotangulia",
+    "next": "Dhikr inayofuata"
+  },
+  "intro": {
+    "forum": {
+      "kicker": "Mustafti",
+      "title": "Mjadala",
+      "lead": "Mahali tulivu pa watumiaji kujadili mambo yanayowahusu, kwa adabu na kanuni zilizo wazi. Panafunguliwa hivi karibuni; hadi hapo, muulize Mustafti kwenye mazungumzo.",
+      "cta": "Rudi kwenye mazungumzo"
+    },
+    "discover": {
+      "kicker": "Mustafti",
+      "title": "Ujue Uislamu",
+      "lead": "Njia rahisi kwa yeyote anayetaka kuujua Uislamu kutoka vyanzo vyake, bila shinikizo wala ugumu. Itakamilika hivi karibuni; hadi hapo, uliza chochote kwenye mazungumzo.",
+      "cta": "Uliza kwenye mazungumzo"
+    }
+  },
+  "library": {
+    "kicker": "IslamHouse",
+    "title": "Maktaba",
+    "lead": "Vitabu, makala na sauti za bure kutoka IslamHouse kwa lugha yako. Fungua au pakua kupitia kiungo chake rasmi.",
+    "searchLabel": "Tafuta kwenye maktaba",
+    "placeholder": "Andika mada au jina la kitabu",
+    "search": "Tafuta",
+    "topicsLabel": "Mada zinazopendekezwa",
+    "topics": {
+      "aqeedah": "Itikadi",
+      "prayer": "Swala",
+      "fasting": "Saumu",
+      "seerah": "Sira ya Mtume",
+      "newMuslim": "Muislamu mpya",
+      "family": "Familia"
+    },
+    "resultsFor": "Matokeo ya “{q}”",
+    "shamela": "Tafuta kwenye Al-Maktaba Al-Shamela",
+    "limited": "Umetafuta mara nyingi kwa muda mfupi. Subiri kidogo kisha ujaribu tena.",
+    "unavailable": "Maktaba haipatikani kwa sasa. Jaribu tena baada ya muda mfupi.",
+    "empty": "Hakuna kilichopatikana. Jaribu neno jingine au moja ya mada zinazopendekezwa.",
+    "open": "Fungua / Pakua",
+    "note": "Maudhui yanatoka IslamHouse (islamhouse.com) na yanafunguliwa kupitia kiungo chake rasmi; hatuhifadhi faili lolote.",
+    "hint": "Chagua mada au andika unachotafuta.",
+    "types": {
+      "books": "Kitabu",
+      "articles": "Makala",
+      "audios": "Sauti",
+      "videos": "Video",
+      "fatwa": "Fatwa",
+      "posters": "Kadi",
+      "other": "Maudhui"
+    }
+  },
+  "me": {
+    "title": "Akaunti yangu",
+    "tabsLabel": "Sehemu za akaunti",
+    "tabs": {
+      "profile": "Wasifu",
+      "cases": "Maswali yangu",
+      "forum": "Michango yangu kwenye mjadala",
+      "public": "Wasifu wangu wa umma",
+      "settings": "Mipangilio"
+    },
+    "profile": {
+      "title": "Taarifa zangu",
+      "name": "Jina",
+      "language": "Lugha unayopendelea",
+      "save": "Hifadhi",
+      "saving": "Inahifadhi…",
+      "saved": "Taarifa zako zimehifadhiwa.",
+      "error": "Imeshindwa kuhifadhi. Jaribu tena.",
+      "prayerTitle": "Mji na njia ya kukokotoa nyakati za swala",
+      "prayerHint": "Inaonyeshwa kwenye kadi ya nyakati za swala katika ukurasa wa mwanzo.",
+      "expertTitle": "Picha na maelezo",
+      "applicationHint": "Ombi lako la mtaalamu:",
+      "applicationLink": "Hali ya ombi",
+      "joinHint": "Wewe ni mwanazuoni au mtaalamu?",
+      "joinLink": "Jiunge kama mtaalamu"
+    },
+    "forum": {
+      "title": "Bado hakuna michango",
+      "empty": "Mjadala ukifunguliwa, machapisho na majibu yako yatakusanywa hapa.",
+      "cta": "Kuhusu mjadala"
+    },
+    "settings": {
+      "downloadTitle": "Pakua data yangu",
+      "downloadHint": "Faili la JSON lenye akaunti yako, maswali, mafaili yake na majibu yake.",
+      "download": "Pakua data yangu",
+      "deleteTitle": "Futa akaunti na data yangu",
+      "deleteHint": "Akaunti na wasifu wako vinafutwa kabisa, maswali yanatenganishwa na akaunti, na majibu ya wataalamu yanabaki.",
+      "delete": "Futa akaunti na data yangu",
+      "dialogTitle": "Ungependa kufuta akaunti yako kabisa?",
+      "willDelete": "Akaunti, wasifu, picha na nyaraka zako zitafutwa.",
+      "willDetach": "Maswali yako yatatenganishwa na akaunti na hayatahusishwa nawe tena.",
+      "willKeep": "Majibu ya wataalamu yatabaki kama yalivyo.",
+      "irreversible": "Hatua hii haiwezi kutenduliwa.",
+      "typeToConfirm": "Kuthibitisha, andika: {phrase}",
+      "confirmPhrase": "futa akaunti yangu",
+      "cancel": "Ghairi",
+      "deleting": "Inafuta…",
+      "confirmDelete": "Futa kabisa",
+      "errors": {
+        "invalid": "Ombi si sahihi.",
+        "auth": "Ingia kwanza.",
+        "notConfigured": "Kufuta hakupatikani kwa sasa.",
+        "admin": "Akaunti za wasimamizi hazifutwi hapa; muombe msimamizi mkuu.",
+        "expertAnswers": "Akaunti ya mtaalamu yenye majibu haiwezi kufutwa sasa; wasiliana na timu.",
+        "confirm": "Andika kauli ya uthibitisho kama ilivyo.",
+        "generic": "Imeshindwa kufuta. Jaribu tena."
+      }
+    }
   }
 }
