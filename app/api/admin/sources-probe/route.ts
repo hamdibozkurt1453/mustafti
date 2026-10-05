@@ -252,7 +252,7 @@ tds[4].textContent=j.fatwas+" / "+j.links;tds[5].textContent=j.web?(j.web.verifi
 tds[6].textContent=(j.ms/1000).toFixed(1)+" ث";tds[6].style.color=j.ms>20000?"var(--bad)":"var(--mid)";tds[7].textContent=j.abstained?"نعم":"لا";tds[7].style.color=j.abstained?"var(--bad)":"var(--mid)";tds[0].title=j.text||"";
 const RS={no_passages:"لا نصوص من البحث",no_relevant:"لا نص بلغ 60",model_abstained:"النموذج امتنع رغم النصوص",no_citation:"جواب بلا إشارة [n]",guard:"اعتراض الحارس"};
 tds[8].textContent=j.abstainReason?(RS[j.abstainReason]||j.abstainReason)+(j.attempts&&j.attempts.length?" · محاولات: "+j.attempts.length:""):"—";
-tds[8].title=(j.attempts||[]).map((a,i)=>(i+1)+") "+(a.findings.join("، ")||"—")+" ← "+a.head).join("\n");
+tds[8].title=(j.attempts||[]).map((a,i)=>(i+1)+") "+(a.findings.join("، ")||"—")+" ← "+a.head).join("\\n");
 const sec=(x)=>x==null?"—":(x/1000).toFixed(1)+"ث";const t=j.timings||{},st=j.stages;
 tds[9].textContent="تصنيف "+sec(t.classifyMs)+" · بحث "+sec(t.searchMs)+(st?" (سريعة "+sec(st.fastMs)+" · تقييم "+sec(st.rerank1Ms)+(st.earlyExit?" · اكتفى بالسريعة":" · انتظار «ابحث واقرأ» "+sec(st.waitMs)+" · تقييم 2 "+sec(st.rerank2Ms))+(st.webInRound1?" · الطبقة في الأولى":"")+(st.laterMs?" · إعادة تخطيط "+sec(st.laterMs):"")+")":"")+" · صياغة "+sec(t.generateMs)+(j.web&&j.web.jsonRecovery?" · JSON: "+j.web.jsonRecovery:"")}
 catch(e){tds[1].textContent="خطأ";tds[7].textContent=String(e)}}}
