@@ -193,12 +193,12 @@ export function focusExcerpt(text: string, terms: string[], max: number): string
 }
 
 /**
- * تطابق واضح بالكلمات (R5): تداخل عالٍ (kw ≥ 6) ويحوي ثلاثة أرباع كلمات السؤال نفسه على الأقل.
- * إن بلغ ثلاثة مرشحين ذلك في الجولة الأولى لم يُطلب تقييم الصلة من النموذج (توفير ثوانٍ).
+ * تطابق واضح بالكلمات (R5، وُسّع في R5b): تداخل عالٍ (kw ≥ 5) ويحوي ثلثي كلمات السؤال نفسه على
+ * الأقل. إن بلغ مرشحان ذلك في الجولة الأولى لم يُطلب تقييم الصلة من النموذج (توفير ثوانٍ).
  */
-export const CLEAR_KW = 6;
-export const CLEAR_COVERAGE = 0.75;
-export const CLEAR_MIN = 3;
+export const CLEAR_KW = 5;
+export const CLEAR_COVERAGE = 0.67;
+export const CLEAR_MIN = 2;
 /** درجة المطابقة الواضحة حين يُتخطى التقييم بالنموذج. */
 export const CLEAR_SCORE = 85;
 

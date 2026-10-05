@@ -37,6 +37,7 @@ import {
 import { MAX_FATWA_CARDS, toFatwaCard, type FatwaCard } from "./fatwa-cards";
 import { webLayer, type WebMode, type WebResult } from "./web";
 import { isFatwaDomain, urlKey, type WebSource } from "./web-parse";
+import { hasEvidence, type Checklist, type ChecklistItem } from "./howto-checklists";
 import { explicitVerseRef, INDEX_SOURCE, indexSummaryLine, isValidVerse, parseVerseText, surahInfoLine, surahUrl, verseTitle } from "./quran-index";
 import { matchKey } from "./guard";
 import type { Passage } from "./prompts";
@@ -68,6 +69,8 @@ export type Candidate = RankCandidate & {
   verse?: string;
   note?: string;
   noteKind?: "tafsir" | "translation";
+  /** R5b: نص وُجد في بحث فرعي لعنصر من قائمة السؤال العملي (howto-checklists.ts)، ودليله فيه. */
+  checklistItem?: string;
 };
 
 export type SearchDiag = { query: string; lang: string; source: string; results: number; ms: number; error?: string };
@@ -96,6 +99,8 @@ export type RetrievalDiag = {
   web?: WebDiag;
   /** زمن كل مرحلة (R1d): المصادر السريعة، والتقييم الأول، وانتظار «ابحث واقرأ»، والتقييم الثاني. */
   stages?: RetrievalStages;
+  /** R5b: عناصر قائمة السؤال العملي التي وُجد لها نص بالبحث الفرعي، والتي لم يوجد. */
+  checklist?: { id: string; found: string[]; missing: string[] };
 };
 
 export type RetrievalStages = {
@@ -114,6 +119,15 @@ export type RetrievalStages = {
   rerankSkipped?: boolean;
   /** R5: نتائج «بيّنات» و«الإسلام سؤال وجواب» بالسؤال نفسه بدأت مع التصنيف (الجلب المسبق). */
   prefetched?: boolean;
+  /**
+   * R5b: زمن كل مصدر سريع حتى اكتماله (مللي ثانية من بداية الاسترجاع)، وnull لما لم يكتمل عند
+   * قطع الانتظار (لم يُنتظر). يظهر في «شغّل الكل» لتحديد المصدر البطيء.
+   */
+  fastJobs?: Record<string, number | null>;
+  /** R5b: إثراء الأحاديث بشرحها ودرجتها في الجولة الأولى. */
+  enrichMs?: number;
+  /** R5b: لم تُنتظر «ابحث واقرأ» لأن المصادر كفت، أو لأن آية أو حديثاً محدداً طابق. */
+  webSkipped?: "enough" | "pinned";
 };
 
 export type WebDiag = {
@@ -149,6 +163,8 @@ const SEARCH_DEADLINE_MS = 26_000;
 export const RETRIEVAL_BUDGET_MS = 32_000;
 const RERANK_POOL = 16;
 const MAX_PASSAGES = 6;
+/** R5b: السؤال العملي (القائمة) يحتاج نصوصاً أكثر: ذكر كل خطوة من نصه. */
+const MAX_CHECKLIST_PASSAGES = 12;
 /** أقل درجة صلة (من 100) لما يُرسل إلى الصياغة ويُعرض. */
 const MIN_SCORE = RELEVANCE_MIN;
 /** «نصوص ذات صلة» عند الامتناع: ما بين 40 و59 (قريب من السؤال ولا يكفي لجوابه). */
@@ -160,6 +176,8 @@ export const EXTRA_DEADLINE_MS = 8_000;
 const PASSAGE_CHARS = 1400;
 /** مهلة إثراء كل نص بشرحه (مستقلة عن البحث). */
 const ENRICH_MS = 6_000;
+/** R5b: مهلة الإثراء في الجولة الأولى (قبل التقييم): لا يؤخر الجواب أكثر منها. */
+const ENRICH_ROUND_MS = 3_000;
 const BAYYINAT_URL = "https://dawa.center/file/7937";
 
 // ---------------------------------------------------------------------------
@@ -380,7 +398,12 @@ async function enrich(cands: Candidate[], lang: string): Promise<Candidate[]> {
       if (c.sourceId === "hadeethenc" && (c.ref || c.url)) {
         const ref = c.ref ?? c.url.match(/\/(\d{3,})/)?.[1];
         if (!ref) return c;
-        const d = await withTimeout(mcpDetail(ref, c.lang ?? lang, "hadith"), ENRICH_MS, null);
+        // R5b: نتيجة البحث بدرجتها ونص كافٍ لا تنتظر الشرح (يُجلب في الخلفية فيملأ الذاكرة).
+        if (c.grade && c.text.length >= 160) {
+          void mcpDetail(ref, c.lang ?? lang, "hadith");
+          return c;
+        }
+        const d = await withTimeout(mcpDetail(ref, c.lang ?? lang, "hadith"), ENRICH_ROUND_MS, null);
         return d ? { ...c, text: d.text, grade: c.grade ?? d.grade, enriched: true } : c;
       }
       return c;
@@ -926,9 +949,11 @@ async function libraryCandidates(
   diag: SearchDiag[],
   left: () => number,
   onlyFatwas = false,
+  /** R5b: عبارات القائمة العملية (المواد التعليمية للمبتدئين) تسبق غيرها. */
+  extra: string[] = [],
 ): Promise<Candidate[]> {
-  const qs = arabicPhrases(c, question)
-    .slice(0, 2)
+  const qs = [...new Set([...extra, ...arabicPhrases(c, question)])]
+    .slice(0, extra.length ? 3 : 2)
     .map((q) => ({ q, lang: "ar" }));
   if (c.userType === "new_muslim" && c.lang !== "ar" && c.searchQueries.userLang[0]) qs.push({ q: c.searchQueries.userLang[0], lang: c.lang });
   const lists = await Promise.all(
@@ -991,9 +1016,13 @@ async function islamqaCandidates(
   left: () => number,
   /** عبارة بُحث بها مسبقاً (مع التصنيف): لا تُكرر. */
   skip?: string,
+  /** R5b: عبارات القائمة العملية («صفة الصلاة»…) تسبق غيرها. */
+  extra: string[] = [],
 ): Promise<Candidate[]> {
   const fn = deps.islamqa ?? DEFAULT_PIN_DEPS.islamqa!;
-  const queries = islamqaQueries(c, question).filter((q) => q.q !== skip);
+  const queries = [...extra.map((q) => ({ q, lang: "ar" as const })), ...islamqaQueries(c, question)]
+    .filter((q, i, all) => q.q !== skip && all.findIndex((x) => x.q === q.q && x.lang === q.lang) === i)
+    .slice(0, 5);
   if (!queries.length) return [];
   const t0 = Date.now();
   const errors: string[] = [];
@@ -1014,6 +1043,93 @@ async function islamqaCandidates(
     ...(errors.length ? { error: [...new Set(errors)].join(" | ").slice(0, 300) } : {}),
   });
   return found.map(fromSource);
+}
+
+// ---------------------------------------------------------------------------
+// القوائم العملية (R5b): بحوث فرعية موجّهة لكل عنصر
+// ---------------------------------------------------------------------------
+
+/** حد البحوث الفرعية للعناصر (تخفيف الضغط على خادم MCP)، وعددها المتزامن. */
+const CHECKLIST_MAX_QUERIES = 10;
+const CHECKLIST_CONCURRENCY = 5;
+/** انتظار البحوث الفرعية في الجولة الأولى (الجواب العملي الكامل أهم من ثانيتين). */
+export const CHECKLIST_WAIT_MS = 7_000;
+/** درجة نص العنصر: دليله فيه بالكود، فلا يحتاج تقييم الصلة. */
+export const CHECKLIST_SCORE = 85;
+
+/** تشغيل مهام بعدد متزامن محدود. */
+async function pool<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(n, items.length) }, async () => {
+      while (next < items.length) {
+        const i = next++;
+        out[i] = await fn(items[i]);
+      }
+    }),
+  );
+  return out;
+}
+
+/** مقطع النص حول دليل العنصر (الذكر نفسه في وسط المقتطف المرسل للصياغة). */
+function evidenceExcerpt(text: string, item: ChecklistItem): string {
+  return focusExcerpt(text, item.evidence.flatMap((e) => keywords(e)), 900);
+}
+
+/**
+ * لكل عنصر فيه عبارة حديث: البحث في مجموعة الحديث بالعربية (النص العربي للذكر يلزم للاقتباس الحرفي)،
+ * ويُقبل أول نتيجة فيها دليل العنصر بالكود؛ وإن لم يكن في مقتطف البحث، فالنص الكامل بـ fetch (3 ث).
+ * ما لا دليل فيه يسقط: العنصر بلا نص لا يُختلق.
+ */
+export async function checklistCandidates(
+  list: Checklist,
+  deps: PinDeps,
+  searches: SearchDiag[],
+  left: () => number,
+): Promise<Candidate[]> {
+  const jobs = list.items.flatMap((item) => (item.hadith ?? []).map((q) => ({ item, q }))).slice(0, CHECKLIST_MAX_QUERIES);
+  const found = await pool(jobs, CHECKLIST_CONCURRENCY, async ({ item, q }) => {
+    const t0 = Date.now();
+    let error: string | undefined;
+    const items = await withTimeout(
+      deps.searchCorpus(q, "ar", "hadith").catch((e) => {
+        error = String((e as Error)?.message ?? e).slice(0, 200);
+        return [] as McpItem[];
+      }),
+      Math.min(8_000, left()),
+      [] as McpItem[],
+    );
+    let hit: Candidate | null = null;
+    for (const it of items.slice(0, 3)) {
+      let text = it.text;
+      let grade = it.grade;
+      if (!hasEvidence(item, `${it.title}\n${text}`) && it.ref) {
+        const d = await withTimeout(deps.detail(it.ref, "ar", "hadith"), Math.min(3_000, left()), null);
+        if (d) [text, grade] = [d.text, grade ?? d.grade];
+      }
+      if (!hasEvidence(item, `${it.title}\n${text}`)) continue;
+      hit = {
+        title: it.title,
+        text: evidenceExcerpt(text, item),
+        url: it.url,
+        source: SOURCE_BY_ID.hadeethenc.name,
+        sourceId: "hadeethenc",
+        grade,
+        lang: "ar",
+        ...(it.ref ? { ref: it.ref } : {}),
+        kw: 50,
+        pinned: true,
+        score: CHECKLIST_SCORE,
+        scoredBy: "keywords",
+        checklistItem: item.id,
+      };
+      break;
+    }
+    searches.push({ query: `${item.id}: ${q}`.slice(0, 120), lang: "ar", source: "checklist", results: hit ? 1 : 0, ms: Date.now() - t0, ...(error ? { error } : {}) });
+    return hit;
+  });
+  return [...new Map(found.filter((x): x is Candidate => x !== null).map((x) => [x.url, x])).values()];
 }
 
 // ---------------------------------------------------------------------------
@@ -1076,6 +1192,7 @@ export function toPassage(c: Candidate, terms: string[] = []): Passage {
     source: c.source,
     grade: c.grade,
     lang: c.lang,
+    sourceId: c.sourceId,
     ...(c.verse ? { verse: c.verse, note: c.note, noteKind: c.noteKind } : {}),
   };
 }
@@ -1115,6 +1232,36 @@ export const FAST_WAIT_MS = 8_000;
 /** R5: أقل انتظار للمصادر السريعة، ثم يكفي ما وصل إن بلغ FAST_ENOUGH مرشحاً. */
 export const FAST_MIN_MS = 4_500;
 export const FAST_ENOUGH = 6;
+/** R5b: أقل زمن للقطع المبكر (إن وصل FAST_ENOUGH واكتمل المحليان). */
+export const FAST_FLOOR_MS = 2_500;
+/** R5b: آية أو حديث محدد بهذه الدرجة يكفي للجواب بلا «ابحث واقرأ». */
+export const STRONG_PIN_SCORE = 80;
+/** R5b: انتظار المصادر المتأخرة (غير «ابحث واقرأ») في الجولة الثانية. */
+const SLOW_WAIT_MS = 6_000;
+
+/** المصدران المحليان (Postgres): سريعان، ويُنتظران قبل القطع المبكر. */
+const LOCAL_KEYS = new Set(["islamqa", "bayyinat"]);
+
+/**
+ * انتظار المصادر السريعة بقطع متكيف (R5b): يُفحص كل ربع ثانية، ويُقطع عند أول ما يصدق:
+ *   - اكتملت كلها؛
+ *   - بعد FAST_FLOOR_MS: وصل FAST_ENOUGH مرشحاً واكتمل المحليان (والقائمة العملية إن وُجدت)؛
+ *   - بعد FAST_MIN_MS: وصل FAST_ENOUGH (والقائمة العملية اكتملت أو بلغت CHECKLIST_WAIT_MS)؛
+ *   - FAST_WAIT_MS (أو CHECKLIST_WAIT_MS للسؤال العملي) أو نهاية الميزانية.
+ */
+async function waitFast(fast: Job[], started: number, left: () => number, checklist: boolean): Promise<void> {
+  const max = Math.max(FAST_WAIT_MS, checklist ? CHECKLIST_WAIT_MS : 0);
+  const arrived = () => fast.filter((j) => j.s.done()).reduce((n, j) => n + j.s.value().length, 0);
+  const done = (keys: (k: string) => boolean) => fast.filter((j) => keys(j.key)).every((j) => j.s.done());
+  while (true) {
+    const t = Date.now() - started;
+    if (fast.every((j) => j.s.done()) || t >= max || left() <= 600) return;
+    const listOk = !checklist || done((k) => k === "checklist") || t >= CHECKLIST_WAIT_MS;
+    if (t >= FAST_FLOOR_MS && arrived() >= FAST_ENOUGH && done((k) => LOCAL_KEYS.has(k)) && listOk) return;
+    if (t >= FAST_MIN_MS && arrived() >= FAST_ENOUGH && listOk) return;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
 /** مصدران ذوا صلة (≥ 60) في التقييم الأول يكفيان: لا تُنتظر «ابحث واقرأ». */
 export const EARLY_EXIT_MIN = 2;
 /** يُترك من الميزانية بعد الانتظار الثاني لتقييم الصلة. */
@@ -1239,6 +1386,8 @@ export type RetrieveOptions = {
   mode?: ChatMode;
   /** R5: نتائج بدأت مع التصنيف (prefetchFast). */
   prefetch?: Prefetch;
+  /** R5b: قائمة العناصر الواجبة للسؤال العملي (howto-checklists.ts): بحوث فرعية لكل عنصر. */
+  checklist?: Checklist;
 };
 
 export type RetrieveResult = {
@@ -1314,7 +1463,13 @@ export async function retrieve(
   const phrases = [...arabicPhrases(c, question), ...c.searchQueries.userLang].slice(0, 5);
   const webMs = Math.min(WEB_DEADLINE_MS, Math.max(2_000, deadline - Date.now() - 8_000));
   const none = [] as Candidate[];
-  const job = (kind: Job["kind"], key: string, p: Promise<Candidate[]>): Job => ({ kind, key, s: settle(p, none), taken: false });
+  const fastJobs: Record<string, number | null> = {};
+  const job = (kind: Job["kind"], key: string, p: Promise<Candidate[]>): Job => {
+    fastJobs[key] = null;
+    const timed = p.finally(() => (fastJobs[key] = Date.now() - started));
+    return { kind, key, s: settle(timed, none), taken: false };
+  };
+  const list = opts.checklist;
   const jobs: Job[] = [
     job("pinned", "core", withTimeout(pins.core, left(), none)),
     job("pinned", "quranPins", pins.quran),
@@ -1325,7 +1480,7 @@ export async function retrieve(
       wantsIslamqa(c)
         ? Promise.all([
             pre?.islamqa ?? none,
-            islamqaCandidates(c, question, terms, deps, diag.searches, left, pre?.islamqaQuery),
+            islamqaCandidates(c, question, terms, deps, diag.searches, left, pre?.islamqaQuery, list?.islamqa),
           ]).then((xs) => xs.flat())
         : Promise.resolve(none),
     ),
@@ -1334,7 +1489,12 @@ export async function retrieve(
     job("raw", "quranSearch", searchSources(queries, diag.searches, ["quranenc"], left())),
     job("raw", "published", runExtra(extra, deps, diag.searches, left)),
     job("raw", "mcpExtra", runMcpExtra(deps, arabicPhrases(c, question)[0], c.lang, diag.searches, left)),
-    job("raw", "library", wantsLibrary(c) || modeWantsLibrary(mode) ? libraryCandidates(c, question, deps, diag.searches, left) : Promise.resolve(none)),
+    job(
+      "raw",
+      "library",
+      wantsLibrary(c) || modeWantsLibrary(mode) || list ? libraryCandidates(c, question, deps, diag.searches, left, false, list?.library) : Promise.resolve(none),
+    ),
+    ...(list ? [job("pinned", "checklist", checklistCandidates(list, deps, diag.searches, left))] : []),
   ];
   const web = settle(
     runWeb(deps, question, "general", c.lang, phrases, webMs, diag.searches, opts.onReading, opts.web),
@@ -1368,6 +1528,9 @@ export async function retrieve(
     return out;
   };
   const hit = (xs: Candidate[]) => xs.some((x) => x.pinned && (x.score ?? 0) >= MIN_SCORE);
+  /** آية أو حديث محدد (مرجع من الخطة أو السؤال أو «الأساسيات» أو القائمة) بلغ 80: يكفي وحده (R5b). */
+  const strongPinned = (xs: Candidate[]) =>
+    xs.some((x) => x.pinned && (x.sourceId === "quranenc" || x.sourceId === "hadeethenc") && (x.score ?? 0) >= STRONG_PIN_SCORE);
   const relevant = (xs: Candidate[]) => xs.filter((x) => !x.linkOnly && (x.score ?? 0) >= MIN_SCORE).length;
 
   /** دفعة من كل ما اكتمل ولم يُقيَّم: المراجع المحددة، ثم «ابحث واقرأ»، ثم الباقي بترتيب أولي. */
@@ -1393,23 +1556,17 @@ export async function retrieve(
 
   // 1) المصادر السريعة حتى ~8 ثوانٍ (أو حتى تكتمل كلها). بحث القرآن بالكلمات أبطأ: لا يُنتظر هنا،
   //    ويُؤخذ إن كان قد انتهى، وإلا ففي الجولة الثانية.
-  //    R5: بعد FAST_MIN_MS يكفي ما وصل إن بلغ FAST_ENOUGH مرشحاً (لا يُنتظر أبطأ مصدر سريع).
+  //    R5b: القطع متكيف (waitFast): بعد FAST_FLOOR_MS يكفي ما وصل إن بلغ FAST_ENOUGH مرشحاً
+  //    واكتمل المحليان (islamqa و«بيّنات»)؛ وبعد FAST_MIN_MS يكفي FAST_ENOUGH؛ وإلا حتى FAST_WAIT_MS.
+  //    والبحوث الفرعية للسؤال العملي تُنتظر حتى CHECKLIST_WAIT_MS. ما تأخر لا يُنتظر.
   const SLOW = new Set(["quranPins", "quranSearch"]);
-  const fastJobs = jobs.filter((j) => !SLOW.has(j.key));
-  await waitAll(
-    fastJobs.map((j) => j.s.promise),
-    Math.min(FAST_MIN_MS, left()),
-  );
-  const arrived = () => fastJobs.filter((j) => j.s.done()).reduce((n, j) => n + j.s.value().length, 0);
-  if (fastJobs.some((j) => !j.s.done()) && arrived() < FAST_ENOUGH) {
-    await waitAll(
-      fastJobs.map((j) => j.s.promise),
-      Math.min(FAST_WAIT_MS - (Date.now() - started), left()),
-    );
-  }
+  const fastJobsList = jobs.filter((j) => !SLOW.has(j.key));
+  await waitFast(fastJobsList, started, left, Boolean(list));
   const fastMs = Date.now() - started;
   const webInRound1 = web.done();
+  const tEnrich = Date.now();
   const first = await batch(RERANK_POOL);
+  const enrichMs = Date.now() - tEnrich;
   opts.onVerify?.();
   const t1 = Date.now();
   // R5: تطابق واضح بالكلمات في ثلاثة مرشحين فأكثر ⇒ لا تقييم بالنموذج في هذه الجولة.
@@ -1418,27 +1575,46 @@ export async function retrieve(
   const rerankSkipped = clear.length >= CLEAR_MIN;
   const reranked = rerankSkipped ? scoreByKeywords(first, clear, terms) : await rerank(question, first, terms);
   let all = reranked.cands;
-  const stages: RetrievalStages = { fastMs, rerank1Ms: Date.now() - t1, earlyExit: false, webInRound1, ...(rerankSkipped ? { rerankSkipped } : {}), ...(pre ? { prefetched: true } : {}) };
+  const stages: RetrievalStages = {
+    fastMs,
+    rerank1Ms: Date.now() - t1,
+    earlyExit: false,
+    webInRound1,
+    enrichMs,
+    fastJobs,
+    ...(rerankSkipped ? { rerankSkipped } : {}),
+    ...(pre ? { prefetched: true } : {}),
+  };
   diag.stages = stages;
 
-  // 2) مصدران ذوا صلة يكفيان؛ وإلا انتظار «ابحث واقرأ» وما تأخر، وتقييم ما جاء في طلب واحد.
-  stages.earlyExit = relevant(all) + glossary.length >= EARLY_EXIT_MIN;
+  // 2) مصدران ذوا صلة يكفيان، أو آية أو حديث محدد بلغ 80 (R5b). وإلا: (أ) ما تأخر من المصادر غير
+  //    «ابحث واقرأ» وتقييمه، فإن كفى لم تُنتظر الطبقة؛ (ب) ثم «ابحث واقرأ» وتقييم ما جاءت به.
+  const enough = () => relevant(all) + glossary.length >= EARLY_EXIT_MIN || strongPinned(all);
+  stages.earlyExit = enough();
+  if (stages.earlyExit) stages.webSkipped = strongPinned(all) && relevant(all) + glossary.length < EARLY_EXIT_MIN ? "pinned" : "enough";
   if (!stages.earlyExit) {
     const t2 = Date.now();
     // مرجع محدد بلغ 60: بحث القرآن بالكلمات لا يُنتظر (يؤخذ إن انتهى).
     const pinHit = hit(all);
-    const pending = [
-      ...jobs.filter((j) => !j.taken && !(pinHit && SLOW.has(j.key))).map((j) => j.s.promise),
-      ...(webTaken ? [] : [web.promise]),
-    ];
-    if (pending.length) await waitAll(pending, deadline - Date.now() - RERANK_RESERVE_MS);
-    stages.waitMs = Date.now() - t2;
-    const fresh = await batch(8);
+    const pending = jobs.filter((j) => !j.taken && !(pinHit && SLOW.has(j.key))).map((j) => j.s.promise);
+    if (pending.length) await waitAll(pending, Math.min(SLOW_WAIT_MS, deadline - Date.now() - RERANK_RESERVE_MS));
+    let fresh = await batch(8);
     if (fresh.length) {
       const t3 = Date.now();
       all = [...all, ...(await rerank(question, fresh, terms)).cands];
       stages.rerank2Ms = Date.now() - t3;
     }
+    if (enough()) stages.webSkipped = strongPinned(all) && relevant(all) + glossary.length < EARLY_EXIT_MIN ? "pinned" : "enough";
+    else if (!webTaken) {
+      await waitAll([web.promise], deadline - Date.now() - RERANK_RESERVE_MS);
+      fresh = await batch(8);
+      if (fresh.length) {
+        const t4 = Date.now();
+        all = [...all, ...(await rerank(question, fresh, terms)).cands];
+        stages.rerank2Ms = (stages.rerank2Ms ?? 0) + Date.now() - t4;
+      }
+    }
+    stages.waitMs = Date.now() - t2 - (stages.rerank2Ms ?? 0);
   }
 
   // 3) إعادة التخطيط مرة واحدة: خطة غير فارغة لم يبلغ أي موضع منها 60، وبقي وقت.
@@ -1478,7 +1654,18 @@ export async function retrieve(
   // الفتوى لا تُعرض إلا إن قيّمها النموذج ضد السؤال الحالي (≥ 60).
   const fatwaKept = ranked.filter((x) => x.fatwa && x.scoredBy === "llm");
   const fatwaPassages = fatwaKept.filter((x) => !x.linkOnly).slice(0, MAX_FATWA_PASSAGES);
-  const kept = [...ranked.filter((x) => !x.fatwa && !x.linkOnly).slice(0, MAX_PASSAGES - fatwaPassages.length), ...fatwaPassages].sort(byScore);
+  // R5b: السؤال العملي: نصوص عناصر القائمة أولاً (حتى 9)، ثم الباقي، حتى MAX_CHECKLIST_PASSAGES.
+  const listCands = list ? ranked.filter((x) => x.checklistItem).slice(0, 9) : [];
+  const maxPassages = list ? MAX_CHECKLIST_PASSAGES : MAX_PASSAGES;
+  const restCands = ranked.filter((x) => !x.fatwa && !x.linkOnly && !x.checklistItem);
+  const kept = [
+    ...listCands,
+    ...[...restCands.slice(0, maxPassages - listCands.length - fatwaPassages.length), ...fatwaPassages].sort(byScore),
+  ];
+  if (list) {
+    const foundItems = list.items.filter((it) => kept.some((x) => hasEvidence(it, x.text))).map((it) => it.id);
+    diag.checklist = { id: list.id, found: foundItems, missing: list.items.map((it) => it.id).filter((id) => !foundItems.includes(id)) };
+  }
   diag.counts.kept = kept.length;
   const links = ranked
     .filter((x) => x.linkOnly && !x.fatwa)

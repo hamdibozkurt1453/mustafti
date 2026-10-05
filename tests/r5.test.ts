@@ -315,7 +315,7 @@ describe("R5 · البث: المصادر أولاً، ثم الجواب جملة
     assert.ok(events.lastIndexOf("delta") > events.indexOf("reset"));
   });
 
-  it("تخطّي الترتيب بالنموذج حين تكون المطابقة واضحة في ثلاثة مرشحين", () => {
+  it("تخطّي الترتيب بالنموذج حين تكون المطابقة واضحة في مرشحين (R5b)", () => {
     const q = "ما شروط صحة الصلاة؟";
     const qt = keywords(q);
     const terms = [...qt, ...keywords("شروط الصلاة")];
@@ -323,10 +323,10 @@ describe("R5 · البث: المصادر أولاً، ثم الجواب جملة
     const weak: Candidate = { title: "فضل الصيام", text: "الصيام عبادة عظيمة.", url: "u2", source: "s", sourceId: "islamqa" };
     assert.equal(isClearMatch(strong, qt, terms), true);
     assert.equal(isClearMatch(weak, qt, terms), false);
-    assert.equal(CLEAR_MIN, 3);
+    assert.equal(CLEAR_MIN, 2, "R5b: وُسّع");
     const retrieval = read("lib/brain/retrieval.ts");
     assert.match(retrieval, /rerankSkipped = clear\.length >= CLEAR_MIN/);
-    assert.match(retrieval, /stages\.earlyExit = relevant\(all\) \+ glossary\.length >= EARLY_EXIT_MIN/, "لا تُنتظر «ابحث واقرأ» إن كفت السريعة");
+    assert.match(retrieval, /const enough = \(\) => relevant\(all\) \+ glossary\.length >= EARLY_EXIT_MIN \|\| strongPinned\(all\)/, "لا تُنتظر «ابحث واقرأ» إن كفت السريعة");
   });
 
   it("الجلب المسبق مع التصنيف، والمسار يبث المصادر والأجزاء والجواب النهائي", () => {

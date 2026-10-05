@@ -161,7 +161,7 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
           </h3>
           <ol className="grid gap-2.5">
             {msg.sources.map((s) => (
-              <SourceCard key={s.n} source={s} messageId={msg.id} />
+              <SourceCard key={s.n} source={s} messageId={msg.id} foldHadith={caseApi.mode === "new_muslim"} />
             ))}
           </ol>
         </section>

@@ -272,7 +272,9 @@
       "source": "Sumber",
       "translation": "Terjemahan",
       "hadith": "Hadits"
-    }
+    },
+    "openDownload": "Buka / unduh",
+    "showText": "Tampilkan teks"
   },
   "case": {
     "start": "",

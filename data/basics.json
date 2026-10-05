@@ -697,6 +697,40 @@
    "bayyinat": []
   },
   {
+   "id": "parents_non_muslim",
+   "topic_ar": "بر الوالدين غير المسلمين",
+   "match": [
+    "والدي غير مسلم",
+    "والداي غير مسلمين",
+    "والدي النصراني",
+    "والدي نصراني",
+    "والدي مسيحي",
+    "والداي نصرانيان",
+    "الوالدين غير المسلمين",
+    "الوالدين الكافرين",
+    "non-muslim parents",
+    "non muslim parents",
+    "parents are christian",
+    "christian parents",
+    "parents are not muslim",
+    "parents are non-muslim",
+    "gayrimüslim anne baba",
+    "müslüman olmayan anne",
+    "orang tua non muslim",
+    "orang tua kafir",
+    "parents non musulmans",
+    "غیر مسلم والدین"
+   ],
+   "verses": [
+    "31:14-15",
+    "60:8"
+   ],
+   "hadithQueries": [
+    "صلي أمك"
+   ],
+   "bayyinat": []
+  },
+  {
    "id": "parents",
    "topic_ar": "بر الوالدين",
    "match": [

@@ -272,7 +272,9 @@
       "source": "Kaynak",
       "translation": "Tercüme",
       "hadith": "Hadis"
-    }
+    },
+    "openDownload": "Aç / indir",
+    "showText": "Metni göster"
   },
   "case": {
     "start": "",

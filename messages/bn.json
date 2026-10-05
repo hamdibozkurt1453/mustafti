@@ -272,7 +272,9 @@
       "source": "সূত্র",
       "translation": "অনুবাদ",
       "hadith": "হাদিস"
-    }
+    },
+    "openDownload": "খুলুন / ডাউনলোড",
+    "showText": "লেখা দেখুন"
   },
   "case": {
     "start": "",
