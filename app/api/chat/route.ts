@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireRole, authzResponse } from "@/lib/auth/roles";
 import { respond, type BrainReply } from "@/lib/brain/respond";
 import { guessLang } from "@/lib/brain/identity";
+import { CHAT_MODES } from "@/lib/brain/modes";
 import { dirForLang, MAX_HISTORY, MAX_QUESTION_CHARS, type ChatEvent, type ChatFatwa, type ChatSource } from "@/lib/chat/protocol";
 import type { Passage } from "@/lib/brain/prompts";
 import { llmUserMessage } from "@/lib/llm";
@@ -29,6 +30,8 @@ const BodySchema = z.object({
     .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) }))
     .max(20)
     .optional(),
+  /** R3: وضع المحادثة («المرشد» في /new-muslim، و«الداعية» في /discover)؛ الرئيسية بلا وضع. */
+  mode: z.enum(CHAT_MODES).optional(),
 });
 
 /** إيقاع البث: نحو ثانية ونصف للجواب كله، بين 8 و28 مللي ثانية للكلمة. */
@@ -117,7 +120,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { message, history = [] } = parsed.data;
+  const { message, history = [], mode = "general" } = parsed.data;
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
@@ -137,6 +140,7 @@ export async function POST(request: Request) {
           history: history.slice(-MAX_HISTORY).map((h) => ({ role: h.role, content: h.content.slice(0, 1500) })),
           onStage: (stage) => send({ type: "stage", stage }),
           cache: true,
+          mode,
         });
         logQuery(reply);
 

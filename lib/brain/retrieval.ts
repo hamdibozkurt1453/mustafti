@@ -13,6 +13,7 @@ import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin
 import { matchBasics, parseVerseRef, quotedVerses, verseRefsInText, type VerseRef } from "./basics";
 import type { Classification } from "./classify";
 import { isEmptyPlan, type CitationPlan } from "./plan";
+import { basicsLimit, modeWantsLibrary, rankBonus, sourceBoost, sourceOrder, type ChatMode } from "./modes";
 import { findTerms } from "./glossary";
 import {
   applyScores,
@@ -652,6 +653,7 @@ export function pinnedJobs(
   planPromise: Promise<CitationPlan | null> | undefined,
   deps: PinDeps,
   deadline: number,
+  mode: ChatMode = "general",
 ): { core: Promise<Candidate[]>; quran: Promise<Candidate[]> } {
   const log: PinLog[] = [];
   diag.pinLog = log;
@@ -661,8 +663,8 @@ export function pinnedJobs(
   const refsP = planP.then((plan) => {
     const usePlan = !isEmptyPlan(plan);
     // «الأساسيات» مع الخطة دائماً (كانت احتياطاً للخطة الفارغة فلا تُستعمل أبداً): المطابق الأول
-    // مع خطة، وحتى اثنين بدونها. مراجعها تمر بتقييم الصلة كغيرها.
-    const entries = matchBasics(question, usePlan ? 1 : 2);
+    // مع خطة، وحتى اثنين بدونها (واثنان دائماً في الوضعين الموجّهين، R3). مراجعها تمر بتقييم الصلة كغيرها.
+    const entries = matchBasics(question, basicsLimit(mode, usePlan));
     diag.basics = entries.map((e) => e.id);
     diag.plan = plan ?? undefined;
     const explicit = explicitVerseRef(question);
@@ -1158,6 +1160,8 @@ export type RetrieveOptions = {
   onReading?: () => void;
   /** طبقة «ابحث واقرأ» بدأت مع التصنيف (respond.ts) لكسب الوقت. */
   web?: Promise<WebResult>;
+  /** وضع المحادثة (R3: lib/brain/modes.ts): ترتيب المصادر وأولويتها فقط، والقبول كما هو. */
+  mode?: ChatMode;
 };
 
 export type RetrieveResult = {
@@ -1210,6 +1214,7 @@ export async function retrieve(
   const deadline = opts.deadline ?? Date.now() + RETRIEVAL_BUDGET_MS;
   const left = () => Math.max(500, deadline - Date.now());
   const deps = opts.deps ?? DEFAULT_PIN_DEPS;
+  const mode = opts.mode ?? "general";
   const queries = buildQueries(c, question);
   const extra = extraSearches(c, question);
   const diag: RetrievalDiag = {
@@ -1226,7 +1231,7 @@ export async function retrieve(
 
   // «بيّنات»: السؤال كما كتبه السائل إن كان عربياً، وإلا كلمات البحث العربية.
   const bayyinatQuery = /[\u0600-\u06FF]/.test(question) && c.lang === "ar" ? question : c.searchQueries.ar.join(" ");
-  const pins = pinnedJobs(c, question, diag, plan, deps, deadline);
+  const pins = pinnedJobs(c, question, diag, plan, deps, deadline, mode);
   const others = RETRIEVAL_SOURCES.filter((x) => x !== "quranenc");
   const phrases = [...arabicPhrases(c, question), ...c.searchQueries.userLang].slice(0, 5);
   const webMs = Math.min(WEB_DEADLINE_MS, Math.max(2_000, deadline - Date.now() - 8_000));
@@ -1242,7 +1247,7 @@ export async function retrieve(
     job("raw", "quranSearch", searchSources(queries, diag.searches, ["quranenc"], left())),
     job("raw", "published", runExtra(extra, deps, diag.searches, left)),
     job("raw", "mcpExtra", runMcpExtra(deps, arabicPhrases(c, question)[0], c.lang, diag.searches, left)),
-    job("raw", "library", wantsLibrary(c) ? libraryCandidates(c, question, deps, diag.searches, left) : Promise.resolve(none)),
+    job("raw", "library", wantsLibrary(c) || modeWantsLibrary(mode) ? libraryCandidates(c, question, deps, diag.searches, left) : Promise.resolve(none)),
   ];
   const web = settle(
     runWeb(deps, question, "general", c.lang, phrases, webMs, diag.searches, opts.onReading, opts.web),
@@ -1251,7 +1256,7 @@ export async function retrieve(
   let webTaken = false;
 
   // «بيّنات» أولاً لأسئلة الشبهات وغير المسلمين (مصدر أساسي للحلول الحوارية في الشبهات).
-  const shubha = c.userType === "non_muslim" || Boolean(c.misconception) || c.level === "B";
+  const shubha = c.userType === "non_muslim" || Boolean(c.misconception) || c.level === "B" || mode === "discover";
   const seenUrls = new Set<string>();
   const seenKeys = new Set<string>();
   const mark = (x: Candidate) => {
@@ -1263,7 +1268,9 @@ export async function retrieve(
     diag.counts.raw += fresh.length;
     const cleaned = clean(fresh, diag.dropped);
     diag.counts.cleaned += cleaned.length;
-    const pool = prerank(cleaned, terms, size).map((x) => (x.sourceId === "bayyinat" && shubha ? { ...x, kw: x.kw! + 2 } : x));
+    const pool = prerank(cleaned, terms, size)
+      .map((x) => (x.sourceId === "bayyinat" && shubha && mode === "general" ? { ...x, kw: x.kw! + 2 } : x))
+      .map((x) => (sourceBoost(mode, x.sourceId) ? { ...x, kw: x.kw! + sourceBoost(mode, x.sourceId) } : x));
     diag.counts.ranked += pool.length;
     pool.forEach(mark);
     return enrich(pool, c.lang);
@@ -1291,16 +1298,8 @@ export async function retrieve(
     diag.counts.raw += webFresh.length;
     diag.counts.cleaned += webFresh.length;
     const g = (k: string) => got[k] ?? [];
-    const raw = [
-      ...(shubha ? g("bayyinat") : []),
-      ...g("found"),
-      ...g("islamqa"),
-      ...g("published").filter((x) => !webKeys.has(urlKey(x.url))),
-      ...g("mcpExtra"),
-      ...g("library"),
-      ...g("quranSearch"),
-      ...(shubha ? [] : g("bayyinat")),
-    ];
+    // ترتيب المصادر حسب الوضع (modes.ts): التعادل في الترتيب الأولي يُحسم بالأسبق.
+    const raw = sourceOrder(mode, shubha).flatMap((k) => (k === "published" ? g(k).filter((x) => !webKeys.has(urlKey(x.url))) : g(k)));
     const pool = raw.length ? await poolOf(raw, rawSize) : [];
     return [...pinned, ...webFresh, ...pool];
   };
@@ -1369,7 +1368,9 @@ export async function retrieve(
   diag.rerank = reranked.mode;
   diag.scored = cands.map((x) => ({ source: x.source, title: clip(x.title, 100), kw: x.kw ?? 0, score: x.score, enriched: Boolean(x.enriched) }));
 
-  const byScore = (a: Candidate, b: Candidate) => (b.score ?? 0) - (a.score ?? 0) || (b.kw ?? 0) - (a.kw ?? 0);
+  // العلاوة للترتيب فقط (مصادر المبتدئين و«بيّنات» في الوضعين الموجّهين)، والقبول بالدرجة نفسها (≥ 60).
+  const rankOf = (x: Candidate) => (x.score ?? 0) + rankBonus(mode, x.sourceId);
+  const byScore = (a: Candidate, b: Candidate) => rankOf(b) - rankOf(a) || (b.kw ?? 0) - (a.kw ?? 0);
   const ranked = cands.filter((x) => (x.score ?? 0) >= MIN_SCORE).sort(byScore);
   // «رابط فقط» لا يُرسل للصياغة أبداً (لا نص فيه): الفتوى منه بطاقة بلا مقتطف، وغيره رابط.
   // الفتوى لا تُعرض إلا إن قيّمها النموذج ضد السؤال الحالي (≥ 60).
