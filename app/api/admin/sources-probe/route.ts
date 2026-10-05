@@ -1,5 +1,6 @@
 import { authzResponse, requireRole } from "@/lib/auth/roles";
 import { classify } from "@/lib/brain/classify";
+import { respond } from "@/lib/brain/respond";
 import { looksHadithCheck, quotedSegment, rerank, searchBayyinat, webCandidates, type Candidate } from "@/lib/brain/retrieval";
 import { keywords } from "@/lib/brain/rank";
 import { isLlmConfigured } from "@/lib/llm";
@@ -49,6 +50,33 @@ export async function POST(request: Request) {
   const question = typeof body.question === "string" ? body.question.trim().slice(0, 600) : "";
   if (!question) return Response.json({ error: "empty question" }, { status: 400 });
   const noStore = { headers: { "Cache-Control": "no-store" } };
+
+  // «شغّل الكل»: الرد كاملاً (التصنيف ← المصادر ← الصياغة ← الحارس) بلا ذاكرة الأجوبة، وملخصه.
+  if (body.action === "full") {
+    if (!isLlmConfigured()) return Response.json({ error: "OPENROUTER_API_KEY / LLM_MODEL is not set" }, { status: 503 });
+    const t0 = Date.now();
+    try {
+      const r = await respond(question);
+      const web = r.diag.retrieval?.web ?? r.diag.caseFatwas?.web;
+      return Response.json(
+        {
+          kind: r.kind,
+          level: r.classification?.level ?? null,
+          overrides: r.overrides,
+          accepted: r.passages.length,
+          fatwas: r.fatwas?.length ?? 0,
+          links: r.links?.length ?? 0,
+          abstained: r.kind === "abstain" || r.kind === "refused",
+          ms: Date.now() - t0,
+          web: web ? { verified: web.verified, linkOnly: web.linkOnly, ms: web.ms, searchOnly: Boolean(web.searchOnly), error: web.error } : null,
+          text: r.text.slice(0, 300),
+        },
+        noStore,
+      );
+    } catch (error) {
+      return Response.json({ error: String((error as Error)?.message ?? error).slice(0, 300), ms: Date.now() - t0 }, noStore);
+    }
+  }
 
   if (body.action === "queries") {
     if (!isLlmConfigured()) return Response.json({ ar: [question], userLang: [], lang: "ar", level: null, note: "النموذج غير مُعد" }, noStore);
@@ -165,6 +193,7 @@ button[disabled]{opacity:.6;cursor:default}
 .src.skipped{border-color:var(--sand);opacity:.8}
 pre.raw{white-space:pre-wrap;direction:ltr;text-align:left;background:var(--ivory);border-radius:10px;padding:8px;font-size:11px;max-height:320px;overflow:auto}
 .ok-q{color:var(--mid);font-weight:600}.bad-q{color:var(--bad);font-weight:600}
+#table td,#table th{border-bottom:1px solid var(--sand);padding:6px;text-align:start;vertical-align:top;unicode-bidi:plaintext}
 .quote{background:var(--ivory);border-inline-start:3px solid var(--gold);padding:4px 10px;margin:4px 0;white-space:pre-wrap}
 a{color:var(--mid)}
 </style></head><body>
@@ -177,12 +206,41 @@ a{color:var(--mid)}
 <a data-q="طلقت زوجتي وأنا غاضب جداً، هل وقع الطلاق؟">حالة شخصية (D)</a>
 <a data-q="لماذا يصوم المسلمون في رمضان؟">سؤال عام</a>
 </div>
+<details open><summary><b>شغّل الكل</b>: عشرة أسئلة متنوعة بالرد كاملاً (المستوى، والمصادر المقبولة، والزمن، والامتناع)</summary>
+<ol id="suite" style="font-size:.85rem;margin:6px 0"></ol>
+<button id="runAll">شغّل الكل</button>
+<table id="table" hidden style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;font-size:.85rem"><thead><tr>
+<th>السؤال</th><th>المستوى</th><th>النوع</th><th>المصادر المقبولة</th><th>فتاوى/روابط</th><th>«ابحث واقرأ»</th><th>الزمن</th><th>امتنع؟</th></tr></thead><tbody></tbody></table>
+</details>
 <textarea id="question" placeholder="السؤال"></textarea>
 <button id="run">شغّل الفحص</button>
 <div id="q" hidden></div>
 <div id="out"></div>
 <script>
 const SOURCES=${sourcesJson};
+const SUITE=[
+["عقيدة","ما معنى الإيمان بالقدر خيره وشره؟"],
+["معاملات","ما حكم بيع التقسيط بزيادة في الثمن؟"],
+["أسرة","ما حقوق الزوجة على زوجها في الإسلام؟"],
+["سيرة","متى كانت غزوة بدر ولماذا وقعت؟"],
+["مسلم جديد","أسلمت حديثاً، كيف أتعلم الوضوء والصلاة؟"],
+["غير مسلم","I'm not a Muslim. Why do Muslims fast during Ramadan?"],
+["إنجليزي","What does the Quran say about kindness to parents?"],
+["تركي","Namazın şartları nelerdir?"],
+["فرنسي","Pourquoi les musulmans prient-ils cinq fois par jour ?"],
+["نادر","من هو الصحابي الذي اهتز لموته عرش الرحمن؟"]];
+SUITE.forEach(([c,q])=>{const li=document.createElement("li");li.textContent=c+": "+q;document.getElementById("suite").appendChild(li)});
+document.getElementById("runAll").onclick=async()=>{const b=document.getElementById("runAll");b.disabled=true;
+const t=document.getElementById("table");t.hidden=false;const tb=t.querySelector("tbody");tb.innerHTML="";
+const rows=SUITE.map(([c,q])=>{const tr=document.createElement("tr");[c+": "+q,"…","","","","","",""].forEach(x=>{const td=document.createElement("td");td.textContent=x;tr.appendChild(td)});tb.appendChild(tr);return tr});
+let next=0;async function w(){while(next<SUITE.length){const i=next++;const [c,q]=SUITE[i];const tds=rows[i].children;
+try{const j=await post({action:"full",question:q});
+if(j.error){tds[1].textContent="خطأ";tds[7].textContent=j.error;continue}
+tds[1].textContent=j.level??"—";tds[2].textContent=j.kind+(j.overrides&&j.overrides.length?" ("+j.overrides.join("، ")+")":"");tds[3].textContent=String(j.accepted);
+tds[4].textContent=j.fatwas+" / "+j.links;tds[5].textContent=j.web?(j.web.verified+" موثَّق · "+j.web.linkOnly+" رابط"+(j.web.searchOnly?" (بحث فقط)":"")+" · "+j.web.ms+"ms"+(j.web.error?" · "+j.web.error:"")):"—";
+tds[6].textContent=(j.ms/1000).toFixed(1)+" ث";tds[7].textContent=j.abstained?"نعم":"لا";tds[7].style.color=j.abstained?"var(--bad)":"var(--mid)";tds[0].title=j.text||""}
+catch(e){tds[1].textContent="خطأ";tds[7].textContent=String(e)}}}
+await Promise.all([w(),w()]);b.disabled=false};
 const $=(id)=>document.getElementById(id);
 document.querySelectorAll(".ex a").forEach(a=>a.onclick=()=>{$("question").value=a.dataset.q});
 async function post(body){const r=await fetch(location.pathname,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
