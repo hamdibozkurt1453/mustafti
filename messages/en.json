@@ -385,7 +385,8 @@
         "m": "min"
       },
       "note": "Today is in Riyadh time. Answer time runs from case creation to the first expert answer."
-    }
+    },
+    "demoBanner": "Demo account"
   },
   "case": {
     "start": "Start",
@@ -704,5 +705,80 @@
         "generic": "Something went wrong. Please try again."
       }
     }
+  },
+  "prayer": {
+    "next": "Next prayer",
+    "in": "in",
+    "todayTable": "Today's prayer times",
+    "yourLocation": "Your current location",
+    "location": "Location",
+    "current": "Now",
+    "useLocation": "Use my location",
+    "locating": "Locating…",
+    "geoError": "We couldn't get your location. Choose your city from the search.",
+    "searchCity": "Search for a city",
+    "searchPlaceholder": "e.g. Istanbul, Paris, Jakarta",
+    "noCity": "No city by that name in the list. Try the nearest large city or use your location.",
+    "method": "Calculation method",
+    "methods": {
+      "UmmAlQura": "Umm al-Qura (Makkah)",
+      "MuslimWorldLeague": "Muslim World League",
+      "Egyptian": "Egyptian General Authority of Survey",
+      "Turkey": "Diyanet (Türkiye)",
+      "Karachi": "University of Islamic Sciences, Karachi",
+      "NorthAmerica": "Islamic Society of North America (ISNA)"
+    },
+    "asr": "Asr time",
+    "madhab": {
+      "shafi": "Majority (one shadow length)",
+      "hanafi": "Hanafi (two shadow lengths)"
+    },
+    "privacy": "Prayer times are calculated in your browser; your location is never sent to the server.",
+    "savedBrowser": "Your choice is saved in this browser.",
+    "savedAccount": "Your choice is saved in this browser and in your account (city and method only, never your location).",
+    "saveError": "Couldn't save to your account; it is still saved in this browser."
+  },
+  "adhkar": {
+    "note": "Every remembrance here is quoted verbatim from the Encyclopedia of Translated Prophetic Hadiths; only hadiths graded sahih or hasan are included.",
+    "tabsLabel": "Remembrance times",
+    "tabs": {
+      "morning": "Morning",
+      "evening": "Evening",
+      "after_prayer": "After prayer"
+    },
+    "reset": "Restart the count",
+    "empty": "The remembrances haven't been fetched from the source yet. Please check back soon.",
+    "emptyTab": "Nothing in this tab yet.",
+    "meaning": "Meaning",
+    "explanation": "Explanation from the source",
+    "counterLabel": "Counter: {n} of {total}",
+    "times": "{count, plural, =1 {once} =2 {twice} other {# times}}",
+    "noCount": "No number is mentioned in the hadith",
+    "source": "Source",
+    "sourceName": "HadeethEnc (Encyclopedia of Translated Hadiths)",
+    "grade": "Grade",
+    "viewSource": "View source"
+  },
+  "newMuslim": {
+    "kicker": "For new Muslims",
+    "lead": "Welcome. Ask anything about your first days, calmly and without embarrassment: we don't ask for your name, and you don't need an account.",
+    "cta": "Ask your personal question anonymously",
+    "points": {
+      "private": {
+        "title": "Anonymous",
+        "body": "Ask without signing up or giving your name."
+      },
+      "sources": {
+        "title": "From approved sources",
+        "body": "General answers are quoted from the references with their links, not the tool's opinion."
+      },
+      "expert": {
+        "title": "A specialist for your case",
+        "body": "If your question is about your own situation, it is referred to a specialist after a few short questions."
+      }
+    },
+    "more": "Also on the site:",
+    "prayerLink": "Prayer times",
+    "adhkarLink": "Remembrances"
   }
 }
