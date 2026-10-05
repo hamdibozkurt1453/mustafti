@@ -263,7 +263,16 @@
     "dorarClosest": "Hadis Ansiklopedisi'nde en yakın sonuçlar",
     "hadithNone": "Onaylı kaynaklarda bu hadis hakkında bir hüküm bulamadım.",
     "askMentor": "Sorunuzu bir rehbere gönderin",
-    "askDaee": "Bir davetçiyle iletişime geçin"
+    "askDaee": "Bir davetçiyle iletişime geçin",
+    "labels": {
+      "narrator": "Râvi",
+      "grade": "Derece",
+      "explanation": "Açıklama",
+      "benefits": "Faydalar",
+      "source": "Kaynak",
+      "translation": "Tercüme",
+      "hadith": "Hadis"
+    }
   },
   "case": {
     "start": "",

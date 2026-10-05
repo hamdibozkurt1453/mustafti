@@ -2,6 +2,7 @@ import { authzResponse, requireRole } from "@/lib/auth/roles";
 import { classify } from "@/lib/brain/classify";
 import { isChatMode } from "@/lib/brain/modes";
 import { respond } from "@/lib/brain/respond";
+import { personaIssues } from "@/lib/brain/personas";
 import { looksHadithCheck, quotedSegment, rerank, searchBayyinat, webCandidates, type Candidate } from "@/lib/brain/retrieval";
 import { keywords } from "@/lib/brain/rank";
 import { isLlmConfigured } from "@/lib/llm";
@@ -78,6 +79,9 @@ export async function POST(request: Request) {
           ms: Date.now() - t0,
           timings: r.timings,
           stages: r.diag.retrieval?.stages ?? null,
+          // R5: «فحص الشخصية» على الجواب كاملاً: لا «تذكر المصادر» ولا «أكثر من صياغة».
+          persona: r.kind === "answer" ? personaIssues(r.text) : [],
+          fixes: r.guard?.findings.filter((f) => !f.verdict && f.reason !== "identity_leak").map((f) => f.match).slice(0, 4) ?? [],
           web: web
             ? { verified: web.verified, linkOnly: web.linkOnly, ms: web.ms, searchOnly: Boolean(web.searchOnly), jsonRecovery: web.jsonRecovery, error: web.error }
             : null,
@@ -218,11 +222,12 @@ a{color:var(--mid)}
 <a data-q="طلقت زوجتي وأنا غاضب جداً، هل وقع الطلاق؟">حالة شخصية (D)</a>
 <a data-q="لماذا يصوم المسلمون في رمضان؟">سؤال عام</a>
 </div>
-<details open><summary><b>شغّل الكل</b>: واحد وعشرون سؤالاً متنوعاً بالرد كاملاً (المستوى، والمصادر المقبولة، والزمن، والامتناع)، منها ستة للمحادثتين الموجّهتين: «المرشد» (new_muslim) و«الداعية» (discover)</summary>
+<details open><summary><b>شغّل الكل</b>: اثنان وعشرون سؤالاً متنوعاً بالرد كاملاً (المستوى، والمصادر المقبولة، والزمن، والامتناع)، منها سبعة للمحادثتين الموجّهتين: «المرشد» (new_muslim) و«الداعية» (discover)</summary>
 <ol id="suite" style="font-size:.85rem;margin:6px 0"></ol>
 <button id="runAll">شغّل الكل</button>
 <table id="table" hidden style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;font-size:.85rem"><thead><tr>
-<th>السؤال</th><th>المستوى</th><th>النوع</th><th>المصادر المقبولة</th><th>فتاوى/روابط</th><th>«ابحث واقرأ»</th><th>الزمن</th><th>امتنع؟</th><th>سبب الامتناع</th><th>المراحل</th></tr></thead><tbody></tbody></table>
+<th>السؤال</th><th>المستوى</th><th>النوع</th><th>المصادر المقبولة</th><th>فتاوى/روابط</th><th>«ابحث واقرأ»</th><th>الزمن</th><th>امتنع؟</th><th>سبب الامتناع</th><th>المراحل</th><th>التصنيف</th><th>السريعة</th><th>الويب</th><th>الترتيب</th><th>أول كلمة</th><th>الصياغة</th><th>فحص الشخصية</th></tr></thead><tbody></tbody></table>
+<p class="note">الأعمدة الزمنية (R5): التصنيف، والمصادر السريعة، و«ابحث واقرأ» (إن انتُظرت)، والترتيب بالنموذج («تُخطّي» إن كفت المطابقة الواضحة)، وأول كلمة من الجواب من بداية السؤال (الهدف ≈ 8 ث)، والصياغة كاملة. الزمن الكلي أحمر فوق 25 ث. «فحص الشخصية»: غياب «تذكر المصادر» و«أكثر من صياغة» وأخواتهما من الجواب كاملاً.</p>
 </details>
 <textarea id="question" placeholder="السؤال"></textarea>
 <button id="run">شغّل الفحص</button>
@@ -247,6 +252,7 @@ const SUITE=[
 ["عقيدة","من هم أولو العزم من الرسل؟"],
 ["أسماء الله","ما معنى اسم الله الصمد؟"],
 ["المرشد","كيف أتوضأ خطوة بخطوة؟","new_muslim"],
+["المرشد","كيف أصلي خطوة بخطوة؟","new_muslim"],
 ["المرشد","ما معنى الشهادتين؟","new_muslim"],
 ["المرشد (إنجليزي)","My parents are Christian. How should I treat them now that I am Muslim?","new_muslim"],
 ["الداعية (إنجليزي)","What do Muslims believe about God?","discover"],
@@ -256,18 +262,21 @@ const tag=(c,m)=>c+(m?" ["+m+"]":"");
 SUITE.forEach(([c,q,m])=>{const li=document.createElement("li");li.textContent=tag(c,m)+": "+q;document.getElementById("suite").appendChild(li)});
 document.getElementById("runAll").onclick=async()=>{const b=document.getElementById("runAll");b.disabled=true;
 const t=document.getElementById("table");t.hidden=false;const tb=t.querySelector("tbody");tb.innerHTML="";
-const rows=SUITE.map(([c,q,m])=>{const tr=document.createElement("tr");[tag(c,m)+": "+q,"…","","","","","","","",""].forEach(x=>{const td=document.createElement("td");td.textContent=x;tr.appendChild(td)});tb.appendChild(tr);return tr});
+const rows=SUITE.map(([c,q,m])=>{const tr=document.createElement("tr");[tag(c,m)+": "+q,"…","","","","","","","","","","","","","","",""].forEach(x=>{const td=document.createElement("td");td.textContent=x;tr.appendChild(td)});tb.appendChild(tr);return tr});
 let next=0;async function w(){while(next<SUITE.length){const i=next++;const [c,q,m]=SUITE[i];const tds=rows[i].children;
 try{const j=await post(m?{action:"full",question:q,mode:m}:{action:"full",question:q});
 if(j.error){tds[1].textContent="خطأ";tds[7].textContent=j.error;continue}
 tds[1].textContent=j.level??"—";tds[2].textContent=j.kind+(j.overrides&&j.overrides.length?" ("+j.overrides.join("، ")+")":"");tds[3].textContent=String(j.accepted)+(j.sources&&j.sources.length?" ("+j.sources.join("، ")+")":"");
 tds[4].textContent=j.fatwas+" / "+j.links;tds[5].textContent=j.web?(j.web.verified+" بنص · "+j.web.linkOnly+" رابط"+(j.web.searchOnly?" (بحث فقط)":"")+" · "+j.web.ms+"ms"+(j.web.error?" · "+j.web.error:"")):"—";
-tds[6].textContent=(j.ms/1000).toFixed(1)+" ث";tds[6].style.color=j.ms>20000?"var(--bad)":"var(--mid)";tds[7].textContent=j.abstained?"نعم":"لا";tds[7].style.color=j.abstained?"var(--bad)":"var(--mid)";tds[0].title=j.text||"";
+tds[6].textContent=(j.ms/1000).toFixed(1)+" ث"+(j.timings&&j.timings.cached?" (ذاكرة)":"");tds[6].style.color=j.ms>25000?"var(--bad)":"var(--mid)";tds[7].textContent=j.abstained?"نعم":"لا";tds[7].style.color=j.abstained?"var(--bad)":"var(--mid)";tds[0].title=j.text||"";
 const RS={no_passages:"لا نصوص من البحث",no_relevant:"لا نص بلغ 60",model_abstained:"النموذج امتنع رغم النصوص",no_citation:"جواب بلا إشارة [n]",guard:"اعتراض الحارس"};
 tds[8].textContent=j.abstainReason?(RS[j.abstainReason]||j.abstainReason)+(j.attempts&&j.attempts.length?" · محاولات: "+j.attempts.length:""):"—";
 tds[8].title=(j.attempts||[]).map((a,i)=>(i+1)+") "+(a.findings.join("، ")||"—")+" ← "+a.head).join("\\n");
 const sec=(x)=>x==null?"—":(x/1000).toFixed(1)+"ث";const t=j.timings||{},st=j.stages;
-tds[9].textContent="تصنيف "+sec(t.classifyMs)+" · بحث "+sec(t.searchMs)+(st?" (سريعة "+sec(st.fastMs)+" · تقييم "+sec(st.rerank1Ms)+(st.earlyExit?" · اكتفى بالسريعة":" · انتظار «ابحث واقرأ» "+sec(st.waitMs)+" · تقييم 2 "+sec(st.rerank2Ms))+(st.webInRound1?" · الطبقة في الأولى":"")+(st.laterMs?" · إعادة تخطيط "+sec(st.laterMs):"")+")":"")+" · صياغة "+sec(t.generateMs)+(j.web&&j.web.jsonRecovery?" · JSON: "+j.web.jsonRecovery:"")}
+tds[9].textContent="تصنيف "+sec(t.classifyMs)+" · بحث "+sec(t.searchMs)+(st?" (سريعة "+sec(st.fastMs)+" · تقييم "+sec(st.rerank1Ms)+(st.earlyExit?" · اكتفى بالسريعة":" · انتظار «ابحث واقرأ» "+sec(st.waitMs)+" · تقييم 2 "+sec(st.rerank2Ms))+(st.webInRound1?" · الطبقة في الأولى":"")+(st.laterMs?" · إعادة تخطيط "+sec(st.laterMs):"")+")":"")+" · صياغة "+sec(t.generateMs)+(j.web&&j.web.jsonRecovery?" · JSON: "+j.web.jsonRecovery:"");
+tds[10].textContent=sec(t.classifyMs);tds[11].textContent=sec(t.fastMs)+(st&&st.prefetched?" (مسبق)":"");tds[12].textContent=st&&st.earlyExit?"لم يُنتظر":sec(t.webMs);
+tds[13].textContent=t.rerankSkipped?"تُخطّي ("+sec(t.rerankMs)+")":sec(t.rerankMs);tds[14].textContent=sec(t.firstTokenMs);tds[14].style.color=t.firstTokenMs>8000?"var(--bad)":"var(--mid)";tds[15].textContent=sec(t.generateMs);
+const pc=j.persona||[];tds[16].textContent=j.kind!=="answer"?"—":pc.length?"✗ "+pc.join("، "):"✓";tds[16].style.color=pc.length?"var(--bad)":"var(--mid)";if(j.fixes&&j.fixes.length)tds[16].title="صُحح: "+j.fixes.join(" | ")}
 catch(e){tds[1].textContent="خطأ";tds[7].textContent=String(e)}}}
 await Promise.all([w(),w()]);b.disabled=false};
 const $=(id)=>document.getElementById(id);

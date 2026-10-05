@@ -65,7 +65,7 @@ export type LlmResult = {
 
 // ---------------------------------------------------------------------------
 // جهد التفكير (R1e): لنماذج التفكير عبر OpenRouter (reasoning.effort). المزوّد يتجاهله للنموذج
-// الذي لا يدعمه. لكل مهمة متغير بيئة: low للتصنيف والتقييم، وmedium للصياغة افتراضياً، و"off"
+// الذي لا يدعمه. لكل مهمة متغير بيئة: low للتصنيف والتقييم والصياغة افتراضياً (R5: medium كان يؤخر أول كلمة)، و"off"
 // يطفئه (لا يُرسل المعامل). رموز التفكير تُحسب من max_tokens، فيُضاف لها حيّز حتى لا يُقطع الجواب.
 // ---------------------------------------------------------------------------
 
@@ -75,7 +75,7 @@ export type ReasoningTask = "classify" | "rerank" | "answer";
 const REASONING_ENV: Record<ReasoningTask, { key: string; fallback: ReasoningEffort }> = {
   classify: { key: "LLM_REASONING_CLASSIFY", fallback: "low" },
   rerank: { key: "LLM_REASONING_RERANK", fallback: "low" },
-  answer: { key: "LLM_REASONING_ANSWER", fallback: "medium" },
+  answer: { key: "LLM_REASONING_ANSWER", fallback: "low" },
 };
 
 /** جهد التفكير للمهمة من متغيرات البيئة، أو undefined إن أُطفئ (off/none/false/0). */

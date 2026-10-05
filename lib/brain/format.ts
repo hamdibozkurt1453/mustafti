@@ -1,7 +1,7 @@
 /**
- * شكل الجواب (نقي، يُختبر محلياً): الجملة الأولى جواب مباشر بكلام الأداة مع إشارة [n]،
- * لا اقتباس ولا ﴿ ولا مرجع مجرد («البقرة 127: ﴿…﴾»). يستعمله respond.ts (إعادة صياغة مرة
- * واحدة إن خالف) وbrain-test (فحص format).
+ * شكل الجواب (نقي، يُختبر محلياً). R5: الصياغة حرة، فالجملة الأولى لا تلزمها إشارة [n] (قد تكون
+ * ترحيباً أو تمهيداً)، لكنها لا تبدأ باقتباس ولا ﴿ ولا مرجع مجرد («البقرة 127: ﴿…﴾»)، والجواب كله
+ * فيه إشارة [n] واحدة على الأقل. يستعمله brain-test (فحص format) وrespond.ts.
  */
 import { matchKey } from "./guard";
 
@@ -25,7 +25,7 @@ export function answerFormatIssues(text: string): FormatIssue[] {
   else if (/^(?:سورة\s+)?[\p{L}\p{M}'\-ـ ]{0,24}?\(?\s*\d{1,3}\s*(?:[:：]\s*\d{1,3})?\s*\)?\s*[:：]/u.test(fs) || /^\d{1,3}\s*[:：]\s*\d{1,3}/.test(fs)) {
     issues.push("starts_with_reference");
   }
-  if (!/\[\s*\d{1,2}\s*\]/.test(fs)) issues.push("no_citation");
+  if (!/\[\s*\d{1,2}\s*\]/.test(text)) issues.push("no_citation");
   return issues;
 }
 

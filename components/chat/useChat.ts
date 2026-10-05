@@ -13,6 +13,7 @@ import {
   type ChatFatwa,
   type ChatHistoryItem,
   type ChatLink,
+  type ChatReplyHead,
   type ChatReplyKind,
   type ChatSource,
   type ChatStage,
@@ -63,6 +64,8 @@ export type BotMessage = {
   lang?: string;
   dir?: "rtl" | "ltr";
   level?: string;
+  /** R5: الجواب عرض خلافاً فقهياً معتبراً (شارة «مسألة خلافية»). */
+  khilaf?: boolean;
   text: string;
   sources: ChatSource[];
   /** «فتاوى منشورة ذات صلة» بنصها (تحت الجواب، أو قبل الإحالة في الحالة الشخصية). */
@@ -239,32 +242,40 @@ export function useChat(mode: ChatMode = "general") {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        const headPatch = (event: ChatReplyHead): Partial<BotMessage> => ({
+          kind: event.kind,
+          lang: event.lang,
+          dir: event.dir,
+          level: event.level,
+          khilaf: event.khilaf,
+          sources: event.sources,
+          referral: event.referral,
+          chapter: event.chapter ?? undefined,
+          userType: event.userType ?? undefined,
+          fatwas: event.fatwas,
+          suggestions: event.suggestions,
+          note: event.note,
+          links: event.links,
+          hadithCheck: event.hadithCheck,
+        });
         const handle = (event: ChatEvent) => {
           switch (event.type) {
             case "stage":
               patchBot(botId, () => ({ stage: event.stage }));
               break;
             case "start":
-              patchBot(botId, () => ({
-                status: "streaming",
-                kind: event.kind,
-                lang: event.lang,
-                dir: event.dir,
-                level: event.level,
-                sources: event.sources,
-                referral: event.referral,
-                chapter: event.chapter ?? undefined,
-                userType: event.userType ?? undefined,
-                fatwas: event.fatwas,
-                suggestions: event.suggestions,
-                note: event.note,
-                links: event.links,
-                hadithCheck: event.hadithCheck,
-                text: "",
-              }));
+              patchBot(botId, () => ({ status: "streaming", ...headPatch(event), text: "" }));
               break;
             case "delta":
               patchBot(botId, (m) => ({ text: m.text + event.text }));
+              break;
+            case "reset":
+              // R5: محاولة صياغة ثانية: يُمسح ما كُتب.
+              patchBot(botId, () => ({ text: "" }));
+              break;
+            case "final":
+              // R5: الجواب النهائي بعد التحقق الكامل يحل محل ما بُث (النص والمصادر وكل الحقول).
+              patchBot(botId, () => ({ status: "streaming", ...headPatch(event), text: event.text }));
               break;
             case "done":
               finished = true;
@@ -546,6 +557,7 @@ export function useChat(mode: ChatMode = "general") {
         text: "",
         sources: [],
         kind: undefined,
+        khilaf: undefined,
         fatwas: undefined,
         suggestions: undefined,
         note: undefined,

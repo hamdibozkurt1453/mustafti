@@ -2,16 +2,24 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { LABEL_KEYS, localizeLabels, type LabelKey } from "@/lib/chat/labels";
 import { dirForText, type ChatSource } from "@/lib/chat/protocol";
 
 const LONG = 320;
 
-/** بطاقة مصدر: شارة «نص منقول»، والنص بحروفه، واسم المصدر، والدرجة للحديث، ورابط «عرض المصدر». */
+/**
+ * بطاقة مصدر: شارة «نص منقول»، والنص بحروفه، واسم المصدر، والدرجة للحديث، ورابط «عرض المصدر».
+ * R5: تسميات حقول الحديث («Narrator:»، «Grade:»، «Explanation:») بلغة الواجهة، والنص بعدها كما هو.
+ */
 export function SourceCard({ source, messageId }: { source: ChatSource; messageId: string }) {
   const t = useTranslations("chat");
+  const tl = useTranslations("chat.labels");
   const [open, setOpen] = useState(false);
-  const long = source.text.length > LONG;
-  const dir = dirForText(source.text);
+  const labels = Object.fromEntries(LABEL_KEYS.map((k) => [k, tl(k)])) as Record<LabelKey, string>;
+  const text = localizeLabels(source.text, labels);
+  const note = source.note ? localizeLabels(source.note, labels) : undefined;
+  const long = text.length > LONG;
+  const dir = dirForText(text);
 
   return (
     <li
@@ -44,18 +52,18 @@ export function SourceCard({ source, messageId }: { source: ChatSource; messageI
           >
             ﴿{source.verse}﴾
           </blockquote>
-          {source.note && (
+          {note && (
             <div className="mt-2">
               <p className="text-[11px] font-semibold text-green-600">
                 {source.noteKind === "translation" ? t("noteTranslation") : t("noteTafsir")}
               </p>
               <p
-                dir={dirForText(source.note)}
+                dir={dirForText(note)}
                 className={`mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-green-900/90 ${
-                  source.note.length > LONG && !open ? "line-clamp-5" : ""
+                  note.length > LONG && !open ? "line-clamp-5" : ""
                 }`}
               >
-                {source.note}
+                {note}
               </p>
             </div>
           )}
@@ -67,10 +75,10 @@ export function SourceCard({ source, messageId }: { source: ChatSource; messageI
             long && !open ? "line-clamp-5" : ""
           }`}
         >
-          {source.text}
+          {text}
         </blockquote>
       )}
-      {(source.verse ? (source.note?.length ?? 0) > LONG : long) && (
+      {(source.verse ? (note?.length ?? 0) > LONG : long) && (
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}

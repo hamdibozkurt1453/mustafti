@@ -1,23 +1,26 @@
 import { after } from "next/server";
 import { z } from "zod";
 import { requireRole, authzResponse } from "@/lib/auth/roles";
-import { respond, type BrainReply } from "@/lib/brain/respond";
+import { respond, type AnswerPreview, type BrainReply } from "@/lib/brain/respond";
 import { guessLang } from "@/lib/brain/identity";
 import { CHAT_MODES } from "@/lib/brain/modes";
-import { dirForLang, MAX_HISTORY, MAX_QUESTION_CHARS, type ChatEvent, type ChatFatwa, type ChatSource } from "@/lib/chat/protocol";
+import { dirForLang, MAX_HISTORY, MAX_QUESTION_CHARS, type ChatEvent, type ChatFatwa, type ChatReplyHead, type ChatSource } from "@/lib/chat/protocol";
 import type { Passage } from "@/lib/brain/prompts";
 import { llmUserMessage } from "@/lib/llm";
 import { checkChatRateLimit, CHAT_LIMIT_PER_HOUR } from "@/lib/rate-limit";
 import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin";
 import { cleanForDisplay } from "@/lib/brain/quran-index";
+import { looksLikeCode } from "@/lib/brain/rank";
+import { fatwaExcerpt, showFatwaCard } from "@/lib/chat/cards";
 
 /**
  * POST /api/chat — المحادثة الحية (بث NDJSON، البروتوكول في lib/chat/protocol.ts).
  *
  * فحص الدور (الزائر مسموح) ← حد الطلبات (30 في الساعة لكل IP) ← lib/brain/respond.ts كما هو
  * (الهوية، والتصنيف، والعاجل، والإحالة، والاسترجاع، والصياغة، والحارس). هذا المسار لا يكرر
- * شيئاً من منطقه: يبث مراحله، ثم بطاقات المصادر، ثم نصه بعد الحارس كلمةً كلمة.
- * لماذا لا نبث التوليد مباشرة؟ لأن الحارس يفحص الجواب كاملاً قبل أن يرى السائل أي كلمة.
+ * شيئاً من منطقه: يبث مراحله، ثم بطاقات المصادر حين تجهز، ثم الجواب أثناء كتابته (R5).
+ * كل جملة تمر بالتحقق قبل إرسالها، والجواب النهائي بعد التحقق الحرفي الكامل يأتي في حدث final
+ * فيحل محل ما بُث. والردود الثابتة والمخزّنة تُبث كلمةً كلمة كما كانت.
  */
 export const dynamic = "force-dynamic";
 // ميزانية السؤال 55 ث (مع «ابحث واقرأ») ثم البث.
@@ -43,7 +46,7 @@ function wordDelay(words: number): number {
 const MAX_CARDS = 4;
 
 function toCards(passages: Passage[]): ChatSource[] {
-  // النص للعرض بلا علامات الخادم («[Surah 3, …]»، «[3:1]»، «[EXACT]»، «Source: …»).
+  // النص للعرض بلا علامات الخادم («[Surah 3, …]»، «[3:1]»، «[EXACT]»، «Source: …»)، ولا بطاقة لبقايا كود.
   return passages.map((p, i) => ({
     n: i + 1,
     title: p.title,
@@ -53,7 +56,7 @@ function toCards(passages: Passage[]): ChatSource[] {
     ...(p.grade ? { grade: p.grade } : {}),
     ...(p.lang ? { lang: p.lang } : {}),
     ...(p.verse ? { verse: cleanForDisplay(p.verse), note: p.note ? cleanForDisplay(p.note) : undefined, noteKind: p.noteKind } : {}),
-  }));
+  })).filter((c) => !looksLikeCode(c.text));
 }
 
 function sourcesOf(reply: BrainReply): ChatSource[] {
@@ -69,13 +72,72 @@ function sourcesOf(reply: BrainReply): ChatSource[] {
     .slice(0, MAX_CARDS);
 }
 
-/** «فتاوى منشورة ذات صلة»: ما لم يظهر بطاقةَ مصدر في الجواب نفسه (فلا تتكرر الفتوى). */
-function fatwasOf(reply: BrainReply, sources: ChatSource[]): ChatFatwa[] {
+/**
+ * «فتاوى منشورة ذات صلة»: ما لم يظهر بطاقةَ مصدر في الجواب نفسه (فلا تتكرر الفتوى). R5: المقتطف
+ * الذي فيه بقايا كود يُعدّ فارغاً، والفتوى بلا نص لا تُعرض إلا برابط صالح.
+ */
+function fatwasOf(reply: Pick<BrainReply, "fatwas">, sources: ChatSource[]): ChatFatwa[] {
   const shown = new Set(sources.map((s) => s.url));
   // كل فتوى معروضة قيّمها النموذج ضد هذا السؤال (≥ 60)؛ وتحقق أخير هنا قبل الإرسال.
   return (reply.fatwas ?? [])
     .filter((f) => !shown.has(f.url) && (f.score === undefined || f.score >= 60))
+    .filter(showFatwaCard)
+    .map((f) => ({ ...f, excerpt: fatwaExcerpt(f.excerpt) }))
     .map((f) => ({ title: f.title, mufti: f.mufti, excerpt: f.excerpt, url: f.url, ...(f.category ? { category: f.category } : {}) }));
+}
+
+/** رأس الرد للواجهة (في start، ومع النص في final). */
+function headOf(reply: BrainReply): ChatReplyHead {
+  const sources = sourcesOf(reply);
+  const fatwas = fatwasOf(reply, sources);
+  return {
+    kind: reply.kind,
+    lang: reply.lang,
+    dir: dirForLang(reply.lang),
+    level: reply.classification?.level,
+    ...(reply.kind === "answer" ? { khilaf: Boolean(reply.khilaf) } : {}),
+    sources,
+    ...(fatwas.length ? { fatwas } : {}),
+    ...(reply.suggestions?.length ? { suggestions: reply.suggestions } : {}),
+    ...(reply.note ? { note: reply.note } : {}),
+    ...(reply.links?.length ? { links: reply.links } : {}),
+    ...(reply.hadithCheck ? { hadithCheck: reply.hadithCheck } : {}),
+    ...(reply.referral ? { referral: reply.referral } : {}),
+    ...(reply.kind === "referral" || reply.kind === "abstain" || reply.kind === "refused"
+      ? { chapter: reply.classification?.chapter, userType: reply.classification?.userType }
+      : {}),
+  };
+}
+
+/** رأس الجواب قبل كتابته (R5): أول بطاقات المصادر حين تجهز، والجواب النهائي يقصرها على المذكور. */
+function previewHead(p: AnswerPreview): ChatReplyHead {
+  const sources = toCards(p.passages).slice(0, MAX_CARDS);
+  const fatwas = fatwasOf(p, sources);
+  return {
+    kind: "answer",
+    lang: p.lang,
+    dir: dirForLang(p.lang),
+    level: p.classification?.level,
+    khilaf: Boolean(p.khilaf),
+    sources,
+    ...(fatwas.length ? { fatwas } : {}),
+    ...(p.links?.length ? { links: p.links } : {}),
+    ...(p.hadithCheck ? { hadithCheck: p.hadithCheck } : {}),
+  };
+}
+
+/** علامات الخادم في جزء مبثوث (بلا قص المسافات، فالأجزاء تتصل). */
+function cleanDelta(text: string): string {
+  return text
+    .replace(/\[Surah\s+\d+[^\]]*\]/gi, " ")
+    .replace(/\[\/?[A-Z][A-Z _-]{2,}\]/g, " ")
+    .replace(/\[\d{1,3}:\d{1,3}\]/g, " ")
+    .replace(/Source:\s*https?:\/\/\S+/gi, " ");
+}
+
+/** زمن كل مرحلة في سجلات الخادم (R5)، بلا نص السؤال. */
+function logTimings(reply: BrainReply, mode: string) {
+  console.info(`brain:timings ${JSON.stringify({ mode, kind: reply.kind, level: reply.classification?.level ?? null, ...reply.timings })}`);
 }
 
 /** إحصاء فقط (اللغة، والمستوى، وعدد المصادر، وهل امتنع)، بلا نص السؤال. */
@@ -136,35 +198,34 @@ export async function POST(request: Request) {
       };
 
       try {
+        let streamed = false;
         const reply = await respond(message, {
           history: history.slice(-MAX_HISTORY).map((h) => ({ role: h.role, content: h.content.slice(0, 1500) })),
           onStage: (stage) => send({ type: "stage", stage }),
           cache: true,
           mode,
+          defer: (task) => after(task),
+          // R5: المصادر حين تجهز، ثم الجواب جملةً جملة أثناء كتابته.
+          onSources: (preview) => {
+            streamed = true;
+            send({ type: "start", ...previewHead(preview) });
+          },
+          onDelta: (text) => send({ type: "delta", text: cleanDelta(text) }),
+          onReset: () => send({ type: "reset" }),
         });
         logQuery(reply);
+        logTimings(reply, mode);
 
-        const sources = sourcesOf(reply);
-        const fatwas = fatwasOf(reply, sources);
-        send({
-          type: "start",
-          kind: reply.kind,
-          lang: reply.lang,
-          dir: dirForLang(reply.lang),
-          level: reply.classification?.level,
-          sources,
-          ...(fatwas.length ? { fatwas } : {}),
-          ...(reply.suggestions?.length ? { suggestions: reply.suggestions } : {}),
-          ...(reply.note ? { note: reply.note } : {}),
-          ...(reply.links?.length ? { links: reply.links } : {}),
-          ...(reply.hadithCheck ? { hadithCheck: reply.hadithCheck } : {}),
-          ...(reply.referral ? { referral: reply.referral } : {}),
-          ...(reply.kind === "referral" || reply.kind === "abstain" || reply.kind === "refused"
-            ? { chapter: reply.classification?.chapter, userType: reply.classification?.userType }
-            : {}),
-        });
+        const head = headOf(reply);
         // احتياط للعرض: لا تصل علامات الخادم («[Surah …]»، «[EXACT]»، «Source: …») إلى السائل.
         const shown = reply.kind === "answer" ? cleanForDisplay(reply.text) : reply.text;
+        if (streamed) {
+          // الجواب النهائي بعد التحقق الكامل يحل محل ما بُث.
+          send({ type: "final", ...head, text: shown });
+          send({ type: "done" });
+          return;
+        }
+        send({ type: "start", ...head });
         const pieces = shown.split(/(\s+)/).filter(Boolean);
         const delay = wordDelay(pieces.length / 2);
         // كلمتان في كل حدث تقريباً: بث سلس بلا آلاف الأحداث.

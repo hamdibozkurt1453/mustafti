@@ -105,10 +105,10 @@ export async function runBrainCase(id: string): Promise<CaseReport> {
         detail: MUSTAFTI.test(reply.text) ? "يعرّف نفسه بمُستفتي" : "لم يذكر «مُستفتي»",
       };
     }
-    // شكل الجواب: الجملة الأولى جواب مباشر مع [n]، لا اقتباس ولا مرجع مجرد.
+    // شكل الجواب (R5): لا يبدأ باقتباس ولا مرجع مجرد، وفيه إشارة [n] واحدة على الأقل.
     if (reply.kind === "answer") {
-      const issues = answerFormatIssues(reply.raw ?? reply.text);
-      checks.format = { ok: issues.length === 0, detail: issues.length ? issues.join("، ") : firstSentence(reply.raw ?? reply.text).slice(0, 120) };
+      const issues = answerFormatIssues(reply.text);
+      checks.format = { ok: issues.length === 0, detail: issues.length ? issues.join("، ") : firstSentence(reply.text).slice(0, 120) };
     }
     if (tc.misconception) {
       checks.misconception = {

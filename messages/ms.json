@@ -263,7 +263,16 @@
     "dorarClosest": "Hasil terdekat dalam Ensiklopedia Hadis",
     "hadithNone": "Saya tidak menemui hukum hadis ini dalam sumber yang diiktiraf.",
     "askMentor": "Hantar soalan anda kepada pembimbing",
-    "askDaee": "Hubungi pendakwah"
+    "askDaee": "Hubungi pendakwah",
+    "labels": {
+      "narrator": "Perawi",
+      "grade": "Darjat",
+      "explanation": "Huraian",
+      "benefits": "Pengajaran",
+      "source": "Sumber",
+      "translation": "Terjemahan",
+      "hadith": "Hadis"
+    }
   },
   "case": {
     "start": "",

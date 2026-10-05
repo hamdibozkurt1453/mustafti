@@ -147,7 +147,7 @@ describe("لا امتناع مع نصوص ذات صلة (البند 2)", () => {
     assert.ok(r.text.startsWith("Kaynaklarda bulduklarımız:"), r.text);
   });
 
-  it("الأمان: حكم بكلام الأداة ← رفض بالرد الثابت، لا يمر أبداً", async () => {
+  it("الأمان: حكم موجَّه إلى السائل («يجوز لك»، «حرام عليك») ← رفض بالرد الثابت ولو بإشارة [n]", async () => {
     answers = ["يجوز لك تأخير الصلاة [1].", "هذا حرام عليك [1]."];
     const r = await ask("هل يجوز تأخير صلاة الفجر عمداً؟");
     assert.notEqual(r.kind, "answer");
@@ -161,7 +161,8 @@ describe("لا امتناع مع نصوص ذات صلة (البند 2)", () => {
     const system = String((bodies.find((b) => b.name === "chat")!.body.messages as { content: string }[])[0].content);
     assert.match(system, /asker's language: tr/);
     assert.match(system, /one number per bracket/);
-    assert.match(system, /A partial answer must NOT contain the abstention sentence/);
+    assert.match(system, /EVIDENCE RULE/);
+    assert.match(system, /answer fully from it, without the abstention sentence/);
   });
 });
 
@@ -169,7 +170,7 @@ describe("جهد التفكير من متغيرات البيئة (البند 3)"
   it("low للتصنيف والتقييم، وmedium للصياغة، وحيّز لرموز التفكير، وoff يطفئه", async () => {
     assert.equal(llm.reasoningFor("classify"), "low");
     assert.equal(llm.reasoningFor("rerank"), "low");
-    assert.equal(llm.reasoningFor("answer"), "medium");
+    assert.equal(llm.reasoningFor("answer"), "low");
     process.env.LLM_REASONING_ANSWER = "high";
     assert.equal(llm.reasoningFor("answer"), "high");
     process.env.LLM_REASONING_ANSWER = "off";
@@ -184,7 +185,7 @@ describe("جهد التفكير من متغيرات البيئة (البند 3)"
     assert.equal(llm.baseBody([{ role: "user", content: "x" }], { maxTokens: 400 }).reasoning, undefined);
   });
 
-  it("الطلبات الحية: التصنيف low، والتقييم low، والصياغة medium", async () => {
+  it("الطلبات الحية: التصنيف low، والتقييم low، والصياغة low (R5: السرعة)", async () => {
     LANG["ما فضل قيام الليل؟"] = "ar";
     answers = ["يصلي من نام عن الصلاة إذا استيقظ [1]."];
     bodies.length = 0;
@@ -192,7 +193,7 @@ describe("جهد التفكير من متغيرات البيئة (البند 3)"
     const effort = (n: string) => (bodies.find((b) => b.name === n)?.body.reasoning as { effort?: string } | undefined)?.effort;
     assert.equal(effort("classification"), "low");
     assert.equal(effort("relevance"), "low");
-    assert.equal(effort("chat"), "medium");
+    assert.equal(effort("chat"), "low");
   });
 });
 

@@ -294,7 +294,16 @@
     "dorarClosest": "أقرب ما وجدناه في الموسوعة الحديثية",
     "hadithNone": "لم أجد حكماً لهذا الحديث في المصادر المعتمدة.",
     "askMentor": "أرسل سؤالك لمرشد",
-    "askDaee": "تواصل مع داعية"
+    "askDaee": "تواصل مع داعية",
+    "labels": {
+      "narrator": "الراوي",
+      "grade": "الدرجة",
+      "explanation": "الشرح",
+      "benefits": "الفوائد",
+      "source": "المصدر",
+      "translation": "الترجمة",
+      "hadith": "الحديث"
+    }
   },
   "auth": {
     "loginTitle": "تسجيل الدخول",

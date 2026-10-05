@@ -16,9 +16,13 @@ import { MESSAGES, message } from "./messages";
  * الملف نقي (بلا server-only) ليُختبر محلياً بلا نموذج: tests/brain.test.ts.
  */
 
-export type GuardReason = "ruling" | "tarjih" | "unsourced_quote" | "identity_leak";
+export type GuardReason = "ruling" | "tarjih" | "unsourced_quote" | "identity_leak" | "unsourced_ruling";
 
-export type GuardFinding = { reason: GuardReason; lang: string; match: string };
+/**
+ * verdict: حكم على حالة السائل نفسه («صلاتك باطلة»، «طلاقك واقع»، «أفتيك»): فتوى شخصية تُمنع
+ * دائماً ولو بإشارة [n]. وغيره من عبارات الحكم يُقبل في الجواب إن أُسند في جملته (checkAnswer).
+ */
+export type GuardFinding = { reason: GuardReason; lang: string; match: string; verdict?: boolean };
 
 export type GuardContext = {
   /** نصوص المصادر المسترجعة المرفقة بالتعليمات (ما يجوز اقتباسه). */
@@ -27,6 +31,8 @@ export type GuardContext = {
   question?: string;
   /** لغة السائل، للرد الثابت. */
   lang?: string;
+  /** عدد النصوص المرقّمة (إشارة [n] صحيحة إن كانت بين 1 وهذا العدد). الافتراضي: عدد sources. */
+  citeCount?: number;
 };
 
 export type GuardResult = {
@@ -144,6 +150,16 @@ export const NEAR_COVERAGE = 0.85;
 export const NEAR_ORDER = 0.7;
 
 /** طول أطول تتابع مشترك (بالترتيب) بين قائمتي كلمات. */
+/** الاقتباس موجود حرفياً تماماً (بعد التوحيد) بكل أجزائه، بلا قبول شبه الحرفي. */
+export function isExactVerbatim(inner: string, haystacks: string[]): boolean {
+  const keys = haystacks.map(matchKey);
+  const fragments = inner
+    .split(/\.\.\.|…|\[\s*\.\.\.\s*\]/)
+    .map(matchKey)
+    .filter((f) => f.length >= MIN_FRAGMENT_KEY);
+  return fragments.length > 0 && fragments.every((f) => keys.some((k) => k.includes(f)));
+}
+
 function lcs(a: string[], b: string[]): number {
   let prev = new Array<number>(b.length + 1).fill(0);
   for (let i = 1; i <= a.length; i++) {
@@ -225,9 +241,11 @@ const AR_CONSULT = "(?!\\s*(?:ت?سأل|تسال|تراجع|تستشير|ترس�
 const EN_CONSULT =
   "(?!\\s+(?:ask|consult|contact|reach|send|speak|talk|refer|seek|check\\s+with|get\\s+in\\s+touch|turn\\s+to|clarify|describe))";
 
-type Pattern = { reason: GuardReason; lang: string; re: RegExp };
+type Pattern = { reason: GuardReason; lang: string; re: RegExp; verdict?: boolean };
 
 const P = (reason: GuardReason, lang: string, ...res: RegExp[]): Pattern[] => res.map((re) => ({ reason, lang, re }));
+/** عبارات الحكم على حالة السائل نفسه (فتوى شخصية): تُمنع في كل الأحوال. */
+const V = (lang: string, ...res: RegExp[]): Pattern[] => res.map((re) => ({ reason: "ruling" as const, lang, re, verdict: true }));
 
 const PATTERNS: Pattern[] = [
   // العربية
@@ -239,20 +257,28 @@ const PATTERNS: Pattern[] = [
     ar(AR_HARAM),
     ar("حلال"),
     ar("مباح[ةه]?|يباح|مكروه[ةه]?|مستحب[ةه]?"),
-    ar("[يت]حرم\\s+(?:عليك|عليكم|عليكما|عليكن)|محر[ّ]?م[ةه]?\\s+(?:عليك|عليكم|شرع)"),
-    ar("[يت]حل\\s+لك|يحق\\s+لك"),
+    ar("محر[ّ]?م[ةه]?\\s+شرع"),
     ar("لا\\s+بأس"),
     ar("(?:وقع|يقع|تقع|وقعت|لم\\s+يقع|لا\\s+يقع)\\s+(?:ال)?(?:طلاق|طلقة|طلقتان)"),
-    ar("طلاق(?:ك|ه|كم)?\\s+(?:واقع|وقع|صحيح|باطل|نافذ|لم\\s+يقع)"),
+    ar("طلاق(?:ه|ها)?\\s+(?:واقع|وقع|صحيح|باطل|نافذ|لم\\s+يقع)"),
     ar("(?:يجب|يلزم|يتعين|يتعيّن|ينبغي|يُشترط|يشترط)\\s+عليك"),
     ar("يلزمك|يلزمكم"),
     ar(`عليك\\s+[أا]ن${AR_CONSULT}`),
     ar("عليك\\s+(?:الكفارة|كفارة|القضاء|قضاء|الإعادة|الاعادة|إعادة|اعادة|الصيام|صيام|الفدية|فدية|الغسل|غسل)"),
+    ar("(?:حكمه|حكمها|الحكم)\\s+(?:هو\\s+)?(?:الجواز|التحريم|الحرمة|الوجوب|الكراهة|الإباحة|الاباحة|الاستحباب)"),
+  ),
+  ...V(
+    "ar",
+    ar("طلاق(?:ك|كم)\\s+(?:واقع|وقع|صحيح|باطل|نافذ|لم\\s+يقع)"),
     ar(
       "(?:صلاتك|صومك|صيامك|زواجك|نكاحك|عقدك|حجك|عمرتك|وضوؤك|وضوءك|طهارتك|زكاتك|توبتك|صلاتكم|صيامكم)\\s+(?:صحيح[ةه]?|باطل[ةه]?|فاسد[ةه]?|مقبول[ةه]?|لا\\s+[يت]صح|[يت]صح)",
     ),
-    ar("(?:حكمه|حكمها|الحكم)\\s+(?:هو\\s+)?(?:الجواز|التحريم|الحرمة|الوجوب|الكراهة|الإباحة|الاباحة|الاستحباب)"),
     ar("أفتيك|افتيك|فتواي"),
+    // الجواز والتحريم موجَّهين إلى السائل نفسه («يجوز لك»، «حرام عليك»): صيغة فتوى شخصية.
+    ar("(?:لا\\s+)?[يت]جوز\\s+(?:لك|لكم|لكما|لكن)"),
+    ar("(?:جائز|حلال|مباح)[ةه]?\\s+(?:لك|لكم)|حرام\\s+(?:عليك|عليكم)"),
+    ar("[يت]حرم\\s+(?:عليك|عليكم|عليكما|عليكن)|محر[ّ]?م[ةه]?\\s+(?:عليك|عليكم)"),
+    ar("[يت]حل\\s+لك|يحق\\s+لك"),
   ),
   ...P("tarjih", "ar", ar("الراجح|الأرجح|الارجح|أرجح\\s+الأقوال|القول\\s+الصحيح|الصواب\\s+[أا]ن")),
 
@@ -265,12 +291,17 @@ const PATTERNS: Pattern[] = [
     w("halal|makruh|makrooh|mubah"),
     w("(?:is|are|it's|was|be)\\s+(?:not\\s+)?(?:allowed|forbidden|prohibited|lawful|unlawful|a\\s+sin|sinful)"),
     w(`you\\s+(?:must|have\\s+to|need\\s+to|are\\s+(?:obliged|required|obligated)\\s+to|should|ought\\s+to)${EN_CONSULT}`),
-    w("you\\s+(?:may|can|are\\s+allowed\\s+to)\\s+(?:not\\s+)?(?:eat|drink|marry|pray|fast|take|keep|work|use|break|combine|skip|delay|divorce|celebrate|listen)"),
+    w("(?:the\\s+|your\\s+)?(?:divorce|talaq)\\s+(?:has\\s+)?(?:occurred|counts|took\\s+effect|is\\s+(?:valid|effective|binding|void)|did\\s+not\\s+(?:occur|count))"),
+    w("the\\s+(?:islamic\\s+)?ruling\\s+(?:is|would\\s+be)"),
+  ),
+  ...V(
+    "en",
     w(
       "your\\s+(?:prayer|salah|salat|fast|fasting|marriage|nikah|divorce|contract|hajj|umrah|wudu|wudhu|ablution|zakat|repentance)\\s+(?:is|was)\\s+(?:not\\s+)?(?:valid|invalid|void|accepted|correct|broken|nullified|sound)",
     ),
-    w("(?:the\\s+|your\\s+)?(?:divorce|talaq)\\s+(?:has\\s+)?(?:occurred|counts|took\\s+effect|is\\s+(?:valid|effective|binding|void)|did\\s+not\\s+(?:occur|count))"),
-    w("the\\s+(?:islamic\\s+)?ruling\\s+(?:is|would\\s+be)|my\\s+fatwa|i\\s+rule\\s+that"),
+    w("your\\s+(?:divorce|talaq)\\s+(?:has\\s+)?(?:occurred|counts|took\\s+effect|did\\s+not\\s+(?:occur|count))"),
+    w("my\\s+fatwa|i\\s+rule\\s+that"),
+    w("you\\s+(?:may|can|are\\s+allowed\\s+to)\\s+(?:not\\s+)?(?:eat|drink|marry|pray|fast|take|keep|work|use|break|combine|skip|delay|divorce|celebrate|listen)"),
   ),
   ...P(
     "tarjih",
@@ -287,10 +318,10 @@ const PATTERNS: Pattern[] = [
     w("helal(?:dir|dır)?|mekruh(?:tur)?|mubah(?:tır)?"),
     w("günahtır|günah\\s+(?:değildir|değil|sayılır)"),
     w("(?:boşanma|talak)\\s+(?:gerçekleşti|gerçekleşmiştir|düştü|düşmüştür|geçerli(?:dir)?|vaki\\s+olmuştur)"),
-    w("(?:nikahınız|nikahın|namazınız|namazın|orucunuz|orucun|abdestiniz|abdestin)\\s+(?:geçerli|geçersiz|bozuldu|bozulmuştur|sahih|batıl|kabul)\\p{L}*"),
     w("(?!(?:sor|danış|başvur|ilet|gönder|yaz)m)\\p{L}+(?:malı|meli)(?:sınız|siniz|sın|sin)"),
-    w("hüküm\\s+(?:şudur|budur)|fetvam"),
+    w("hüküm\\s+(?:şudur|budur)"),
   ),
+  ...V("tr", w("(?:nikahınız|nikahın|namazınız|namazın|orucunuz|orucun|abdestiniz|abdestin)\\s+(?:geçerli|geçersiz|bozuldu|bozulmuştur|sahih|batıl|kabul)\\p{L}*"), w("fetvam")),
   ...P("tarjih", "tr", w("(?:en\\s+)?(?:doğru|sahih|tercih\\s+edilen|r[aâ]cih|güçlü)\\s+görüş")),
 
   // Français
@@ -300,10 +331,10 @@ const PATTERNS: Pattern[] = [
     w("(?:est|sont|c'est|n'est|ce\\s+n'est)\\s+(?:pas\\s+)?(?:permis|interdit|illicite|licite|autorisé|prohibé|haram|halal)"),
     w("illicite|licite"),
     w(`(?:vous|tu)\\s+(?:devez|dois|êtes\\s+obligée?s?\\s+de|es\\s+obligée?\\s+de)(?!\\s+(?:consulter|demander|contacter|vous\\s+adresser|t'adresser|envoyer|poser|préciser))`),
-    w("(?:votre|ton|ta|vos|tes)\\s+(?:prière|jeûne|mariage|divorce|ablutions?|hajj|contrat|nikah)\\s+(?:est|sont|n'est)\\s+(?:pas\\s+)?(?:valide|invalide|nul|nulle|annulée?|accepté|rompu|valable)"),
     w("(?:le\\s+)?(?:divorce|talaq)\\s+(?:a\\s+eu\\s+lieu|est\\s+(?:valide|effectif|tombé|prononcé|valable))"),
     w("(?:c'est|ce\\s+n'est\\s+pas)\\s+un\\s+péché"),
   ),
+  ...V("fr", w("(?:votre|ton|ta|vos|tes)\\s+(?:prière|jeûne|mariage|divorce|ablutions?|hajj|contrat|nikah)\\s+(?:est|sont|n'est)\\s+(?:pas\\s+)?(?:valide|invalide|nul|nulle|annulée?|accepté|rompu|valable)")),
   ...P("tarjih", "fr", w("l'avis\\s+(?:le\\s+plus\\s+)?(?:correct|juste|fort|prépondérant)\\s+est")),
 
   // اردو
@@ -314,9 +345,10 @@ const PATTERNS: Pattern[] = [
     ar("مکروہ|مباح"),
     ar("طلاق\\s+(?:ہو\\s*گئی|ہوگئی|واقع\\s+ہو|پڑ\\s*گئی|ہو\\s*چکی|نہیں\\s+ہوئی)"),
     ar("(?:آپ|تم)\\s+(?:کو|پر)\\s+(?!کسی\\s+(?:عالم|ماہر|مفتی))[^۔.!?؟]{0,30}(?:چاہیے|لازم\\s+ہے|واجب\\s+ہے)"),
-    ar("(?:آپ\\s+کی|تمہاری|تیری)\\s+(?:نماز|روزہ|نکاح|طلاق|توبہ)\\s+(?:ہو\\s*گئی|ہوگئی|درست|صحیح|باطل|فاسد|ٹوٹ\\s*گیا|نہیں\\s+ہوئی|قبول)"),
     ar("(?:نماز|روزہ)\\s+(?:ہو\\s*گئی|ہوگئی|ٹوٹ\\s*گیا|نہیں\\s+ٹوٹا|فاسد\\s+ہو)"),
   ),
+
+  ...V("ur", ar("(?:آپ\\s+کی|تمہاری|تیری)\\s+(?:نماز|روزہ|نکاح|طلاق|توبہ)\\s+(?:ہو\\s*گئی|ہوگئی|درست|صحیح|باطل|فاسد|ٹوٹ\\s*گیا|نہیں\\s+ہوئی|قبول)")),
 
   // Bahasa Indonesia
   ...P(
@@ -326,11 +358,40 @@ const PATTERNS: Pattern[] = [
     w("hukumnya\\s+\\p{L}+"),
     w("(?:anda|kamu|engkau)\\s+(?:harus|wajib|perlu)(?!\\s+(?:bertanya|menghubungi|berkonsultasi|mengirim|menanyakan))"),
     w("talak(?:nya)?\\s+(?:sudah\\s+)?(?:jatuh|sah|tidak\\s+jatuh|berlaku)"),
-    w("(?:shalat|salat|puasa|pernikahan|nikah|wudhu|wudu)(?:mu|\\s+anda|\\s+kamu)\\s+(?:sah|tidak\\s+sah|batal)"),
     w("berdosa|dosa\\s+bagi"),
   ),
+  ...V("id", w("(?:shalat|salat|puasa|pernikahan|nikah|wudhu|wudu)(?:mu|\\s+anda|\\s+kamu)\\s+(?:sah|tidak\\s+sah|batal)")),
   ...P("tarjih", "id", w("pendapat\\s+(?:yang\\s+)?(?:paling\\s+)?(?:kuat|rajih|benar)\\s+(?:adalah|ialah)")),
 ];
+
+/**
+ * عبارات حكم إضافية في وضع الجواب وحده (R5): الوجوب والفرضية والتحريم والسنة المؤكدة. يُقبل كلٌّ
+ * منها بإشارته [n] في جملته، وبلا إشارة يُعدّ «حكماً بلا مصدر». (لا تدخل الحارس الصارم guard()
+ * لأن الردود الثابتة وأسئلة الاستيضاح قد تذكر «الصلاة المفروضة» وصفاً لا حكماً.)
+ */
+const ANSWER_RULINGS: Pattern[] = [
+  ...P(
+    "ruling",
+    "ar",
+    ar("واجب[ةه]?|وجوب|[يت]جب"),
+    ar("فرض(?:\\s+(?:عين|كفاي[ةه]))?\\s+على|فريض[ةه]|مفروض[ةه]?"),
+    ar("سن[ةه]\\s+مؤكد[ةه]|[يت]سن|يستحب|تستحب"),
+    ar("[يت]حرم|(?<!شهر\\s+(?:ال)?)محر[ّ]?م[ةه]?|تحريم|[يت]كره|كراه[ةه]"),
+  ),
+  ...P("ruling", "en", w("obligatory|mandatory|compulsory|fard|prohibited|forbidden|disliked|sunnah\\s+mu'?akkadah")),
+  ...P("ruling", "tr", w("farz(?:dır)?|vacip(?:tir)?|haram(?:dır)?")),
+  ...P("ruling", "fr", w("obligatoire|interdit|recommandé|déconseillé")),
+  ...P("ruling", "id", w("wajib|fardhu|makruh")),
+];
+
+/** عبارات الحكم الإضافية في جملة من الجواب. */
+function scanAnswerRulings(ownText: string): GuardFinding[] {
+  const text = maskProperNouns(stripMarks(ownText));
+  return ANSWER_RULINGS.flatMap((p) => {
+    const m = text.match(p.re);
+    return m ? [{ reason: p.reason, lang: p.lang, match: m[0].trim() }] : [];
+  });
+}
 
 /** نسبة حديث في صياغة الأداة: يجب أن يتبعها اقتباس موثَّق (⟦Q⟧) قريباً. */
 const HADITH_ATTRIBUTION: RegExp[] = [
@@ -378,7 +439,7 @@ export function scanOwnText(ownText: string): GuardFinding[] {
   const findings: GuardFinding[] = [];
   for (const p of PATTERNS) {
     const m = text.match(p.re);
-    if (m) findings.push({ reason: p.reason, lang: p.lang, match: m[0].trim() });
+    if (m) findings.push({ reason: p.reason, lang: p.lang, match: m[0].trim(), ...(p.verdict ? { verdict: true } : {}) });
   }
   const leak = text.match(MODEL_LEAK);
   if (leak) findings.push({ reason: "identity_leak", lang: "*", match: leak[0] });
@@ -408,7 +469,7 @@ export function checkOutput(text: string, ctx: GuardContext = {}): { findings: G
 /** الرد الثابت المناسب لنوع المخالفة. */
 export function replacementFor(findings: GuardFinding[], lang?: string): string {
   const reasons = new Set(findings.map((f) => f.reason));
-  if (reasons.has("ruling") || reasons.has("tarjih")) return message("refusal", lang);
+  if (reasons.has("ruling") || reasons.has("tarjih") || reasons.has("unsourced_ruling")) return message("refusal", lang);
   if (reasons.has("unsourced_quote")) return `${message("abstain", lang)} ${message("suggestExpert", lang)}`;
   return message("identityWho", lang);
 }
@@ -428,4 +489,194 @@ export async function guardAndLog(text: string, ctx: GuardContext & { caseId?: s
     await logGuard(result, ctx.caseId ?? null);
   }
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// وضع الجواب (R5): الصياغة الحرة مع قاعدة الدليل
+// ---------------------------------------------------------------------------
+//
+// الجواب المولَّد من النصوص المسترجعة يُفحص جملةً جملة:
+//   - عبارة الحكم أو الترجيح مقبولة إن أُسندت في جملتها نفسها بإشارة [n]
+//     صحيحة، وإلا فهي «حكم بلا مصدر» (unsourced_ruling) وتُحذف جملتها.
+//   - الحكم على حالة السائل نفسه (verdict: «صلاتك باطلة»، «طلاقك واقع»، «أفتيك») يُمنع دائماً.
+//   - الاقتباس «…» يجب أن يطابق نصاً مسترجعاً حرفياً: يُصحَّح إلى نص المصدر إن قاربه، وإلا تُحذف جملته.
+//   - نسبة حديث بلا نص منقول موثَّق تُحذف جملتها، واسم نموذج أو شركة يمنع الجواب كله.
+// الجمل الشارحة والرابطة والتشجيعية بلا رقم مقبولة.
+
+/** حدود الجملة خارج علامات الاقتباس. */
+const UNIT_END = new Set([".", "!", "؟", "?", "۔", "\n"]);
+const OPENERS: Record<string, string> = { "«": "»", "﴿": "﴾", "“": "”" };
+const CLOSERS = new Set(Object.values(OPENERS));
+const CITE_RUN = /^[ \t]*(?:\[\s*\d{1,2}\s*\][ \t]*)+/;
+
+/**
+ * يقسّم النص إلى جمل بحروفها (مجموعها = النص كله): لا يُقسم داخل «» ﴿﴾ “” ""، وإشارات [n]
+ * التي تلي نهاية الجملة مباشرة تُلحق بها.
+ */
+export function splitUnits(text: string): string[] {
+  const units: string[] = [];
+  let depth = 0;
+  let dquote = false;
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (OPENERS[ch]) depth++;
+    else if (CLOSERS.has(ch)) depth = Math.max(0, depth - 1);
+    else if (ch === '"') dquote = !dquote;
+    else if (ch === "\n") {
+      depth = 0; // اقتباس لم يُغلق لا يبتلع ما بعد السطر
+      dquote = false;
+    }
+    if (depth || dquote || !UNIT_END.has(ch)) continue;
+    let end = i + 1;
+    const cites = text.slice(end).match(CITE_RUN);
+    if (cites) end += cites[0].length;
+    units.push(text.slice(start, end));
+    start = end;
+    i = end - 1;
+  }
+  if (start < text.length) units.push(text.slice(start));
+  return units;
+}
+
+/** أرقام [n] الصحيحة في جملة. */
+function citesIn(unit: string, count: number): number[] {
+  return [...unit.matchAll(/\[\s*(\d{1,2})\s*\]/g)].map((m) => Number(m[1])).filter((n) => n >= 1 && n <= count);
+}
+
+export type UnitCheck = { text: string; cited: boolean; findings: GuardFinding[] };
+
+/** فحص جملة واحدة في وضع الجواب (cited: في الجملة إشارة [n] صحيحة). */
+function checkUnit(unit: string, cited: boolean, ctx: GuardContext): GuardFinding[] {
+  const { ownText, unverified } = separateQuoted(unit, ctx);
+  const findings: GuardFinding[] = [];
+  const own = scanOwnText(ownText);
+  // العبارات الإضافية (الوجوب والتحريم…) لا تُكرر ما وجده الحارس في الجملة نفسها.
+  const extra = own.some((f) => f.reason === "ruling" || f.reason === "tarjih") ? [] : scanAnswerRulings(ownText);
+  for (const f of [...own, ...extra]) {
+    if ((f.reason === "ruling" || f.reason === "tarjih") && !f.verdict) {
+      if (!cited) findings.push({ ...f, reason: "unsourced_ruling" });
+    } else findings.push(f);
+  }
+  for (const q of unverified) findings.push({ reason: "unsourced_quote", lang: "*", match: q.slice(0, 120) });
+  return findings;
+}
+
+function unitChecks(text: string, ctx: GuardContext): UnitCheck[] {
+  const count = ctx.citeCount ?? ctx.sources?.length ?? 0;
+  return splitUnits(text).map((u) => {
+    const cited = citesIn(u, count).length > 0;
+    return { text: u, cited, findings: checkUnit(u, cited, ctx) };
+  });
+}
+
+/** المخالفة التي تمنع الجواب كله (لا تُصلح بحذف جملة): فتوى شخصية، أو اسم نموذج أو شركة. */
+export function isBlocking(f: GuardFinding): boolean {
+  return f.reason === "identity_leak" || Boolean(f.verdict);
+}
+
+/** فحص الجواب كله بقاعدة الدليل (بلا تعديل). */
+export function checkAnswer(text: string, ctx: GuardContext = {}): { findings: GuardFinding[]; ownText: string; units: UnitCheck[] } {
+  const units = unitChecks(text, ctx);
+  return { findings: units.flatMap((u) => u.findings), ownText: separateQuoted(text, ctx).ownText, units };
+}
+
+/**
+ * أقرب مقطع حرفي في النصوص لاقتباس غير مطابق (نسخة النموذج من آية أو حديث فيها كلمة زائدة أو
+ * ناقصة): نافذة بطول الاقتباس ±2 كلمة، تُقبل إن بلغ التطابق بالترتيب 75%. null إن لم يوجد.
+ */
+export function closestSpan(inner: string, sources: string[]): string | null {
+  const q = stripMarks(inner)
+    .split(/\s+/)
+    .map(matchKey)
+    .filter(Boolean);
+  if (q.length < 4) return null;
+  const qSet = new Set(q);
+  let best: { ratio: number; text: string } | null = null;
+  for (const source of sources) {
+    const tokens = source.split(/\s+/).filter(Boolean);
+    const keys = tokens.map(matchKey);
+    const covered = q.filter((w) => keys.includes(w)).length / q.length;
+    if (covered < 0.6) continue;
+    for (let i = 0; i < keys.length; i++) {
+      if (!qSet.has(keys[i])) continue;
+      for (let len = Math.max(4, q.length - 2); len <= q.length + 2 && i + len <= keys.length; len++) {
+        const ratio = lcs(q, keys.slice(i, i + len)) / Math.max(q.length, len);
+        if (ratio >= 0.75 && (!best || ratio > best.ratio)) {
+          best = { ratio, text: tokens.slice(i, i + len).join(" ") };
+        }
+      }
+    }
+  }
+  if (!best) return null;
+  const text = best.text.replace(/[«»﴿﴾“”"]/g, "").replace(/^[\s،,.:؛]+|[\s،,:؛]+$/g, "").trim();
+  return text && isVerbatim(text, sources) ? text : null;
+}
+
+export type AnswerFix = { kind: "quote_fixed" | "quote_removed" | "sentence_removed"; reason: GuardReason; match: string };
+
+export type AnswerRepair = {
+  /** الجواب بعد التصحيح (فارغ إن حُذف كله). */
+  text: string;
+  fixes: AnswerFix[];
+  /** مخالفات تمنع الجواب كله (فتوى شخصية، أو اسم نموذج أو شركة). */
+  blocked: GuardFinding[];
+};
+
+/**
+ * التحقق النهائي على الجواب الكامل (R5): يصحح الاقتباس غير المطابق إلى نص المصدر أو يحذف جملته،
+ * ويحذف جملة الحكم بلا مصدر ونسبة الحديث بلا نص، ويعيد ما يمنع الجواب كله في blocked.
+ */
+export function repairAnswer(text: string, ctx: GuardContext = {}): AnswerRepair {
+  const sources = [...(ctx.sources ?? []), ctx.question ?? ""].filter(Boolean);
+  const fixes: AnswerFix[] = [];
+  // 1) الاقتباسات غير المطابقة: تصحيح إلى نص المصدر إن قاربه.
+  let fixed = "";
+  let cursor = 0;
+  for (const q of findQuotes(text)) {
+    fixed += text.slice(cursor, q.start);
+    cursor = q.end;
+    const whole = text.slice(q.start, q.end);
+    const key = matchKey(q.inner);
+    // الحرفي تماماً يبقى؛ وشبه الحرفي (كلمة زائدة أو ناقصة) يُصحَّح إلى نص المصدر إن أمكن.
+    const exact = isExactVerbatim(q.inner, [...sources, ...FIXED_TEXTS]);
+    if (key.length < MIN_QUOTE_KEY || exact || isMarkedTranslation(text, q.start, q.end)) {
+      fixed += whole;
+      continue;
+    }
+    const span = closestSpan(q.inner, sources);
+    if (span) {
+      const at = whole.indexOf(q.inner);
+      fixed += `${whole.slice(0, at)}${span}${whole.slice(at + q.inner.length)}`;
+      fixes.push({ kind: "quote_fixed", reason: "unsourced_quote", match: q.inner.slice(0, 120) });
+    } else fixed += whole;
+  }
+  fixed += text.slice(cursor);
+
+  // 2) جملةً جملة: ما فيه مخالفة قابلة للإصلاح يُحذف، وما يمنع الجواب كله يُجمع.
+  const blocked: GuardFinding[] = [];
+  const kept: string[] = [];
+  for (const u of unitChecks(fixed, ctx)) {
+    const hard = u.findings.filter(isBlocking);
+    blocked.push(...hard);
+    const soft = u.findings.filter((f) => !isBlocking(f));
+    if (!soft.length) {
+      kept.push(u.text);
+      continue;
+    }
+    const quote = soft.find((f) => f.reason === "unsourced_quote");
+    const f = quote ?? soft[0];
+    fixes.push({ kind: quote ? "quote_removed" : "sentence_removed", reason: f.reason, match: f.match.slice(0, 120) });
+    // نهاية السطر تبقى (لا تلتصق الفقرات).
+    if (u.text.endsWith("\n")) kept.push("\n");
+  }
+  const out = kept
+    .join("")
+    .split("\n")
+    // سطر بقي فيه رقم خطوة أو علامة قائمة أو إشارة وحدها.
+    .filter((line) => !/^\s*(?:\d{1,2}[.)]|[-•*])?\s*(?:\[\s*\d{1,2}\s*\]\s*)*$/.test(line) || !line.trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return { text: out, fixes, blocked };
 }

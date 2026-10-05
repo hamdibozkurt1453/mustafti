@@ -18,7 +18,6 @@ import {
   CASE_TRACKS,
   CHAT_MODES,
   isChatMode,
-  modeNote,
   modeUserType,
   modeWantsLibrary,
   rankBonus,
@@ -27,6 +26,7 @@ import {
 } from "../lib/brain/modes";
 import type { PinDeps } from "../lib/brain/retrieval";
 import { answerSystem } from "../lib/brain/prompts";
+import { personaFor } from "../lib/brain/personas";
 import { capPlan, GUIDED_MAX_ASKED, MAX_ASKED, nextQuestion, planForTrack, worstCase } from "../lib/case/flow";
 import { fallbackNoteAr, resolveRoute, routeTo } from "../lib/case/routing";
 import type { CasePlan, PlanQuestion } from "../lib/case/types";
@@ -111,19 +111,19 @@ describe("R3 · اختيار المصادر حسب mode", () => {
     assert.equal(modeUserType("general", "unknown"), null);
   });
 
-  it("النبرة في تعليمات الجواب، والقواعد غير القابلة للكسر باقية", () => {
+  it("الشخصية في تعليمات الجواب (R5: lib/brain/personas/)، والقواعد غير القابلة للكسر باقية", () => {
     const base = { question: "س", lang: "ar", mode: "general" as const, passages: [] };
     const nm = answerSystem({ ...base, chatMode: "new_muslim" });
     const di = answerSystem({ ...base, chatMode: "discover" });
     const ge = answerSystem(base);
-    assert.match(nm, /GUIDE MODE/);
-    assert.match(di, /DA'I MODE/);
+    assert.match(nm, /مرشد المسلم الجديد/);
+    assert.match(di, /داعية مسلم/);
     assert.match(di, /Never criticise, mock or belittle any other religion/);
-    assert.doesNotMatch(ge, /GUIDE MODE|DA'I MODE/);
+    assert.match(ge, /مساعد علمي مسلم/);
+    assert.doesNotMatch(ge, /مرشد المسلم الجديد|داعية مسلم/);
     for (const s of [nm, di, ge]) assert.match(s, /NON-NEGOTIABLE RULES/);
-    assert.equal(modeNote("general"), "");
-    // لا اسم نموذج ولا شركة في تعليمات الوضع.
-    assert.doesNotMatch(modeNote("new_muslim") + modeNote("discover"), /gemma|google|openrouter|anthropic|openai|claude|gpt/i);
+    // لا اسم نموذج ولا شركة في موجّهات الشخصيات.
+    for (const m of CHAT_MODES) assert.doesNotMatch(personaFor(m).system, /gemma|google|openrouter|anthropic|openai|claude|gpt/i);
   });
 
   it("سطر ما بعد الامتناع: مرشد أو داعية، بلا صيغة حكم في كل اللغات", () => {
@@ -394,9 +394,9 @@ describe("R3 · الصفحتان والتمرير", () => {
 
 describe("R3 · صفحة الفحص sources-probe", () => {
   const page = read("app/api/admin/sources-probe/route.ts");
-  it("ستة أسئلة جديدة: ثلاثة لـ new_muslim وثلاثة لـ discover، في «شغّل الكل»", () => {
+  it("أسئلة المحادثتين في «شغّل الكل»: أربعة لـ new_muslim (R5: «كيف أصلي خطوة بخطوة؟») وثلاثة لـ discover", () => {
     const suite = page.slice(page.indexOf("const SUITE=["), page.indexOf("]];") + 3);
-    assert.equal((suite.match(/,"new_muslim"\]/g) ?? []).length, 3);
+    assert.equal((suite.match(/,"new_muslim"\]/g) ?? []).length, 4);
     assert.equal((suite.match(/,"discover"\]/g) ?? []).length, 3);
     assert.match(page, /post\(m\?\{action:"full",question:q,mode:m\}/);
     assert.match(page, /respond\(question, \{ mode \}\)/);
