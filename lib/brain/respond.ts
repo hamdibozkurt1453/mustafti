@@ -71,8 +71,12 @@ export type BrainReply = {
   note?: string;
   /** روابط من المرجعية بلا اقتباس موثَّق («ابحث واقرأ»): تُعرض روابط فقط. */
   links?: WebLink[];
-  /** سؤال تحقق من حديث: عبارة البحث في الدرر، يطلبها متصفح السائل (لا الخادم ولا النموذج). */
-  hadithCheck?: { query: string };
+  /**
+   * سؤال تحقق من حديث: عبارة البحث في الدرر، يطلبها متصفح السائل (لا الخادم ولا النموذج).
+   * fallback: الرد سطر ثابت يسبق البطاقة (لا نص من المصادر الأخرى)، فإن لم تُعِد الدرر شيئاً
+   * يعرض المتصفح الامتناع وزر الإحالة بدله.
+   */
+  hadithCheck?: { query: string; fallback?: boolean };
   diag: {
     retrieval?: RetrievalDiag;
     caseFatwas?: CaseFatwas["diag"];
@@ -336,20 +340,40 @@ export async function respond(question: string, options: RespondOptions = {}): P
     });
   };
 
+  /**
+   * التحقق من حديث (R1c): لا امتناع إن كان مع الرد بطاقة الدرر. السطر الثابت «هذه أحكام المحدّثين…»
+   * يسبق البطاقة، والمتصفح يعرض الامتناع وزر الإحالة بدله إن لم تُعِد الدرر شيئاً (BotReply).
+   */
+  const hadithLine = (extra: Partial<BrainReply> = {}) =>
+    done({
+      ...common,
+      timings,
+      ...shared,
+      ...extra,
+      passages: [],
+      kind: "answer",
+      text: withPrefix(message("hadithFromDorar", c.lang)),
+      hadithCheck: { query: hadithQuery!, fallback: true },
+      fatwas: found.fatwas,
+    });
+
   if (!passages.length) {
+    if (hadithQuery) return hadithLine();
     diag.abstainReason = found.diag.counts.cleaned ? "no_relevant" : "no_passages";
     return partial("abstain", `${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`);
   }
 
   // 5) الصياغة من النصوص فقط، ثم الحارس.
   stage("writing");
-  const gen = await generate(question, c, c.level === "C" ? "khilaf" : "general", passages);
+  const gen = await generate(question, c, hadithQuery ? "hadith" : c.level === "C" ? "khilaf" : "general", passages);
   timings.generateMs = gen.ms;
   base.costUsd += gen.cost;
   diag.attempts = gen.attempts;
   diag.abstainReason = gen.reason;
   const extra = { passages, guard: gen.guard, raw: gen.raw, timings };
 
+  // التحقق من حديث بلا صياغة سليمة: السطر الثابت مع بطاقة الدرر بدل الامتناع.
+  if (!gen.ok && hadithQuery) return hadithLine({ guard: gen.guard, raw: gen.raw });
   if (gen.reason === "guard") return partial("refused", gen.text, extra);
   if (!gen.ok) return partial("abstain", `${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`, extra);
   // نص الفهرس والقاموس مرجع يُحال إليه، لا اقتباس: يُزال من «» (والسطر المكرر يُحذف).

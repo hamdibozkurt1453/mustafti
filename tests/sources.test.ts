@@ -354,3 +354,17 @@ describe("browse_library: المعطيات من مخططها بدقة (R1c)", ()
     assert.deepEqual(libraryArgCombos(enumLang, "1747", "ar", "x")[0], { category: "1747", lang: "arabic" });
   });
 });
+
+describe("بطاقة الدرر في المتصفح: ما يشبه الحديث المسؤول عنه فقط (R1c)", () => {
+  it("كلمات مشتركة ≥ 50%، وإلا أول نتيجتين «أقرب ما وجدناه»", async () => {
+    const { filterDorar, parseDorarHtml, dorarResultHtml } = await import("../lib/sources/dorar-parse");
+    const hadiths = parseDorarHtml(dorarResultHtml(JSON.parse(fixture("dorar.json"))), "x");
+    const asked = filterDorar(hadiths, "اطلبوا العلمَ ولو بالصين");
+    assert.equal(asked.closest, false);
+    assert.deepEqual(asked.items.map((h) => h.grade), ["باطل لا أصل له"], "«إنما الأعمال بالنيات» لا تظهر لسؤال «اطلبوا العلم»");
+    const none = filterDorar(hadiths, "من كذب علي متعمدا");
+    assert.equal(none.closest, true);
+    assert.equal(none.items.length, 2);
+  });
+});
+

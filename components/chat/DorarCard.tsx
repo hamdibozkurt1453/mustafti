@@ -2,17 +2,19 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { DORAR_API, dorarResultHtml, parseDorarHtml, type DorarHadith } from "@/lib/sources/dorar-parse";
+import { DORAR_API, dorarResultHtml, filterDorar, parseDorarHtml, type DorarHadith } from "@/lib/sources/dorar-parse";
 
 /**
  * بطاقة «الدرر السنية» لسؤال التحقق من حديث (R1b). موقع الدرر يحجب خادمنا (403)، فيطلبها متصفح
  * السائل مباشرة بـ JSONP (dorar_api.json?skey=…&callback=…). النص والمحدث والمصدر و«خلاصة حكم
- * المحدث» حرفياً كما في الموقع، حتى 3 نتائج، مع رابط صفحة البحث. لا تمر بالنموذج ولا بالخادم،
- * وتختفي إن فشل الطلب أو تأخر أو لم يعد شيئاً.
+ * المحدث» حرفياً كما في الموقع، مع رابط صفحة البحث. لا تمر بالنموذج ولا بالخادم، وتختفي إن فشل
+ * الطلب أو تأخر أو لم يعد شيئاً. تُعرض فقط النتائج التي تشبه الحديث المسؤول عنه (كلمات مشتركة ≥ 50%،
+ * حتى 3)، وإلا أول نتيجتين بعنوان «أقرب ما وجدناه».
  */
 
 const TIMEOUT_MS = 10_000;
-const MAX = 3;
+/** نتائج كثيرة تُحلَّل ثم تُرشَّح بالتشابه مع الحديث المسؤول عنه. */
+const PARSE_MAX = 15;
 
 /** طلب JSONP واحد: يحمّل السكربت ويستدعي دالة عامة باسم فريد، ثم ينظّف. */
 function jsonp(url: string, timeoutMs: number): Promise<unknown> {
@@ -44,28 +46,37 @@ function jsonp(url: string, timeoutMs: number): Promise<unknown> {
   });
 }
 
-export function DorarCard({ query }: { query: string }) {
+export function DorarCard({ query, onResult }: { query: string; onResult?: (count: number) => void }) {
   const t = useTranslations("chat");
-  const [hadiths, setHadiths] = useState<DorarHadith[] | null>(null);
+  const [found, setFound] = useState<{ items: DorarHadith[]; closest: boolean } | null>(null);
 
   useEffect(() => {
     let alive = true;
     jsonp(`${DORAR_API}?skey=${encodeURIComponent(query)}`, TIMEOUT_MS)
       .then((data) => {
-        if (alive) setHadiths(parseDorarHtml(dorarResultHtml(data), query, MAX));
+        if (!alive) return;
+        const result = filterDorar(parseDorarHtml(dorarResultHtml(data), query, PARSE_MAX), query);
+        setFound(result);
+        onResult?.(result.items.length);
       })
       .catch(() => {
-        if (alive) setHadiths([]);
+        if (!alive) return;
+        setFound({ items: [], closest: false });
+        onResult?.(0);
       });
     return () => {
       alive = false;
     };
+    // onResult من الأب يتغير كل رسم؛ الطلب مرة واحدة لكل عبارة.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
+  const hadiths = found?.items;
   if (!hadiths?.length) return null;
+  const title = found!.closest ? t("dorarClosest") : t("dorarTitle");
   return (
-    <section aria-label={t("dorarTitle")} className="mf-rise">
-      <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-600">{t("dorarTitle")}</h3>
+    <section aria-label={title} className="mf-rise">
+      <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-600">{title}</h3>
       <ol className="grid gap-2.5">
         {hadiths.map((h) => (
           <li key={h.url} className="rounded-[20px] border border-sand-200 bg-white p-4">

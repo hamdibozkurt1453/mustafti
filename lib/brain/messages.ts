@@ -64,6 +64,15 @@ export const MESSAGES = {
     ur: "لیکن معتمد مصادر میں آپ کے سوال سے قریب یہ نصوص ہیں، اور ملتے جلتے سوالات جن کا جواب میں ان سے دے سکتا ہوں۔",
     id: "Namun, berikut teks-teks yang dekat dengan pertanyaan Anda dari sumber-sumber yang diakui, serta pertanyaan terkait yang dapat saya jawab darinya.",
   },
+  /** التحقق من حديث بلا صياغة من المصادر: يسبق بطاقة الدرر في المتصفح (R1c). */
+  hadithFromDorar: {
+    ar: "هذه أحكام المحدّثين على هذا الحديث من الموسوعة الحديثية (الدرر السنية)، بنصّها:",
+    en: "These are the hadith scholars' verdicts on this hadith from the Hadith Encyclopedia (Dorar), verbatim:",
+    tr: "Bu hadis hakkında muhaddislerin hükümleri, Hadis Ansiklopedisi'nden (Dorar) aynen şöyledir:",
+    fr: "Voici les jugements des spécialistes du hadith sur ce hadith, tirés de l'Encyclopédie du hadith (Dorar), tels quels :",
+    ur: "اس حدیث پر محدثین کے احکام، حدیث انسائیکلوپیڈیا (الدرر السنیہ) سے بعینہٖ:",
+    id: "Berikut hukum para ahli hadis tentang hadis ini dari Ensiklopedia Hadis (Dorar), apa adanya:",
+  },
   /** المستوى (د): حالة شخصية أو فتوى. */
   referral: {
     ar: "سؤالك عن حالتك أنت يحتاج إلى مختص يعرف تفاصيلها، ومُستفتي لا يُفتي. سأساعدك في توضيح سؤالك ثم إيصاله إلى مفتٍ مؤهل، دون أن نطلب اسمك.",

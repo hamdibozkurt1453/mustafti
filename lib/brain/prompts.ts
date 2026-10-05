@@ -130,12 +130,14 @@ Never copy source markers such as "[Surah 3, translation …]", "[3:1]", "[EXACT
 The direct sentence states ONLY what a cited passage states or directly says: no dates, places, names, numbers or details that are not in the passages. Use honorifics where fitting (عليه السلام، ﷺ، رضي الله عنه). Keep your own wording short (normally under 90 words).`;
 }
 
-export type AnswerMode = "general" | "khilaf";
+export type AnswerMode = "general" | "khilaf" | "hadith";
 
 const MODE_NOTES: Record<AnswerMode, string> = {
   general: "Level A/B: answer directly from the passages with their numbers. Avoid categorical wording where the passages show room for difference.",
   khilaf:
     "Level C: describe ONLY what the passages state, show that there are different views if the passages show it, and do NOT prefer any view. Do not claim agreement or disagreement beyond the passages. Do not conclude.",
+  hadith:
+    "HADITH CHECK: the asker asks whether a hadith is authentic. Write 1-2 short sentences that report ONLY what the passages say about THIS hadith's grade and who graded it, with the grade copied verbatim inside «…» and its [n] (e.g. «قال ابن حبان: «باطل لا أصل له» [1].»). Do not grade it yourself, do not explain its meaning, and add nothing else. If several graders are quoted, list them as written.",
 };
 
 export type AnswerInput = {

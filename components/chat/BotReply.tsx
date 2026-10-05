@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import type { GlossaryTerm } from "@/lib/brain/glossary";
 import { CaseReview, ClarifyBubble, StartCaseButton, type CaseApi } from "./CaseFlow";
 import { DorarCard } from "./DorarCard";
@@ -50,6 +51,8 @@ const CASE_KINDS = new Set(["clarify", "caseFile", "caseNote"]);
  */
 export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
   const t = useTranslations("chat");
+  // التحقق من حديث بسطر ثابت يسبق بطاقة الدرر: إن لم تُعِد الدرر شيئاً فالامتناع وزر الإحالة بدله.
+  const [dorarCount, setDorarCount] = useState<number | null>(null);
   const tc = useTranslations("case");
   const isCase = CASE_KINDS.has(msg.kind ?? "");
   const live = msg.status === "streaming";
@@ -119,6 +122,8 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
   const withExpert = (msg.kind === "abstain" || msg.kind === "referral" || msg.kind === "refused") && !started;
   // الحالة الشخصية مع فتاوى منشورة: البطاقات أولاً، ثم «الأفضل لحالتك أن يراها مختص» والزر.
   const caseFatwas = msg.kind === "referral" && Boolean(msg.fatwas?.length);
+  const hadithFallback = Boolean(msg.hadithCheck?.fallback);
+  const hadithNone = hadithFallback && dorarCount === 0;
   const abstained = msg.kind === "abstain" || msg.kind === "refused";
   const cards = msg.sources.map((s) => s.n);
   const done = msg.status === "done";
@@ -129,7 +134,7 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
         dir={msg.dir}
         className="rounded-[22px] rounded-se-md border border-sand-200 bg-white px-4 py-3 text-[15px] leading-relaxed text-green-900 sm:text-base"
       >
-        {answer && (
+        {answer && !hadithFallback && (
           <div className="mb-2 flex flex-wrap gap-1.5">
             <span className="rounded-full bg-green-900 px-2.5 py-0.5 text-[11px] font-semibold text-ivory-50">{t("badgeOwn")}</span>
             {msg.level === "C" && (
@@ -138,10 +143,10 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
           </div>
         )}
         <p className="whitespace-pre-wrap">
-          {answer ? <RichText text={msg.text} messageId={msg.id} cards={cards} onTerm={onTerm} /> : msg.text}
+          {hadithNone ? t("hadithNone") : answer ? <RichText text={msg.text} messageId={msg.id} cards={cards} onTerm={onTerm} /> : msg.text}
           {caret}
         </p>
-        {withExpert && done && !caseFatwas && (
+        {((withExpert && !caseFatwas) || (hadithNone && !started)) && done && (
           <StartCaseButton label={msg.kind === "referral" ? tc("start") : t("askExpert")} onStart={() => caseApi.start(msg.id)} />
         )}
       </div>
@@ -160,7 +165,7 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
       )}
 
       {/* التحقق من حديث: من متصفح السائل مباشرة (تختفي إن فشل الطلب). */}
-      {done && msg.hadithCheck && <DorarCard query={msg.hadithCheck.query} />}
+      {done && msg.hadithCheck && <DorarCard query={msg.hadithCheck.query} onResult={setDorarCount} />}
 
       {done && msg.fatwas && msg.fatwas.length > 0 && <FatwaList fatwas={msg.fatwas} title={t("fatwasTitle")} />}
 

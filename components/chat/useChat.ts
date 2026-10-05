@@ -70,7 +70,7 @@ export type BotMessage = {
   /** روابط من المصادر المعتمدة بلا اقتباس موثَّق. */
   links?: ChatLink[];
   /** سؤال تحقق من حديث: بطاقة الدرر يطلبها المتصفح بهذه العبارة. */
-  hadithCheck?: { query: string };
+  hadithCheck?: { query: string; fallback?: boolean };
   /** رسالة الخطأ الثابتة من الخادم (بلغة السائل)، أو مفتاح رسالة الواجهة. */
   error?: { key: BotError; text?: string };
   /** السؤال الذي يجيب عنه (لزر «أعد المحاولة»). */

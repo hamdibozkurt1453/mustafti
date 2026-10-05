@@ -121,3 +121,36 @@ export function dorarResultHtml(data: unknown): string {
   if (typeof o.result === "string") return o.result;
   return "";
 }
+
+/** كلمات النص للمقارنة: بلا تشكيل، والهمزات ألفاً، والتاء المربوطة هاءً، والألف المقصورة ياءً، وبلا «ال» والواو. */
+export function dorarWords(text: string): string[] {
+  return text
+    .normalize("NFC")
+    .replace(/[ؐ-ًؚ-ٰٟۖ-ۭـ]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي")
+    .split(/[^\p{L}\p{N}]+/u)
+    .map((w) => w.replace(/^(?:وال|فال|بال|كال|لل|ال)(?=..)/, "").replace(/^و(?=...)/, ""))
+    .filter((w) => w.length >= 2);
+}
+
+/** نسبة كلمات السؤال (متن الحديث المسؤول عنه) الموجودة في نص الحديث. */
+export function dorarSimilarity(query: string, text: string): number {
+  const want = [...new Set(dorarWords(query))];
+  if (!want.length) return 0;
+  const have = new Set(dorarWords(text));
+  const hit = want.filter((w) => have.has(w) || (w.length >= 4 && [...have].some((h) => h.length >= 4 && (h.includes(w) || w.includes(h))))).length;
+  return hit / want.length;
+}
+
+/**
+ * ما يشبه الحديث المسؤول عنه فقط (كلمات مشتركة ≥ 50%)، حتى 3؛ وإن لم يطابق شيء فأول نتيجتين
+ * بعنوان «أقرب ما وجدناه» (closest).
+ */
+export function filterDorar(hadiths: DorarHadith[], query: string): { items: DorarHadith[]; closest: boolean } {
+  const matching = hadiths.filter((h) => dorarSimilarity(query, h.text) >= 0.5);
+  return matching.length ? { items: matching.slice(0, 3), closest: false } : { items: hadiths.slice(0, 2), closest: true };
+}
