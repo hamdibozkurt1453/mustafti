@@ -1,49 +1,40 @@
 "use client";
 
-import { CalculationMethod, Coordinates, PrayerTimes } from "adhan";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@/i18n/navigation";
-
-type PrayerName = "fajr" | "dhuhr" | "asr" | "maghrib" | "isha";
-const NAMES: PrayerName[] = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
-
-type Place = { lat: number; lng: number; tz: string | undefined; label: "defaultCity" | "yourLocation" };
-
-// الافتراضي: مكة المكرمة بتقويم أم القرى، حتى يختار الزائر موقعه.
-const MAKKAH: Place = { lat: 21.4225, lng: 39.8262, tz: "Asia/Riyadh", label: "defaultCity" };
-
-/** يرتّب صلوات الأمس واليوم والغد، ويعيد السابقة والقادمة بالنسبة إلى الآن. */
-function window(place: Place, now: Date) {
-  const coords = new Coordinates(place.lat, place.lng);
-  const params =
-    place.label === "defaultCity" ? CalculationMethod.UmmAlQura() : CalculationMethod.MuslimWorldLeague();
-  const all: { name: PrayerName; at: Date }[] = [];
-  for (const offset of [-1, 0, 1]) {
-    const day = new Date(now);
-    day.setDate(day.getDate() + offset);
-    const pt = new PrayerTimes(coords, day, params);
-    for (const n of NAMES) all.push({ name: n, at: pt[n] });
-  }
-  all.sort((a, b) => a.at.getTime() - b.at.getTime());
-  const nextIdx = all.findIndex((p) => p.at > now);
-  return { prev: all[nextIdx - 1], next: all[nextIdx] };
-}
-
-const pad = (n: number) => String(n).padStart(2, "0");
+import { cityById } from "@/lib/prayer/cities";
+import {
+  DEFAULT_SETTINGS,
+  formatCountdown,
+  loadSettings,
+  prayerWindow,
+  resolvePlace,
+  storeSettings,
+  type PrayerSettings,
+} from "@/lib/prayer/times";
 
 /** بطاقة الصلاة القادمة: عدّ تنازلي حي وقوس يتقدم من الصلاة السابقة إلى القادمة. */
 export function PrayerCard() {
   const t = useTranslations("home.nextPrayer");
   const locale = useLocale();
   const [now, setNow] = useState<Date | null>(null);
-  const [place, setPlace] = useState<Place>(MAKKAH);
+  // الاختيار نفسه المحفوظ في /prayer (المتصفح فقط)، وإلا مكة بتقويم أم القرى.
+  const [settings, setSettings] = useState<PrayerSettings>(DEFAULT_SETTINGS);
+  const [custom, setCustom] = useState(false);
   const [locating, setLocating] = useState(false);
 
   useEffect(() => {
-    // الوقت يُقرأ في المتصفح فقط، حتى لا يختلف عن HTML المولّد في الخادم.
+    // الوقت والاختيار يُقرآن في المتصفح فقط، حتى لا يختلفا عن HTML المولّد في الخادم.
     const tick = () => setNow(new Date());
-    const first = setTimeout(tick, 0);
+    const stored = loadSettings();
+    const first = setTimeout(() => {
+      if (stored) {
+        setSettings(stored);
+        setCustom(true);
+      }
+      tick();
+    }, 0);
     const id = setInterval(tick, 1000);
     return () => {
       clearTimeout(first);
@@ -54,8 +45,8 @@ export function PrayerCard() {
   // نعيد الحساب كل دقيقة فقط، لا كل ثانية.
   const minuteKey = now ? Math.floor(now.getTime() / 60000) : 0;
   const win = useMemo(
-    () => (minuteKey ? window(place, new Date(minuteKey * 60000 + 59999)) : null),
-    [place, minuteKey],
+    () => (minuteKey ? prayerWindow(settings, new Date(minuteKey * 60000 + 59999)) : null),
+    [settings, minuteKey],
   );
 
   function locate() {
@@ -63,18 +54,24 @@ export function PrayerCard() {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setPlace({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          tz: undefined,
-          label: "yourLocation",
-        });
+        // يبقى في المتصفح فقط (لا يُرسل إلى الخادم)، ويظهر في /prayer أيضاً.
+        const round = (n: number) => Math.round(n * 100) / 100;
+        const next: PrayerSettings = {
+          ...settings,
+          place: { kind: "geo", lat: round(pos.coords.latitude), lng: round(pos.coords.longitude) },
+        };
+        setSettings(next);
+        storeSettings(next);
+        setCustom(true);
         setLocating(false);
       },
       () => setLocating(false),
       { maximumAge: 3600_000, timeout: 10_000 },
     );
   }
+
+  const city = settings.place.kind === "city" ? cityById(settings.place.cityId) : undefined;
+  const placeLabel = city ? (locale === "ar" ? city.ar : city.en) : t("yourLocation");
 
   const R = 54;
   let progress = 0;
@@ -84,12 +81,11 @@ export function PrayerCard() {
     const total = win.next.at.getTime() - win.prev.at.getTime();
     const left = Math.max(0, win.next.at.getTime() - now.getTime());
     progress = Math.min(1, Math.max(0, 1 - left / total));
-    const s = Math.floor(left / 1000);
-    remaining = `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+    remaining = formatCountdown(left);
     timeLabel = new Intl.DateTimeFormat(locale, {
       hour: "numeric",
       minute: "2-digit",
-      timeZone: place.tz,
+      timeZone: resolvePlace(settings.place).tz,
     }).format(win.next.at);
   }
 
@@ -140,10 +136,10 @@ export function PrayerCard() {
                     {t("at")} <span className="font-semibold text-ivory-50">{timeLabel}</span> ·{" "}
                   </>
                 )}
-                {t(place.label)}
+                {placeLabel}
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2 sm:justify-start">
-                {place.label === "defaultCity" && (
+                {!custom && (
                   <button
                     type="button"
                     onClick={locate}
