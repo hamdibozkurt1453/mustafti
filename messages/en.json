@@ -292,7 +292,9 @@
     "dorarGrade": "Scholar's verdict",
     "dorarNote": "Directly from Dorar, verbatim.",
     "dorarClosest": "Closest results in the Hadith Encyclopedia",
-    "hadithNone": "I did not find a verdict on this hadith in the approved sources."
+    "hadithNone": "I did not find a verdict on this hadith in the approved sources.",
+    "askMentor": "Send your question to a mentor",
+    "askDaee": "Contact a da'i"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -442,7 +444,8 @@
     "notSentYet": "Nothing has been sent yet. Your file is saved only after you press “I agree, send”.",
     "edit": "Edit",
     "doneEditing": "Done editing",
-    "other": "Other… (type it)"
+    "other": "Other… (type it)",
+    "routeDaee": "The file will go to a qualified da'i."
   },
   "caseFile": {
     "notFoundTitle": "Invalid link",
@@ -600,7 +603,14 @@
       "answeredAt": "Answered",
       "sentAt": "Sent",
       "printAll": "Save all as PDF",
-      "archiveTitle": "My answers archive"
+      "archiveTitle": "My answers archive",
+      "filterTrack": "Track",
+      "routedTo": "Routed to",
+      "tracks": {
+        "general": "General",
+        "new_muslim": "New Muslim",
+        "discover": "Discover Islam"
+      }
     },
     "review": {
       "tab": "Specialist applications",
@@ -807,12 +817,6 @@
       "title": "Forum",
       "lead": "A calm space for users to discuss what matters to them, with courtesy and clear guidelines. It opens soon; until then, ask Mustafti in the chat.",
       "cta": "Back to the chat"
-    },
-    "discover": {
-      "kicker": "Mustafti",
-      "title": "Discover Islam",
-      "lead": "A gentle path for anyone who wants to learn about Islam from its sources, without pressure or complexity. Coming soon; until then, ask anything in the chat.",
-      "cta": "Ask in the chat"
     }
   },
   "library": {
@@ -906,6 +910,24 @@
         "confirm": "Type the confirmation phrase exactly.",
         "generic": "Couldn't delete. Please try again."
       }
+    }
+  },
+  "guided": {
+    "newMuslim": {
+      "kicker": "Mustafti · for new Muslims",
+      "title": "Companion for new Muslims",
+      "lead": "Welcome. Ask about the testimony of faith, purification, prayer and fasting, in simple words from approved sources.",
+      "q1": "What do the two testimonies of faith mean?",
+      "q2": "How do I pray, step by step?",
+      "q3": "How should I treat my non-Muslim family?"
+    },
+    "discover": {
+      "kicker": "Mustafti · for non-Muslims",
+      "title": "Discover Islam",
+      "lead": "Your questions about Islam are welcome, with no pressure. We answer from approved sources, with their links.",
+      "q1": "What do Muslims believe?",
+      "q2": "Who is the Prophet Muhammad ﷺ?",
+      "q3": "What does Islam say about Jesus?"
     }
   }
 }

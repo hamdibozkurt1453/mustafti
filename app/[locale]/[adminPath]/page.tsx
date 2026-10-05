@@ -15,7 +15,7 @@ import { pendingApplicationsCount } from "@/lib/experts/store";
 
 type Props = {
   params: Promise<{ locale: string; adminPath: string }>;
-  searchParams: Promise<{ tab?: string; status?: string; app?: string }>;
+  searchParams: Promise<{ tab?: string; status?: string; app?: string; track?: string }>;
 };
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -111,7 +111,7 @@ export default async function AdminPage({ params, searchParams }: Props) {
           {tab === "experts" ? (
             <ExpertApplications base={base} status={sp.status} selected={sp.app} readOnly={readOnly} />
           ) : tab === "cases" ? (
-            <AdminCases base={base} status={sp.status} canAct={!readOnly} />
+            <AdminCases base={base} status={sp.status} track={sp.track} canAct={!readOnly} />
           ) : tab === "stats" ? (
             <AdminStats />
           ) : (

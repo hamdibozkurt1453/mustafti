@@ -261,7 +261,9 @@
     "dorarGrade": "Hukuncin masanin hadisi",
     "dorarNote": "Kai tsaye daga Dorar, kamar yadda yake.",
     "dorarClosest": "Sakamako mafi kusa a Kundin Hadisi",
-    "hadithNone": "Ban sami hukunci kan wannan hadisin a majiyoyin da aka amince ba."
+    "hadithNone": "Ban sami hukunci kan wannan hadisin a majiyoyin da aka amince ba.",
+    "askMentor": "Aika tambayarka ga mai jagora",
+    "askDaee": "Tuntuɓi mai da'awa"
   },
   "case": {
     "start": "",
@@ -302,7 +304,8 @@
     "notSentYet": "",
     "edit": "",
     "doneEditing": "",
-    "other": ""
+    "other": "",
+    "routeDaee": "Fayil ɗin zai isa ga ƙwararren mai da'awa."
   },
   "caseFile": {
     "notFoundTitle": "",
@@ -349,12 +352,6 @@
       "title": "Tattaunawa",
       "lead": "Wuri mai natsuwa don masu amfani su tattauna abin da ke da muhimmanci a gare su, cikin ladabi da ka'idoji bayyanannu. Za a buɗe shi nan ba da daɗewa ba; kafin nan, tambayi Mustafti a hira.",
       "cta": "Koma zuwa hira"
-    },
-    "discover": {
-      "kicker": "Mustafti",
-      "title": "San Musulunci",
-      "lead": "Hanya mai sauƙi ga duk wanda yake son sanin Musulunci daga tushensa, ba tare da matsi ko wahala ba. Za a kammala shi nan ba da daɗewa ba; kafin nan, tambayi duk abin da kake so a hira.",
-      "cta": "Tambaya a hira"
     }
   },
   "library": {
@@ -447,6 +444,35 @@
         "expertAnswers": "Ba za a iya goge asusun ƙwararre mai amsoshi yanzu ba; tuntuɓi ƙungiya.",
         "confirm": "Rubuta jimlar tabbatarwa daidai.",
         "generic": "Ba a iya gogewa ba. Sake gwadawa."
+      }
+    }
+  },
+  "guided": {
+    "newMuslim": {
+      "kicker": "Mustafti · don sababbin Musulmai",
+      "title": "Abokin sabon Musulmi",
+      "lead": "Barka da zuwa. Yi tambaya game da kalmar shahada, tsarki, sallah da azumi, da sauƙaƙan kalmomi daga ingantattun majiyoyi.",
+      "q1": "Mene ne ma'anar kalmomin shahada biyu?",
+      "q2": "Ta yaya zan yi sallah mataki-mataki?",
+      "q3": "Yaya zan zauna da iyalina waɗanda ba Musulmai ba?"
+    },
+    "discover": {
+      "kicker": "Mustafti · don waɗanda ba Musulmai ba",
+      "title": "Ka san Musulunci",
+      "lead": "Muna maraba da tambayoyinka game da Musulunci, ba tare da matsi ba. Muna amsawa daga ingantattun majiyoyi, tare da hanyoyinsu.",
+      "q1": "Me Musulmai suke yi wa imani?",
+      "q2": "Wane ne Annabi Muhammadu ﷺ?",
+      "q3": "Me Musulunci ya ce game da Annabi Isa (Yesu)?"
+    }
+  },
+  "experts": {
+    "dashboard": {
+      "filterTrack": "Hanya",
+      "routedTo": "An tura zuwa",
+      "tracks": {
+        "general": "Gabaɗaya",
+        "new_muslim": "Sabon Musulmi",
+        "discover": "Ka san Musulunci"
       }
     }
   }

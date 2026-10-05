@@ -1,6 +1,7 @@
 import { glossaryBlock } from "./glossary";
 import { IDENTITY_PROMPT } from "./identity";
 import { MESSAGES, message } from "./messages";
+import { modeNote, type ChatMode } from "./modes";
 
 /**
  * كل تعليمات النموذج في مكان واحد. كل تعليمات تبدأ بهوية مُستفتي (identity.ts).
@@ -148,6 +149,8 @@ export type AnswerInput = {
   passages: Passage[];
   misconception?: string | null;
   userType?: string;
+  /** وضع المحادثة (R3): نبرة «المرشد» أو «الداعية»، والقواعد كما هي. */
+  chatMode?: ChatMode;
 };
 
 export function answerSystem(input: AnswerInput): string {
@@ -162,6 +165,7 @@ export function answerSystem(input: AnswerInput): string {
     input.userType === "non_muslim" || input.userType === "new_muslim"
       ? "AUDIENCE: the asker may not know Islamic terms. Explain the idea in plain words first, then give the term."
       : "",
+    modeNote(input.chatMode ?? "general"),
     glossary,
     ANSWER_FORMAT(input.lang),
   ]

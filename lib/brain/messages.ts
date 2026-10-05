@@ -46,6 +46,24 @@ export const MESSAGES = {
     ur: "آپ اپنا سوال کسی ماہر کو بھیج سکتے ہیں تاکہ وہ جواب دے۔",
     id: "Anda dapat mengirim pertanyaan Anda kepada seorang ahli untuk dijawab.",
   },
+  /** يُلحق بالامتناع في «المرشد» (/new-muslim، R3). */
+  suggestMentor: {
+    ar: "يمكنك إرسال سؤالك إلى مرشد للمسلمين الجدد ليجيبك.",
+    en: "You can send your question to a mentor for new Muslims to answer you.",
+    tr: "Sorunuzu cevaplaması için yeni Müslümanlara rehberlik eden bir mentora gönderebilirsiniz.",
+    fr: "Vous pouvez envoyer votre question à un accompagnateur des nouveaux musulmans pour qu'il vous réponde.",
+    ur: "آپ اپنا سوال نئے مسلمانوں کے کسی رہنما کو بھیج سکتے ہیں تاکہ وہ جواب دے۔",
+    id: "Anda dapat mengirim pertanyaan Anda kepada seorang pembimbing mualaf untuk dijawab.",
+  },
+  /** يُلحق بالامتناع في «الداعية» (/discover، R3): لم نجد، ويمكنك التواصل مع داعية. */
+  suggestDaee: {
+    ar: "يمكنك التواصل مع داعية ليجيبك عن سؤالك.",
+    en: "You can get in touch with a da'i (an Islamic guide) who will answer your question.",
+    tr: "Sorunuzu cevaplaması için bir davetçiyle (İslam rehberi) iletişime geçebilirsiniz.",
+    fr: "Vous pouvez contacter un da'i (un guide musulman) qui répondra à votre question.",
+    ur: "آپ کسی داعی سے رابطہ کر سکتے ہیں جو آپ کے سوال کا جواب دے۔",
+    id: "Anda dapat menghubungi seorang dai (pembimbing Islam) yang akan menjawab pertanyaan Anda.",
+  },
   /** المستوى (د) مع فتاوى منشورة قريبة: سطر الأداة قبل البطاقات (للاطلاع فقط). */
   fatwasFound: {
     ar: "وجدت فتاوى منشورة قريبة من سؤالك، للاطلاع فقط، وقد لا تطابق حالتك في كل تفاصيلها.",

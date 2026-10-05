@@ -2,10 +2,10 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 
-type IntroKey = "forum" | "discover";
+type IntroKey = "forum";
 
 /**
- * صفحة تعريف قصيرة لائقة (R2) لقسم يُبنى لاحقاً (/forum في R4، و/discover في R3):
+ * صفحة تعريف قصيرة لائقة (R2) لقسم يُبنى لاحقاً (/forum في R4؛ و/discover صارت محادثة في R3):
  * عنوان، وسطر تعريف، وزر يعود إلى المحادثة. بلا «قيد البناء»، وبلا أي نص ديني.
  */
 export async function IntroPage({ page, href }: { page: IntroKey; href: string | { pathname: "/"; query: Record<string, string> } }) {

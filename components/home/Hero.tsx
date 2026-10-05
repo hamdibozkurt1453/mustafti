@@ -115,7 +115,8 @@ export function Hero({ text, setText, onSubmit, onAsk, persona, setPersona, inpu
           <p className="mt-2 text-[12px] text-ivory-50/60">{t("composer.privacy")}</p>
         </div>
 
-        {/* من أنت؟ (R2): «مسلم» يبقى هنا ويغيّر الاقتراحات، و«أسلمت حديثاً» و«لست مسلماً» ينقلان إلى صفحتيهما. */}
+        {/* من أنت؟ (R2): «مسلم» يبقى هنا ويغيّر الاقتراحات، و«أسلمت حديثاً» و«لست مسلماً» ينقلان إلى صفحتيهما.
+            R3: والسؤال المكتوب في الخانة يُحمل معهما (?q=) إلى المحادثة الموجّهة. */}
         <fieldset className="mf-rise mt-6 w-full" style={{ animationDelay: "0.85s" }}>
           <legend className="sr-only">{t("home.whoAreYou")}</legend>
           <div className="flex flex-wrap justify-center gap-2">
@@ -125,7 +126,11 @@ export function Hero({ text, setText, onSubmit, onAsk, persona, setPersona, inpu
               const idle = "border-ivory-50/25 bg-ivory-50/[0.04] text-ivory-50 hover:border-gold-500/70 hover:bg-ivory-50/[0.08]";
               if (p !== "muslim") {
                 return (
-                  <Link key={p} href={personaHref[p]} className={`${base} ${idle}`}>
+                  <Link
+                    key={p}
+                    href={text.trim() ? { pathname: personaHref[p], query: { q: text.trim().slice(0, 2000) } } : personaHref[p]}
+                    className={`${base} ${idle}`}
+                  >
                     {t(`home.personas.${p}`)}
                   </Link>
                 );

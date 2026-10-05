@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { planClarify } from "@/lib/case/clarify";
-import { withAskerCountry } from "@/lib/case/flow";
+import { planForTrack, withAskerCountry } from "@/lib/case/flow";
+import { CASE_TRACKS } from "@/lib/brain/modes";
 import { countryName } from "@/lib/experts/countries";
 import { ChapterSchema, guardCaseRequest, KindSchema, LangSchema, QuestionSchema } from "@/lib/case/http";
 
@@ -19,6 +20,8 @@ const Body = z.object({
   chapter: ChapterSchema.nullish(),
   userType: z.string().max(20).nullish(),
   kind: KindSchema,
+  /** R3: مسار المحادثة؛ الموجّه («المرشد» و«الداعية») ثلاثة أسئلة على الأكثر. */
+  track: z.enum(CASE_TRACKS).optional(),
 });
 
 export async function POST(request: Request) {
@@ -26,6 +29,7 @@ export async function POST(request: Request) {
   if ("response" in gate) return gate.response;
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "bad_request" }, { status: 400 });
-  const plan = await planClarify(parsed.data);
+  const { track, ...input } = parsed.data;
+  const plan = planForTrack(await planClarify(input), track);
   return Response.json({ plan: withAskerCountry(plan, countryName(request.headers.get("x-vercel-ip-country"), "ar")) });
 }

@@ -261,7 +261,9 @@
     "dorarGrade": "Jugement du muhaddith",
     "dorarNote": "Directement depuis Dorar, texte intégral.",
     "dorarClosest": "Résultats les plus proches dans l'Encyclopédie du hadith",
-    "hadithNone": "Je n'ai pas trouvé de jugement sur ce hadith dans les sources approuvées."
+    "hadithNone": "Je n'ai pas trouvé de jugement sur ce hadith dans les sources approuvées.",
+    "askMentor": "Envoyer votre question à un accompagnateur",
+    "askDaee": "Contacter un da'i"
   },
   "case": {
     "start": "",
@@ -302,7 +304,8 @@
     "notSentYet": "",
     "edit": "",
     "doneEditing": "",
-    "other": ""
+    "other": "",
+    "routeDaee": "Le dossier sera transmis à un da'i qualifié."
   },
   "caseFile": {
     "notFoundTitle": "",
@@ -349,12 +352,6 @@
       "title": "Forum",
       "lead": "Un espace serein où les utilisateurs échangent sur ce qui compte pour eux, avec courtoisie et des règles claires. Ouverture prochaine ; d'ici là, posez vos questions à Mustafti dans la conversation.",
       "cta": "Retour à la conversation"
-    },
-    "discover": {
-      "kicker": "Mustafti",
-      "title": "Découvrir l'islam",
-      "lead": "Un parcours simple pour qui veut connaître l'islam à partir de ses sources, sans pression ni complexité. Bientôt complet ; d'ici là, demandez ce que vous voulez dans la conversation.",
-      "cta": "Demander dans la conversation"
     }
   },
   "library": {
@@ -447,6 +444,35 @@
         "expertAnswers": "Un compte d'expert ayant des réponses ne peut pas encore être supprimé ; contactez l'équipe.",
         "confirm": "Saisissez la phrase de confirmation à l'identique.",
         "generic": "Échec de la suppression. Réessayez."
+      }
+    }
+  },
+  "guided": {
+    "newMuslim": {
+      "kicker": "Mustafti · pour les nouveaux musulmans",
+      "title": "Compagnon du nouveau musulman",
+      "lead": "Bienvenue. Posez vos questions sur l'attestation de foi, la purification, la prière et le jeûne, en mots simples, à partir de sources approuvées.",
+      "q1": "Que signifient les deux attestations de foi ?",
+      "q2": "Comment prier, étape par étape ?",
+      "q3": "Comment me comporter avec ma famille non musulmane ?"
+    },
+    "discover": {
+      "kicker": "Mustafti · pour les non-musulmans",
+      "title": "Découvrir l'islam",
+      "lead": "Vos questions sur l'islam sont les bienvenues, sans aucune pression. Nous répondons à partir de sources approuvées, avec leurs liens.",
+      "q1": "En quoi croient les musulmans ?",
+      "q2": "Qui est le Prophète Muhammad ﷺ ?",
+      "q3": "Que dit l'islam de Jésus ?"
+    }
+  },
+  "experts": {
+    "dashboard": {
+      "filterTrack": "Parcours",
+      "routedTo": "Transmise à",
+      "tracks": {
+        "general": "Général",
+        "new_muslim": "Nouveau musulman",
+        "discover": "Découvrir l'islam"
       }
     }
   }

@@ -24,13 +24,15 @@ type Props = {
   busy: boolean;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   reduced: boolean;
+  /** R3: اسم المحادثة الموجّهة فوق «محادثة جديدة» («رفيق المسلم الجديد»، «تعرّف على الإسلام»). */
+  title?: string;
 };
 
 /**
  * واجهة المحادثة: السائل في فقاعة خضراء داكنة، ومُستفتي في فقاعة بيضاء مع بطاقات المصادر،
  * والخانة مثبتة في الأسفل. اتجاه كل فقاعة حسب لغة نصها (RTL للعربية والأردية والفارسية).
  */
-export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, onAsk, caseApi, busy, inputRef, reduced }: Props) {
+export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, onAsk, caseApi, busy, inputRef, reduced, title }: Props) {
   const t = useTranslations();
   const endRef = useRef<HTMLDivElement>(null);
   const [term, setTerm] = useState<GlossaryTerm | null>(null);
@@ -49,7 +51,8 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, 
   return (
     <div className="flex min-h-[100svh] flex-col bg-ivory-50">
       <section aria-label={t("chat.label")} className="mx-auto w-full max-w-3xl flex-1 px-4 pb-48 pt-24">
-        <div className="mb-6 flex justify-center">
+        <div className="mb-6 flex flex-col items-center gap-2">
+          {title && <p className="text-sm font-semibold text-green-900">{title}</p>}
           <button
             type="button"
             onClick={onReset}

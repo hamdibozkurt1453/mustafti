@@ -12,6 +12,9 @@ import type { CaseAnswer, CasePlan, PlanQuestion, ShowIf } from "./types";
 
 export const MAX_ASKED = 8;
 
+/** R3: في المحادثتين الموجّهتين («المرشد» و«الداعية») ثلاثة أسئلة توضيحية على الأكثر، ثم الملف. */
+export const GUIDED_MAX_ASKED = 3;
+
 type Conditional = { key: string; required: boolean; showIf?: ShowIf; hideIf?: string[]; options?: { value: string }[] };
 
 export type Values = Record<string, string | undefined>;
@@ -110,4 +113,15 @@ export function withAskerCountry(plan: CasePlan, countryAr: string | null): Case
       q.key === "country" && q.options.length === 0 ? { ...q, options: [{ value: countryAr, label: countryAr }] } : q,
     ),
   };
+}
+
+/**
+ * حد الاستيضاح حسب المسار (R3): العام كما هو (8)، والموجّه 3 في أي مسار من الشروط.
+ * الإلزامي أولاً بترتيبه ثم الباقي، ثم capPlan الصارم؛ والأركان المعروفة (known) تبقى كما هي.
+ */
+export function planForTrack(plan: CasePlan, track: string | null | undefined): CasePlan {
+  if (!track || track === "general") return plan;
+  const ordered = [...plan.questions.filter((q) => q.required), ...plan.questions.filter((q) => !q.required)];
+  const kept = new Set(capPlan(ordered, GUIDED_MAX_ASKED).map((q) => q.key));
+  return { ...plan, questions: plan.questions.filter((q) => kept.has(q.key)) };
 }

@@ -8,7 +8,8 @@ import { looksCaseRuling, looksGeneralRuling, looksPersonal, looksPersonalFacts,
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
 import { answerFormatIssues, normalizeCitations, stripAbstainSentence, unquoteReferenceOnly, validCitations } from "./format";
 import type { ReferralKind } from "@/lib/case/types";
-import { message } from "./messages";
+import { message, type MessageKey } from "./messages";
+import { modeUserType, type ChatMode } from "./modes";
 import { planCitations, type CitationPlan } from "./planner";
 import {
   arabicPhrases,
@@ -138,8 +139,9 @@ async function generate(
   mode: AnswerMode,
   passages: Passage[],
   deadline = Date.now() + 60_000,
+  chatMode: ChatMode = "general",
 ): Promise<Generated> {
-  const input = { question, lang: c.lang, mode, passages, misconception: c.misconception, userType: c.userType };
+  const input = { question, lang: c.lang, mode, passages, misconception: c.misconception, userType: c.userType, chatMode };
   const messages: ChatMessage[] = [
     { role: "system", content: answerSystem(input) },
     { role: "user", content: answerUser(input) },
@@ -230,9 +232,20 @@ export type RespondOptions = {
    * لا تُخزَّن إلا الأجوبة (لا امتناع ولا رفض ولا خطأ)، ولا يُستعمل مع سياق محادثة سابق.
    */
   cache?: boolean;
+  /**
+   * وضع المحادثة (R3): «المرشد» في /new-muslim، و«الداعية» في /discover. يغيّر ترتيب المصادر
+   * ونبرة الصياغة ونوع السائل فقط؛ الهوية والتصنيف والعاجل والإحالة والحارس والامتناع كما هي.
+   */
+  mode?: ChatMode;
 };
 
-const answerKey = (question: string) => `brain:answer:v3:${guessLang(question)}:${matchKey(question).slice(0, 400)}`;
+const answerKey = (question: string, mode: ChatMode) =>
+  `brain:answer:v3:${mode === "general" ? "" : `${mode}:`}${guessLang(question)}:${matchKey(question).slice(0, 400)}`;
+
+/** سطر ما بعد الامتناع: «أرسل سؤالك إلى مختص»، أو «مرشد» للمسلم الجديد، أو «داعية» لغير المسلم. */
+export function suggestKey(mode: ChatMode): MessageKey {
+  return mode === "new_muslim" ? "suggestMentor" : mode === "discover" ? "suggestDaee" : "suggestExpert";
+}
 
 export async function respond(question: string, options: RespondOptions = {}): Promise<BrainReply> {
   const started = Date.now();
@@ -254,9 +267,10 @@ export async function respond(question: string, options: RespondOptions = {}): P
     timings: { ...r.timings, totalMs: Date.now() - started },
   });
 
+  const chatMode = options.mode ?? "general";
   const useCache = Boolean(options.cache) && !options.history?.length;
   if (useCache) {
-    const hit = cacheGet<BrainReply>(answerKey(question));
+    const hit = cacheGet<BrainReply>(answerKey(question, chatMode));
     if (hit) return { ...hit, timings: { totalMs: Date.now() - started } };
   }
 
@@ -287,6 +301,12 @@ export async function respond(question: string, options: RespondOptions = {}): P
   const cls = await classify(question, { history: options.history });
   const c = { ...cls.classification };
   base.costUsd += cls.costUsd ?? 0;
+  // الوضع الموجّه: نوع السائل من الصفحة (المصنّف لا يعرفها).
+  const typed = modeUserType(chatMode, c.userType);
+  if (typed) {
+    overrides.push(`userType:${c.userType}->${typed}:mode`);
+    c.userType = typed as Classification["userType"];
+  }
   if (!c.urgent && looksUrgent(question)) {
     c.urgent = true;
     overrides.push("urgent:heuristic");
@@ -357,6 +377,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
     onVerify: () => stage("verifying"),
     onReading: () => stage("reading"),
     web: webEarly,
+    mode: chatMode,
   });
   timings.searchMs = Date.now() - t0;
   diag.retrieval = found.diag;
@@ -412,12 +433,12 @@ export async function respond(question: string, options: RespondOptions = {}): P
   if (!passages.length) {
     if (hadithQuery) return hadithLine();
     diag.abstainReason = found.diag.counts.cleaned ? "no_relevant" : "no_passages";
-    return partial("abstain", `${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`);
+    return partial("abstain", `${message("abstain", c.lang)} ${message(suggestKey(chatMode), c.lang)}`);
   }
 
   // 5) الصياغة من النصوص فقط، ثم الحارس.
   stage("writing");
-  const gen = await generate(question, c, hadithQuery ? "hadith" : c.level === "C" ? "khilaf" : "general", passages, started + QUESTION_BUDGET_MS);
+  const gen = await generate(question, c, hadithQuery ? "hadith" : c.level === "C" ? "khilaf" : "general", passages, started + QUESTION_BUDGET_MS, chatMode);
   timings.generateMs = gen.ms;
   base.costUsd += gen.cost;
   diag.attempts = gen.attempts;
@@ -427,13 +448,13 @@ export async function respond(question: string, options: RespondOptions = {}): P
   // التحقق من حديث بلا صياغة سليمة: السطر الثابت مع بطاقة الدرر بدل الامتناع.
   if (!gen.ok && hadithQuery) return hadithLine({ guard: gen.guard, raw: gen.raw });
   if (gen.reason === "guard") return partial("refused", gen.text, extra);
-  if (!gen.ok) return partial("abstain", `${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`, extra);
+  if (!gen.ok) return partial("abstain", `${message("abstain", c.lang)} ${message(suggestKey(chatMode), c.lang)}`, extra);
   // نص الفهرس والقاموس مرجع يُحال إليه، لا اقتباس: يُزال من «» (والسطر المكرر يُحذف).
   const unquoted = unquoteReferenceOnly(gen.text, passages);
   const answer = gen.partial ? `${message("partialAnswer", c.lang)}\n${unquoted}` : unquoted;
   const body = c.level === "C" ? `${answer}\n\n${message("khilaf", c.lang)}` : answer;
   const reply = done({ ...common, ...shared, ...extra, kind: "answer", text: withPrefix(body), fatwas: found.fatwas });
-  if (useCache && !prefix) cacheSet(answerKey(question), reply, DAY);
+  if (useCache && !prefix) cacheSet(answerKey(question, chatMode), reply, DAY);
   return reply;
 }
 

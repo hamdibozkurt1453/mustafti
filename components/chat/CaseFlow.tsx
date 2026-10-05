@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { dirForText } from "@/lib/chat/protocol";
+import type { ChatMode } from "@/lib/brain/modes";
 import type { CaseDraft } from "@/lib/case/types";
 import type { BotMessage, CaseFlow, SubmitInput } from "./useChat";
 
@@ -19,6 +20,8 @@ export type CaseApi = {
   cancel: () => void;
   submit: (input: SubmitInput) => Promise<"ok" | "bad_email" | "error">;
   retry: () => void;
+  /** R3: وضع المحادثة (نص زر الإحالة ووجهتها: مرشد أو داعية). */
+  mode: ChatMode;
 };
 
 const bubble = "rounded-[22px] rounded-se-md border border-sand-200 bg-white px-4 py-3 text-[15px] leading-relaxed text-green-900 sm:text-base";
@@ -169,7 +172,9 @@ export function CaseReview({ msg, api }: { msg: BotMessage; api: CaseApi }) {
           </span>
           {t("sentTitle")}
         </p>
-        <p className="mt-2 text-sm">{state.routeTo === "mentor" ? t("routeMentor") : t("routeMufti")}</p>
+        <p className="mt-2 text-sm">
+          {state.routeTo === "mentor" ? t("routeMentor") : state.routeTo === "daee" ? t("routeDaee") : t("routeMufti")}
+        </p>
         <p className="mt-2 text-sm text-ink-600">
           {t("sentLead")} {state.linked ? t("sentLinked") : ""}
         </p>
