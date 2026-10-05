@@ -5,10 +5,10 @@ import { connection } from "next/server";
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
-import { adminNeedsMfa, isAdminRole, roleSatisfies, type AdminRole, type Role } from "./role-rules";
+import { adminNeedsMfa, isAdminRole, isDemoNoMfaEmail, roleSatisfies, type AdminRole, type Role } from "./role-rules";
 
 // الأدوار وقواعدها النقية في role-rules.ts (تُختبر محلياً)، وتُصدَّر من هنا كما كانت.
-export { ADMIN_ROLES, adminNeedsMfa, isAdminRole, roleSatisfies, type AdminRole, type Role } from "./role-rules";
+export { ADMIN_ROLES, adminNeedsMfa, isAdminRole, isDemoNoMfaEmail, roleSatisfies, type AdminRole, type Role } from "./role-rules";
 
 export type AuthContext = {
   userId: string | null;
@@ -20,6 +20,8 @@ export type AuthContext = {
   expertStatus: "pending" | "approved" | "rejected" | null;
   /** مستوى التحقق في الجلسة: aal2 بعد MFA. */
   aal: "aal1" | "aal2" | null;
+  /** مشرف تجريبي بلا MFA (بريده في DEMO_NO_MFA_EMAILS). false لكل من سواه. */
+  demo: boolean;
 };
 
 const VISITOR: AuthContext = {
@@ -29,6 +31,7 @@ const VISITOR: AuthContext = {
   adminRole: null,
   expertStatus: null,
   aal: null,
+  demo: false,
 };
 
 /**
@@ -57,17 +60,22 @@ export const getAuthContext = cache(async (): Promise<AuthContext> => {
   const adminRole = isAdminRole(admin?.role) ? admin.role : null;
   const expertStatus = (expert?.status as AuthContext["expertStatus"]) ?? null;
 
+  const email = typeof claims.email === "string" ? claims.email : null;
+  // الحساب التجريبي: مشرف في الجدول + بريد الجلسة (من JWT الموقّع) في DEMO_NO_MFA_EMAILS.
+  const demo = Boolean(adminRole) && isDemoNoMfaEmail(email, process.env.DEMO_NO_MFA_EMAILS);
+
   let role: Role = "user";
-  if (adminRole && (aal === "aal2" || !adminNeedsMfa(adminRole))) role = adminRole;
+  if (adminRole && (aal === "aal2" || !adminNeedsMfa(adminRole, demo))) role = adminRole;
   else if (expertStatus === "approved") role = "expert";
 
   return {
     userId,
-    email: typeof claims.email === "string" ? claims.email : null,
+    email,
     role,
     adminRole,
     expertStatus,
     aal,
+    demo,
   };
 });
 

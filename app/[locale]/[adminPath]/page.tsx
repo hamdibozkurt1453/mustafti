@@ -27,7 +27,8 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * طبقات الحماية، كلها في الخادم ولكل طلب:
  *   1) المسار يطابق متغير ADMIN_PATH، وإلا 404.
  *   2) الحساب مسجّل وله صف في جدول admins، وإلا 404 (لا يُكشف وجود اللوحة).
- *   3) الجلسة اجتازت MFA (aal2)، وإلا شاشة التحقق بخطوتين (إلا viewer: للاطلاع فقط، وكل فعل يرفضه الخادم).
+ *   3) الجلسة اجتازت MFA (aal2)، وإلا شاشة التحقق بخطوتين (إلا viewer: للاطلاع فقط، وكل فعل يرفضه الخادم؛
+ *      وإلا حساب تجريبي بريده في DEMO_NO_MFA_EMAILS، بشريط «حساب تجريبي»).
  *   4) requireRole(ADMIN_ROLES) قبل أي محتوى.
  */
 export default async function AdminPage({ params, searchParams }: Props) {
@@ -41,7 +42,7 @@ export default async function AdminPage({ params, searchParams }: Props) {
 
   const t = await getTranslations();
 
-  if (ctx.aal !== "aal2" && adminNeedsMfa(ctx.adminRole)) {
+  if (ctx.aal !== "aal2" && adminNeedsMfa(ctx.adminRole, ctx.demo)) {
     return (
       <AuthShell title={t("admin.mfaTitle")}>
         <MfaGate />
@@ -76,6 +77,11 @@ export default async function AdminPage({ params, searchParams }: Props) {
     <main className="relative flex flex-1 justify-center px-4 py-10 sm:py-16">
       <div aria-hidden className="absolute inset-x-0 top-0 -z-10 h-56 bg-green-900" />
       <div className="w-full max-w-4xl rounded-[var(--radius-mf)] border border-sand-200 bg-ivory-50 p-6 shadow-[0_24px_60px_-30px_rgb(4_48_31/0.45)] sm:p-8">
+        {admin.demo && (
+          <p role="status" className="mb-3 inline-block rounded-full bg-gold-500 px-3 py-1 text-xs font-bold text-green-900">
+            {t("admin.demoBanner")}
+          </p>
+        )}
         {readOnly && (
           <p role="status" className="mb-5 rounded-xl bg-gold-500 px-4 py-2.5 text-center text-sm font-bold text-green-900">
             {t("admin.viewerBanner")}

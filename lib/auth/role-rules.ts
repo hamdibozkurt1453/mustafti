@@ -10,9 +10,31 @@
 export const ADMIN_ROLES = ["super_admin", "reviewer", "moderator", "viewer"] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
-/** الأدوار التي تشترط MFA (كل أدوار المشرفين إلا حساب الاطلاع). */
-export function adminNeedsMfa(role: AdminRole): boolean {
-  return role !== "viewer";
+/**
+ * الأدوار التي تشترط MFA: كل أدوار المشرفين إلا حساب الاطلاع، وإلا حساب تجريبي
+ * (بريده في DEMO_NO_MFA_EMAILS، يُفحص في الخادم بـ isDemoNoMfaEmail).
+ */
+export function adminNeedsMfa(role: AdminRole, demo = false): boolean {
+  return role !== "viewer" && !demo;
+}
+
+/** قائمة بريد مفصولة بفواصل (متغير بيئة) إلى مجموعة بأحرف صغيرة. */
+export function parseEmailList(raw: string | null | undefined): Set<string> {
+  return new Set(
+    (raw ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => e.includes("@")),
+  );
+}
+
+/**
+ * حساب تجريبي بلا MFA (S6): بريد الجلسة الموثّق في قائمة DEMO_NO_MFA_EMAILS، مطابقة تامة.
+ * لا أثر له إلا لحساب له صف في جدول admins (الدور من الجدول فقط)، ولا يُطبَّق على غيره أبداً.
+ */
+export function isDemoNoMfaEmail(email: string | null | undefined, rawList: string | null | undefined): boolean {
+  const e = (email ?? "").trim().toLowerCase();
+  return Boolean(e) && parseEmailList(rawList).has(e);
 }
 
 /**

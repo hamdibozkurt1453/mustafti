@@ -104,10 +104,10 @@ describe("زر بلد السائل في الاستيضاح", () => {
 });
 
 describe("FEATURE_EXTRAS", () => {
-  it("المطفأة لا تظهر في الرأس", () => {
-    assert.equal(FEATURE_EXTRAS, false);
-    for (const p of EXTRAS_PATHS) assert.equal(isEnabledHref(p), false);
+  it("مُفعّلة (S6): المواقيت والأذكار والمسلم الجديد في الرأس", () => {
+    assert.equal(FEATURE_EXTRAS, true);
+    for (const p of EXTRAS_PATHS) assert.equal(isEnabledHref(p), true);
     assert.equal(isEnabledHref("/about"), true);
-    assert.deepEqual(navItems.map((i) => i.href), ["/", "/about"]);
+    for (const p of EXTRAS_PATHS) assert.ok(navItems.some((i) => i.href === p), p);
   });
 });

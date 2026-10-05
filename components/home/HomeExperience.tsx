@@ -9,6 +9,7 @@ import { Hero, type Persona } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
 import { PathCards } from "./PathCards";
 import { FEATURE_EXTRAS } from "@/lib/config";
+import { personas } from "./Hero";
 import { PrayerCard } from "./PrayerCard";
 import { Stats } from "./Stats";
 
@@ -30,6 +31,16 @@ export function HomeExperience() {
     setChatMode(chatting);
   }, [chatting]);
   useEffect(() => () => setChatMode(false), []);
+
+  // ‎/?as=newMuslim (من صفحة /new-muslim): يفتح خانة السؤال بمسار الشخصية المطلوبة.
+  useEffect(() => {
+    const as = new URLSearchParams(window.location.search).get("as");
+    if (!as || !(personas as readonly string[]).includes(as)) return;
+    const id = setTimeout(() => askAs(as as Persona), 300);
+    return () => clearTimeout(id);
+    // مرة واحدة عند فتح الصفحة.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function ask(question: string) {
     const q = question.trim();
