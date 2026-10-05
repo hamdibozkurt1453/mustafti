@@ -139,7 +139,7 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
         {answer && !hadithFallback && (
           <div className="mb-2 flex flex-wrap gap-1.5">
             <span className="rounded-full bg-green-900 px-2.5 py-0.5 text-[11px] font-semibold text-ivory-50">{t("badgeOwn")}</span>
-            {msg.level === "C" && (
+            {(msg.khilaf ?? msg.level === "C") && (
               <span className="rounded-full bg-gold-500 px-2.5 py-0.5 text-[11px] font-semibold text-green-900">{t("badgeKhilaf")}</span>
             )}
           </div>
@@ -153,7 +153,8 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
         )}
       </div>
 
-      {(answer || abstained) && done && msg.sources.length > 0 && (
+      {/* R5: المصادر تظهر حين تجهز، قبل اكتمال الجواب. */}
+      {(answer || abstained) && (done || live) && msg.sources.length > 0 && (
         <section aria-label={t(answer ? "sourcesTitle" : "relatedTitle")} className="mf-rise">
           <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-600">
             {t(answer ? "sourcesTitle" : "relatedTitle")}

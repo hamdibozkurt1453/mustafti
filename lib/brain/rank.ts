@@ -46,6 +46,34 @@ const BOOK_BLURB =
 /** عناصر واجهة المواقع (أزرار وتواريخ) بدل المحتوى. */
 const UI_JUNK = /(حفظ|قائمة جديدة|تنزيل|مشاركة|طباعة|نسخ|save|download|share|print|\d{1,2}\/\d{1,2}\/\d{4})/giu;
 
+/**
+ * بقايا الكود في نص مصدر (R5): JSON-LD من schema.org («"uploadDate"»، «ImageObject»)، ووسوم HTML،
+ * وسكربتات. ظهرت في بطاقة IslamHouse فرُفضت.
+ */
+const CODE_MARK =
+  /"@(?:context|type|id|graph)"|schema\.org|"(?:uploadDate|thumbnailUrl|contentUrl|datePublished|dateModified|encodingFormat|mainEntityOfPage|inLanguage)"|\b(?:ImageObject|VideoObject|AudioObject|WebPage|BreadcrumbList)\b|<\/?(?:div|span|script|style|meta|link|img|iframe|svg|p|br|a|ul|li|h[1-6])\b[^>]*>|\bfunction\s*\(|=>\s*\{|\b(?:var|const|let)\s+\w+\s*=|\bdocument\.\w|\bwindow\.\w|\{\s*"[\w@]+"\s*:/i;
+
+/** نسبة رموز الكود ({}[]<>;=") إلى طول النص. */
+function codeDensity(text: string): number {
+  return (text.match(/[{}[\]<>;=]|"/g)?.length ?? 0) / Math.max(1, text.length);
+}
+
+/** نص فيه بقايا كود أو JSON أو HTML. */
+export function looksLikeCode(text: string): boolean {
+  return CODE_MARK.test(text) || (text.length > 40 && codeDensity(text) > 0.06);
+}
+
+/**
+ * يزيل ذيل الكود من نص سليم أوله (مقال تبعه JSON-LD مثلاً): يُقطع النص عند أول علامة كود، ويُقبل
+ * ما قبلها إن بلغ 40 حرفاً وخلا من الكود. "" إن لم يبق نص سليم.
+ */
+export function stripCode(text: string): string {
+  if (!looksLikeCode(text)) return text;
+  const at = text.search(CODE_MARK);
+  const head = (at > 0 ? text.slice(0, at) : "").replace(/[\s{[(<,"':]+$/u, "").trim();
+  return head.length >= 40 && !looksLikeCode(head) ? head : "";
+}
+
 /** النص بلا الأقواس الفارغة، أو "" إن كان أغلبه عناصر واجهة. */
 function cleanText(text: string): string {
   const t = text.replace(/﴿\s*﴾/g, "").replace(/\s+/g, " ").trim();
@@ -60,11 +88,11 @@ export function clean<T extends Candidate>(results: T[], dropped: Dropped[]): T[
   const out: T[] = [];
   for (const r of results) {
     const title = (r.title ?? "").trim();
-    let text = cleanText(r.text ?? "");
+    let text = cleanText(stripCode(r.text ?? ""));
     // المقتطف مطابق للعنوان أو فارغ: العنوان هو النص (أسئلة الإسلام سؤال وجواب ونصوص الأحاديث).
-    if (!text || matchKey(text) === matchKey(title)) text = cleanText(title);
+    if (!text || matchKey(text) === matchKey(title)) text = looksLikeCode(title) ? "" : cleanText(title);
     if (!text) {
-      dropped.push({ reason: "empty", source: r.source, title });
+      dropped.push({ reason: looksLikeCode(r.text ?? "") ? "code" : "empty", source: r.source, title });
       continue;
     }
     if (BOOK_BLURB.test(text)) {
@@ -162,6 +190,24 @@ export function focusExcerpt(text: string, terms: string[], max: number): string
   }
   const window = clip(segs.slice(from, to + 1).join(" "), Math.max(budget, 80));
   return from === 1 ? clip(`${segs[0]} ${window}`, max) : `${head} … ${window}`;
+}
+
+/**
+ * تطابق واضح بالكلمات (R5): تداخل عالٍ (kw ≥ 6) ويحوي ثلاثة أرباع كلمات السؤال نفسه على الأقل.
+ * إن بلغ ثلاثة مرشحين ذلك في الجولة الأولى لم يُطلب تقييم الصلة من النموذج (توفير ثوانٍ).
+ */
+export const CLEAR_KW = 6;
+export const CLEAR_COVERAGE = 0.75;
+export const CLEAR_MIN = 3;
+/** درجة المطابقة الواضحة حين يُتخطى التقييم بالنموذج. */
+export const CLEAR_SCORE = 85;
+
+export function isClearMatch(c: Candidate, questionTerms: string[], terms: string[]): boolean {
+  const q = [...new Set(questionTerms)];
+  if (q.length < 2) return false;
+  const words = new Set([...keywords(c.title), ...keywords(c.text)]);
+  const coverage = q.filter((t) => words.has(t)).length / q.length;
+  return overlap(c, terms) >= CLEAR_KW && coverage >= CLEAR_COVERAGE;
 }
 
 /** احتياط بلا نموذج: درجة الصلة من تداخل الكلمات. */

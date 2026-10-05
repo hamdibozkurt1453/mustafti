@@ -835,8 +835,9 @@ describe("شكل الجواب: الجملة الأولى جواب مباشر م�
     assert.ok(answerFormatIssues("البقرة 127: ﴿وَإِذْ يَرْفَعُ﴾ [1].").includes("starts_with_reference"));
     assert.ok(answerFormatIssues("2:127 ﴿وَإِذْ﴾").includes("starts_with_reference"));
   });
-  it("جملة أولى بلا [n] مرفوضة", () => {
-    assert.ok(answerFormatIssues("بنى الكعبة إبراهيم عليه السلام. والدليل [1].").includes("no_citation"));
+  it("R5: جملة أولى تمهيدية بلا [n] مقبولة، والجواب كله بلا [n] مرفوض", () => {
+    assert.deepEqual(answerFormatIssues("أهلاً بك! بنى الكعبة إبراهيم عليه السلام. والدليل [1]."), []);
+    assert.ok(answerFormatIssues("بنى الكعبة إبراهيم عليه السلام. والدليل في القرآن.").includes("no_citation"));
   });
 });
 

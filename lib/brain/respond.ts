@@ -1,12 +1,25 @@
 import "server-only";
 
 import { cacheGet, cacheSet, DAY } from "@/lib/cache";
-import { chat, reasoningFor, type ChatMessage } from "@/lib/llm";
+import { chat, chatStream, LlmError, reasoningFor, type ChatMessage } from "@/lib/llm";
 import { classify, type Classification } from "./classify";
-import { checkOutput, guardAndLog, matchKey, type GuardResult } from "./guard";
+import {
+  checkAnswer,
+  checkOutput,
+  matchKey,
+  repairAnswer,
+  replacementFor,
+  separateQuoted,
+  splitUnits,
+  type AnswerFix,
+  type GuardContext,
+  type GuardFinding,
+  type GuardResult,
+} from "./guard";
+import { personaIssues, stripPersonaPhrases } from "./personas";
 import { looksCaseRuling, looksGeneralRuling, looksPersonal, looksPersonalFacts, looksUrgent, referralKindOf } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
-import { answerFormatIssues, normalizeCitations, stripAbstainSentence, unquoteReferenceOnly, validCitations } from "./format";
+import { normalizeCitations, stripAbstainSentence, unquoteReferenceOnly, validCitations } from "./format";
 import type { ReferralKind } from "@/lib/case/types";
 import { message, type MessageKey } from "./messages";
 import { modeUserType, type ChatMode } from "./modes";
@@ -16,6 +29,7 @@ import {
   caseFatwas,
   CASE_FATWA_BUDGET_MS,
   looksHadithCheck,
+  prefetchFast,
   quotedSegment,
   retrieve,
   type CaseFatwas,
@@ -26,6 +40,7 @@ import { ABSTAIN_AR, answerSystem, answerUser, type AnswerMode, type Passage } f
 import type { FatwaCard } from "./fatwa-cards";
 import { suggestQuestions } from "./suggest";
 import { webLayer, type WebResult } from "./web";
+import { ANSWER_CACHE_VERSION, readAnswerCache, writeAnswerCache } from "./answer-cache";
 
 /**
  * «عقل» مُستفتي من البداية إلى النهاية لرسالة واحدة:
@@ -85,8 +100,33 @@ export type BrainReply = {
     /** محاولات الصياغة (الثانية بعد اعتراض الحارس). */
     attempts: { raw: string; guardOk: boolean; findings: string[] }[];
   };
-  timings: { classifyMs?: number; searchMs?: number; generateMs?: number; totalMs: number };
+  timings: BrainTimings;
   costUsd: number;
+  /** R5: الجواب عرض خلافاً فقهياً معتبراً (شارة «مسألة خلافية» وسطرها). */
+  khilaf?: boolean;
+  /** R5: العبارات الممنوعة في الشخصية إن بقيت (لـ «فحص الشخصية» في صفحة الفحص). */
+  persona?: string[];
+  /** R5: الجواب بُث إلى الواجهة أثناء كتابته (المسار يرسل بعده الجواب النهائي في حدث final). */
+  streamed?: boolean;
+};
+
+/**
+ * زمن كل مرحلة (R5): التصنيف، والمصادر السريعة، و«ابحث واقرأ»، والترتيب (تقييم الصلة)، والصياغة
+ * (وأول جزء منها)، والكل. يُسجَّل في سجلات الخادم ويُعرض في صفحة الفحص.
+ */
+export type BrainTimings = {
+  classifyMs?: number;
+  searchMs?: number;
+  fastMs?: number;
+  webMs?: number;
+  rerankMs?: number;
+  rerankSkipped?: boolean;
+  generateMs?: number;
+  /** من بداية السؤال إلى أول كلمة من الجواب. */
+  firstTokenMs?: number;
+  totalMs: number;
+  /** الجواب من ذاكرة الأجوبة: داخل نسخة الخادم، أو جدول answer_cache. */
+  cached?: "memory" | "db";
 };
 
 /** جملة الامتناع بالعربية وبلغة السائل (بأي موضع في الرد). */
@@ -108,8 +148,8 @@ export function isAbstention(text: string, lang: string, count: number): boolean
 }
 
 /** الإسناد: إشارة [n] صحيحة واحدة على الأقل، أو اقتباس حرفي موثَّق من النصوص (⟦Q⟧). */
-function isGrounded(text: string, count: number, ownText: string): boolean {
-  return validCitations(text, count).length > 0 || ownText.includes("⟦Q⟧");
+function isGrounded(text: string, count: number, ctx: GuardContext): boolean {
+  return validCitations(text, count).length > 0 || separateQuoted(text, ctx).ownText.includes("⟦Q⟧");
 }
 
 type Generated = {
@@ -121,17 +161,86 @@ type Generated = {
   /** جواب جزئي: كتب النموذج جملة الامتناع ثم أجاب من النصوص (حُذفت الجملة). */
   partial?: boolean;
   ms: number;
+  /** زمن أول جزء من الجواب (البث)، أو زمن المحاولة الأولى كاملة بلا بث. */
+  firstTokenMs?: number;
+  /** ما صححه التحقق النهائي (اقتباس صُحح أو حُذف، وجملة حكم بلا مصدر حُذفت). */
+  fixes: AnswerFix[];
+  /** العبارات الممنوعة في الشخصية (تبقى إن تعذّرت الإعادة؛ صفحة الفحص تعرضها). */
+  persona: string[];
   cost: number;
   attempts: BrainReply["diag"]["attempts"];
 };
 
-/** حد رموز الجواب (يُضاف له حيّز التفكير في llm.ts إن كان مفعّلاً). */
-const ANSWER_MAX_TOKENS = 1200;
+/** حد رموز الجواب (يُضاف له حيّز التفكير في llm.ts إن كان مفعّلاً). R5: الجواب الحر أطول. */
+const ANSWER_MAX_TOKENS = 1600;
+
+/** البث إلى المحادثة (R5): أجزاء الجواب بعد فحص كل جملة، و«ابدأ من جديد» قبل المحاولة الثانية. */
+export type StreamHooks = {
+  onDelta?: (text: string) => void;
+  onReset?: () => void;
+};
+
+/** بقية لم تكتمل قد تكون إشارة [n] للجملة السابقة: لا تُرسل الجملة قبلها بعد. */
+const MAYBE_CITE = /^\s*(?:\[\s*\d{0,2}\s*\]?\s*)*$/;
 
 /**
- * الصياغة من النصوص، ثم الحارس. كل النصوص المرسلة بلغت 60 في تقييم الصلة، فالأصل أن يُجاب منها:
- * محاولة ثانية واحدة إن اعترض الحارس، أو خالف شكل الجملة الأولى، أو امتنع النموذج، أو لم يُسند.
- * الامتناع لا يبقى إلا إن أصرّ عليه النموذج بعد التذكير بأن النصوص ذات صلة.
+ * بث محاولة واحدة: الجواب يُجمع ويُرسل جملةً جملة، وكل جملة تمر بالتحقق نفسه الذي يجري على الجواب
+ * كاملاً (repairAnswer): الاقتباس غير المطابق يُصحَّح أو تُحذف جملته، والحكم بلا مصدر يُحذف، وما
+ * يمنع الجواب كله (فتوى شخصية أو اسم نموذج) يوقف البث (والجواب النهائي يحل محله).
+ */
+async function streamAttempt(
+  messages: ChatMessage[],
+  opts: Parameters<typeof chat>[1],
+  ctx: GuardContext,
+  emit: (text: string) => void,
+): Promise<{ text: string; latencyMs: number; firstTokenMs?: number; cost: number }> {
+  const started = Date.now();
+  let full = "";
+  let sent = 0;
+  let halted = false;
+  let firstTokenMs: number | undefined;
+  const flush = (final: boolean) => {
+    const units = splitUnits(full.slice(sent));
+    let ready = final ? units.length : units.length - 1;
+    if (!final && ready > 0 && MAYBE_CITE.test(units[units.length - 1] ?? "")) ready -= 1;
+    for (const unit of units.slice(0, Math.max(0, ready))) {
+      sent += unit.length;
+      if (halted) continue;
+      const norm = stripPersonaPhrases(normalizeCitations(unit));
+      const r = repairAnswer(norm, ctx);
+      if (r.blocked.length) {
+        halted = true;
+        continue;
+      }
+      if (!r.fixes.length) {
+        emit(norm);
+        continue;
+      }
+      const lead = norm.match(/^\s*/)?.[0] ?? "";
+      const tail = norm.match(/\s*$/)?.[0] ?? "";
+      if (r.text) emit(`${lead}${r.text}${tail}`);
+      else if (tail.includes("\n")) emit("\n");
+    }
+  };
+  const gen = chatStream(messages, opts);
+  let step = await gen.next();
+  while (!step.done) {
+    if (firstTokenMs === undefined) firstTokenMs = Date.now() - started;
+    full += step.value;
+    flush(false);
+    step = await gen.next();
+  }
+  flush(true);
+  return { text: full, latencyMs: Date.now() - started, firstTokenMs, cost: step.value?.usage.costUsd ?? 0 };
+}
+
+/**
+ * الصياغة من النصوص، ثم التحقق النهائي على الجواب الكامل (R5):
+ *   - الصياغة حرة بصوت الشخصية، والإسناد [n] لكل حكم ودليل ونسبة (guard.ts: checkAnswer).
+ *   - repairAnswer يصحح الاقتباس أو يحذفه، ويحذف جملة الحكم بلا مصدر ونسبة الحديث بلا نص.
+ *   - محاولة ثانية واحدة إن منع الحارس الجواب كله (فتوى شخصية، اسم نموذج)، أو امتنع النموذج مع
+ *     نصوص ذات صلة، أو لم يُسند شيئاً، أو تكلم كطرف محايد («أكثر من صياغة»)، وبقي وقت.
+ * مع hooks.onDelta يُبث الجواب جملةً جملة (أول محاولة وثانيتها بعد onReset).
  */
 async function generate(
   question: string,
@@ -140,74 +249,134 @@ async function generate(
   passages: Passage[],
   deadline = Date.now() + 60_000,
   chatMode: ChatMode = "general",
+  hooks: StreamHooks = {},
 ): Promise<Generated> {
   const input = { question, lang: c.lang, mode, passages, misconception: c.misconception, userType: c.userType, chatMode };
   const messages: ChatMessage[] = [
     { role: "system", content: answerSystem(input) },
     { role: "user", content: answerUser(input) },
   ];
-  const ctx = { sources: passages.map((p) => p.text), question, lang: c.lang };
+  const count = passages.length;
+  const ctx: GuardContext = { sources: passages.map((p) => p.text), question, lang: c.lang, citeCount: count };
   const attempts: Generated["attempts"] = [];
   const reasoning = reasoningFor("answer");
   let ms = 0;
   let cost = 0;
-  const count = passages.length;
+  let firstTokenMs: number | undefined;
 
-  // مهلة كل طلب: حتى 40 ث، أو ما بقي من الميزانية (12 ث على الأقل).
+  // مهلة كل طلب: حتى 40 ث، أو ما بقي من الميزانية (12 ث على الأقل). لا قطع يُنتج جواباً ناقصاً.
   const callMs = () => Math.min(40_000, Math.max(12_000, deadline - Date.now()));
-  let res = await chat(messages, { temperature: 0.1, maxTokens: ANSWER_MAX_TOKENS, reasoning, timeoutMs: callMs() });
-  ms += res.latencyMs;
-  cost += res.usage.costUsd ?? 0;
-  let raw = normalizeCitations(res.text.trim());
-  let check = checkOutput(raw, ctx);
-  const log = () =>
-    attempts.push({
-      raw,
-      guardOk: !check.findings.length,
-      findings: [...check.findings.map((f) => `${f.reason}: ${f.match}`), ...(res.finishReason && res.finishReason !== "stop" ? [`finish: ${res.finishReason}`] : [])],
-    });
-  log();
-
-  const abstained = isAbstention(raw, c.lang, count);
-  const ungrounded = !abstained && validCitations(raw, count).length === 0 && !check.ownText.includes("⟦Q⟧");
-  const formatIssues = abstained ? [] : answerFormatIssues(raw);
-  const needRetry = check.findings.length || formatIssues.length || abstained || ungrounded || !raw;
-  // الإعادة لاعتراض الحارس دائماً (لا يُعرض المخالف)، وللشكل والامتناع إن بقي وقت.
-  if (needRetry && (check.findings.length || deadline - Date.now() > 12_000)) {
-    const issues = check.findings.map((f) => `- ${f.reason}: «${f.match}»`).join("\n");
-    const fix = check.findings.length
-      ? `Your reply was blocked by the safety check:\n${issues}\nRewrite it calmly and briefly. Do not write any ruling word (permissible, forbidden, halal, haram, يجوز، حرام…) in your own words: the sources may say it only inside a verbatim «quotation» from the passages with its [n]. Every quotation must be copied exactly from a passage. Do not attribute any hadith that is not quoted verbatim from a passage. Do not mention any AI model or company. Keep the ANSWER FORMAT.`
-      : abstained || ungrounded || !raw
-        ? `Every passage above was already judged RELEVANT to the question. Do not abstain: answer from them now, in ${c.lang}, covering only what they say (even if partial), in the ANSWER FORMAT, with a passage number like [1] after each statement (one number per bracket: [1][2], never [1, 2]). Abstain with the exact sentence only if truly NO passage says anything about the question.`
-        : `Rewrite your reply in the ANSWER FORMAT: the first sentence must be a direct answer in your own plain words that ends with its [n] (not a quotation, not ﴿, not a reference); then the verbatim evidence with [n]. Keep every fact and quotation from the passages only.`;
-    res = await chat(
-      [...messages, { role: "assistant", content: raw || "(empty)" }, { role: "user", content: fix }],
-      { temperature: 0, maxTokens: ANSWER_MAX_TOKENS, reasoning, timeoutMs: callMs() },
-    );
+  const call = async (msgs: ChatMessage[], temperature: number): Promise<string> => {
+    const opts = { temperature, maxTokens: ANSWER_MAX_TOKENS, reasoning, timeoutMs: callMs() };
+    if (hooks.onDelta) {
+      try {
+        const r = await streamAttempt(msgs, opts, ctx, hooks.onDelta);
+        ms += r.latencyMs;
+        cost += r.cost;
+        if (firstTokenMs === undefined) firstTokenMs = r.firstTokenMs;
+        return r.text;
+      } catch (error) {
+        // انقطع البث: محاولة كاملة بلا بث (الواجهة تأخذ الجواب النهائي في حدث final).
+        if (!(error instanceof LlmError)) throw error;
+        hooks.onReset?.();
+      }
+    }
+    const res = await chat(msgs, opts);
     ms += res.latencyMs;
     cost += res.usage.costUsd ?? 0;
-    raw = normalizeCitations(res.text.trim());
-    check = checkOutput(raw, ctx);
-    log();
+    if (firstTokenMs === undefined) firstTokenMs = res.latencyMs;
+    return res.text;
+  };
+
+  /** تقييم محاولة: التصحيح النهائي، والامتناع، والإسناد، وصوت الشخصية. */
+  const evaluate = (rawText: string) => {
+    const raw = normalizeCitations(rawText.trim());
+    const repair = repairAnswer(stripPersonaPhrases(raw), ctx);
+    const abstained = isAbstention(raw, c.lang, count);
+    const grounded = isGrounded(repair.text, count, ctx);
+    const persona = personaIssues(repair.text);
+    attempts.push({
+      raw,
+      guardOk: !repair.blocked.length && !repair.fixes.length,
+      findings: [
+        ...repair.blocked.map((f) => `${f.reason}: ${f.match}`),
+        ...repair.fixes.map((f) => `${f.kind}: ${f.match}`),
+        ...persona.map((p) => `persona: ${p}`),
+      ],
+    });
+    return { raw, repair, abstained, grounded, persona };
+  };
+
+  let e = evaluate(await call(messages, 0.3));
+  const needRetry = (x: typeof e) => Boolean(x.repair.blocked.length || x.abstained || !x.grounded || !x.raw || x.persona.length);
+  // الإعادة لما يمنع الجواب كله دائماً، ولغيره إن بقي وقت.
+  if (needRetry(e) && (e.repair.blocked.length || deadline - Date.now() > 12_000)) {
+    const fix = e.repair.blocked.length
+      ? `Your reply was blocked by the safety check:\n${e.repair.blocked.map((f) => `- ${f.reason}: «${f.match}»`).join("\n")}\nRewrite it: never apply a ruling to the asker's own case and never say their act or contract is valid, invalid or occurred; give general rulings only with their passage number [n]; never mention any AI model or company. Keep your persona's voice.`
+      : e.abstained || !e.grounded || !e.raw
+        ? `Every passage above was already judged RELEVANT to the question. Do not abstain: answer from them now, in ${c.lang}, in your persona's voice, with the passage number [n] after every ruling, evidence and attribution (one number per bracket: [1][2]). Abstain with the exact sentence only if truly NO passage says anything about the question.`
+        : `Rewrite your answer in your persona's direct, confident voice. Never write «تذكر المصادر…», «هناك أكثر من صياغة» or "the sources mention": state what Islam teaches directly and put [n] after each ruling and evidence. Keep every fact and quotation from the passages only.`;
+    hooks.onReset?.();
+    const second = evaluate(await call([...messages, { role: "assistant", content: e.raw || "(empty)" }, { role: "user", content: fix }], 0));
+    // المحاولة الثانية تُعتمد إلا إن كانت أسوأ (منعها الحارس أو بلا إسناد والأولى سليمة الإسناد).
+    const worse = (second.repair.blocked.length && !e.repair.blocked.length) || (!second.grounded && e.grounded && !e.repair.blocked.length);
+    // إن رأت الواجهة الثانية والأولى أفضل، فحدث final في المحادثة يعيد الأولى.
+    if (!worse) e = second;
   }
 
+  let text = e.repair.text;
   // جملة الامتناع مع جواب مُسند: جواب جزئي، تُحذف الجملة ويسبقه «ما وجدناه في المصادر:».
   let partial = false;
-  if (hasAbstainPhrase(raw, c.lang) && validCitations(raw, count).length) {
-    const stripped = stripAbstainSentence(raw, abstainPhrases(c.lang));
+  if (hasAbstainPhrase(text, c.lang) && validCitations(text, count).length) {
+    const stripped = stripAbstainSentence(text, abstainPhrases(c.lang));
     if (stripped && validCitations(stripped, count).length) {
-      raw = stripped;
+      text = stripped;
       partial = true;
     }
   }
 
-  // التسجيل في guard_log والاستبدال بالرد الثابت إن بقيت المخالفة.
-  const guard = await guardAndLog(raw, ctx);
+  // التسجيل في guard_log (ما مُنع وما صُحح)، والاستبدال بالرد الثابت إن بقي ما يمنع الجواب كله.
+  const findings: GuardFinding[] = [
+    ...e.repair.blocked,
+    ...e.repair.fixes.map((f) => ({ reason: f.reason, lang: "*", match: `${f.kind}: ${f.match}` })),
+  ];
+  const blocked = e.repair.blocked.length > 0;
+  const guard: GuardResult = {
+    ok: !blocked,
+    text: blocked ? replacementFor(e.repair.blocked, c.lang) : text,
+    original: e.raw,
+    findings,
+    ownText: separateQuoted(text, ctx).ownText,
+  };
+  if (findings.length) await logGuardSafe(guard);
   let reason: AbstainReason | undefined;
-  if (!guard.ok) reason = "guard";
-  else if (isAbstention(raw, c.lang, count)) reason = "model_abstained";
-  else if (!isGrounded(raw, count, guard.ownText)) reason = "no_citation";
-  return { text: guard.text, raw, guard, ok: !reason, reason, partial, ms, cost, attempts };
+  if (blocked) reason = "guard";
+  else if (isAbstention(e.raw, c.lang, count) && !validCitations(text, count).length) reason = "model_abstained";
+  else if (!text || !isGrounded(text, count, ctx)) reason = "no_citation";
+  return {
+    text: guard.text,
+    raw: e.raw,
+    guard,
+    ok: !reason,
+    reason,
+    partial,
+    ms,
+    firstTokenMs,
+    fixes: e.repair.fixes,
+    persona: e.persona,
+    cost,
+    attempts,
+  };
+}
+
+/** التسجيل في guard_log لا يوقف الجواب أبداً. */
+async function logGuardSafe(result: GuardResult): Promise<void> {
+  try {
+    const { logGuard } = await import("./guard-log");
+    await logGuard(result, null);
+  } catch {
+    /* السجل تشخيص فقط */
+  }
 }
 
 /** مراحل الرد (لمؤشر «يبحث في المصادر…» في المحادثة). */
@@ -228,10 +397,20 @@ export type RespondOptions = {
   /** يُستدعى عند بدء كل مرحلة (للبث فقط؛ لا يغيّر شيئاً في الرد). */
   onStage?: (stage: BrainStage) => void;
   /**
-   * ذاكرة الأجوبة (المحادثة): السؤال نفسه بلغته يأخذ الجواب نفسه بمصادره فوراً، 24 ساعة.
-   * لا تُخزَّن إلا الأجوبة (لا امتناع ولا رفض ولا خطأ)، ولا يُستعمل مع سياق محادثة سابق.
+   * ذاكرة الأجوبة (المحادثة): السؤال نفسه بلغته ووضعه يأخذ الجواب نفسه بمصادره فوراً: داخل نسخة
+   * الخادم، ثم جدول answer_cache لمدة 7 أيام (R5). لا تُخزَّن إلا الأجوبة (لا امتناع ولا رفض ولا
+   * خطأ)، ولا يُستعمل مع سياق محادثة سابق.
    */
   cache?: boolean;
+  /** مهمة بعد الرد (كتابة الذاكرة الدائمة): after() في المسار، وإلا تُطلق بلا انتظار. */
+  defer?: (task: () => Promise<void>) => void;
+  /**
+   * البث (R5): onSources حين تجهز المصادر (قبل الصياغة)، ثم onDelta لكل جملة مفحوصة من الجواب،
+   * وonReset قبل محاولة ثانية. الجواب النهائي بعد التحقق الكامل هو ما يعيده respond().
+   */
+  onSources?: (preview: AnswerPreview) => void;
+  onDelta?: (text: string) => void;
+  onReset?: () => void;
   /**
    * وضع المحادثة (R3): «المرشد» في /new-muslim، و«الداعية» في /discover. يغيّر ترتيب المصادر
    * ونبرة الصياغة ونوع السائل فقط؛ الهوية والتصنيف والعاجل والإحالة والحارس والامتناع كما هي.
@@ -239,8 +418,21 @@ export type RespondOptions = {
   mode?: ChatMode;
 };
 
+/** ما يلزم الواجهة لعرض المصادر قبل الجواب (R5). */
+export type AnswerPreview = Pick<BrainReply, "lang" | "classification" | "passages" | "fatwas" | "links" | "hadithCheck" | "khilaf">;
+
 const answerKey = (question: string, mode: ChatMode) =>
-  `brain:answer:v3:${mode === "general" ? "" : `${mode}:`}${guessLang(question)}:${matchKey(question).slice(0, 400)}`;
+  `brain:answer:${ANSWER_CACHE_VERSION}:${mode === "general" ? "" : `${mode}:`}${guessLang(question)}:${matchKey(question).slice(0, 400)}`;
+
+/** ما يُخزَّن من الجواب في الذاكرة الدائمة: بلا تشخيص ولا صياغة خام. */
+function cacheable(reply: BrainReply): BrainReply {
+  return { ...reply, raw: undefined, guard: undefined, diag: { attempts: [] }, timings: { totalMs: reply.timings.totalMs } };
+}
+
+/** باب فقهي (لا «أخرى» ولا «المسلم الجديد»): الخلاف فيه خلاف فقهي معتبر. */
+function isFiqh(c: Classification): boolean {
+  return Boolean(c.chapter && c.chapter !== "other" && c.chapter !== "new_muslim");
+}
 
 /** سطر ما بعد الامتناع: «أرسل سؤالك إلى مختص»، أو «مرشد» للمسلم الجديد، أو «داعية» لغير المسلم. */
 export function suggestKey(mode: ChatMode): MessageKey {
@@ -271,7 +463,12 @@ export async function respond(question: string, options: RespondOptions = {}): P
   const useCache = Boolean(options.cache) && !options.history?.length;
   if (useCache) {
     const hit = cacheGet<BrainReply>(answerKey(question, chatMode));
-    if (hit) return { ...hit, timings: { totalMs: Date.now() - started } };
+    if (hit) return { ...hit, streamed: false, timings: { totalMs: Date.now() - started, cached: "memory" } };
+    const stored = await readAnswerCache<BrainReply>(question, chatMode, guessLang(question));
+    if (stored?.kind === "answer" && stored.text) {
+      cacheSet(answerKey(question, chatMode), stored, DAY);
+      return { ...stored, streamed: false, diag: { attempts: [] }, timings: { totalMs: Date.now() - started, cached: "db" } };
+    }
   }
 
   // 1) «من أنت؟» و«ما النموذج؟»: رد ثابت بلا نموذج.
@@ -290,6 +487,9 @@ export async function respond(question: string, options: RespondOptions = {}): P
     webEarly = webLayer(question, { mode, lang: guessLang(question), phrases: [], timeoutMs: WEB_EARLY_MS });
     webEarly.catch(() => null);
   }
+
+  // R5: المصدران المحليان السريعان بالسؤال نفسه يبدآن مع التصنيف (لا بعده).
+  const prefetch = !looksUrgent(question) && !looksPersonal(question) ? prefetchFast(question, guessLang(question)) : undefined;
 
   // 2) التصنيف + شبكة الأمان (ترفع ولا تخفض).
   stage("understanding");
@@ -378,9 +578,17 @@ export async function respond(question: string, options: RespondOptions = {}): P
     onReading: () => stage("reading"),
     web: webEarly,
     mode: chatMode,
+    prefetch,
   });
   timings.searchMs = Date.now() - t0;
   diag.retrieval = found.diag;
+  const st = found.diag.stages;
+  if (st) {
+    timings.fastMs = st.fastMs;
+    timings.rerankMs = st.rerank1Ms + (st.rerank2Ms ?? 0);
+    if (st.rerankSkipped) timings.rerankSkipped = true;
+  }
+  if (found.diag.web) timings.webMs = found.diag.web.ms;
   const passages = found.passages;
   // التحقق من حديث: بطاقة الدرر من متصفح السائل (الخادم محجوب عنها)، بلا نموذج.
   const hadithQuery = looksHadithCheck(question) ? (quotedSegment(question) ?? arabicPhrases(c, question)[0]) : undefined;
@@ -436,14 +644,29 @@ export async function respond(question: string, options: RespondOptions = {}): P
     return partial("abstain", `${message("abstain", c.lang)} ${message(suggestKey(chatMode), c.lang)}`);
   }
 
-  // 5) الصياغة من النصوص فقط، ثم الحارس.
+  // 5) الصياغة من النصوص فقط (بصوت الشخصية)، ثم التحقق النهائي.
+  //    الخلاف الفقهي المعتبر لسؤال C في باب فقهي فقط؛ والشبهة في «الداعية» تُرد ولا تُعرض خلافاً.
+  const khilaf = !hadithQuery && c.level === "C" && chatMode !== "discover" && isFiqh(c);
   stage("writing");
-  const gen = await generate(question, c, hadithQuery ? "hadith" : c.level === "C" ? "khilaf" : "general", passages, started + QUESTION_BUDGET_MS, chatMode);
+  const streaming = Boolean(options.onDelta);
+  if (streaming) {
+    try {
+      options.onSources?.({ lang: c.lang, classification: c, passages, fatwas: found.fatwas, links: found.links, hadithCheck: shared.hadithCheck, khilaf });
+    } catch {
+      /* البث لا يوقف الرد */
+    }
+  }
+  const genStarted = Date.now();
+  const gen = await generate(question, c, hadithQuery ? "hadith" : khilaf ? "khilaf" : "general", passages, started + QUESTION_BUDGET_MS, chatMode, {
+    onDelta: options.onDelta,
+    onReset: options.onReset,
+  });
   timings.generateMs = gen.ms;
+  if (gen.firstTokenMs !== undefined) timings.firstTokenMs = genStarted - started + gen.firstTokenMs;
   base.costUsd += gen.cost;
   diag.attempts = gen.attempts;
   diag.abstainReason = gen.reason;
-  const extra = { passages, guard: gen.guard, raw: gen.raw, timings };
+  const extra = { passages, guard: gen.guard, raw: gen.raw, timings, streamed: streaming, ...(gen.persona.length ? { persona: gen.persona } : {}) };
 
   // التحقق من حديث بلا صياغة سليمة: السطر الثابت مع بطاقة الدرر بدل الامتناع.
   if (!gen.ok && hadithQuery) return hadithLine({ guard: gen.guard, raw: gen.raw });
@@ -452,18 +675,31 @@ export async function respond(question: string, options: RespondOptions = {}): P
   // نص الفهرس والقاموس مرجع يُحال إليه، لا اقتباس: يُزال من «» (والسطر المكرر يُحذف).
   const unquoted = unquoteReferenceOnly(gen.text, passages);
   const answer = gen.partial ? `${message("partialAnswer", c.lang)}\n${unquoted}` : unquoted;
-  const body = c.level === "C" ? `${answer}\n\n${message("khilaf", c.lang)}` : answer;
-  const reply = done({ ...common, ...shared, ...extra, kind: "answer", text: withPrefix(body), fatwas: found.fatwas });
-  if (useCache && !prefix) cacheSet(answerKey(question, chatMode), reply, DAY);
+  const body = khilaf ? `${answer}\n\n${message("khilaf", c.lang)}` : answer;
+  const reply = done({ ...common, ...shared, ...extra, kind: "answer", text: withPrefix(body), fatwas: found.fatwas, khilaf });
+  if (useCache && !prefix && !gen.persona.length) {
+    cacheSet(answerKey(question, chatMode), cacheable(reply), DAY);
+    const save = () => writeAnswerCache(question, chatMode, guessLang(question), cacheable(reply));
+    if (options.defer) options.defer(save);
+    else void save();
+  }
   return reply;
 }
 
 /**
  * فحص نهائي لما يُعرض (للاختبار): كلام الأداة كله (الرد، والسطر بعد بطاقات الفتاوى، والأسئلة
  * المقترحة)، مع النصوص المسترجعة. بطاقات الفتاوى والنصوص المنقولة ليست كلام الأداة فلا تُفحص.
+ * R5: الجواب يُفحص بقاعدة الدليل (الحكم مقبول بإشارته [n])، وبقية كلام الأداة بالحارس الصارم.
  */
 export function finalCheck(reply: BrainReply, question: string) {
-  const own = [reply.text, reply.note ?? "", ...(reply.suggestions ?? [])].filter(Boolean).join("\n\n");
   const sources = [...reply.passages, ...(reply.related ?? [])].map((p) => `${p.title}\n${p.text}`);
-  return checkOutput(own, { sources: [...sources, ...(reply.fatwas ?? []).map((f) => `${f.title}\n${f.excerpt}`)], question });
+  const all = [...sources, ...(reply.fatwas ?? []).map((f) => `${f.title}\n${f.excerpt}`)];
+  const rest = [reply.note ?? "", ...(reply.suggestions ?? [])].filter(Boolean).join("\n\n");
+  if (reply.kind === "answer") {
+    const answer = checkAnswer(reply.text, { sources: all, question, citeCount: reply.passages.length });
+    const other = rest ? checkOutput(rest, { sources: all, question }).findings : [];
+    return { findings: [...answer.findings, ...other], ownText: answer.ownText };
+  }
+  const own = [reply.text, rest].filter(Boolean).join("\n\n");
+  return checkOutput(own, { sources: all, question });
 }

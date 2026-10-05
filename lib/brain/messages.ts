@@ -127,14 +127,14 @@ export const MESSAGES = {
     ur: "(ترجمۂ معنی)",
     id: "(terjemahan makna)",
   },
-  /** المستوى (ج): تنبيه الخلاف، بلا ترجيح. */
+  /** المستوى (ج) في باب فقهي (R5): الخلاف معتبر، وتطبيقه على الحالة الشخصية لمختص. */
   khilaf: {
-    ar: "في هذه المسألة خلاف بين أهل العلم، وما سبق عرضٌ لما في المصادر دون ترجيح. للتفصيل في حالتك يمكنك سؤال مختص.",
-    en: "Scholars hold differing views on this matter. The above presents what the sources say without preferring one view. For your own case you can ask a specialist.",
-    tr: "Bu meselede âlimler arasında görüş ayrılığı vardır. Yukarıdakiler, bir görüşü tercih etmeden kaynaklardakini aktarır. Kendi durumunuz için bir uzmana sorabilirsiniz.",
-    fr: "Les savants ont des avis divergents sur cette question. Ce qui précède présente les sources sans privilégier un avis. Pour votre cas, vous pouvez interroger un spécialiste.",
-    ur: "اس مسئلے میں اہلِ علم کے درمیان اختلاف ہے۔ اوپر کسی رائے کو ترجیح دیے بغیر مصادر کی بات پیش کی گئی ہے۔ اپنی صورت کے لیے آپ کسی ماہر سے پوچھ سکتے ہیں۔",
-    id: "Para ulama berbeda pendapat dalam masalah ini. Uraian di atas menyajikan isi sumber tanpa menguatkan salah satu pendapat. Untuk kasus Anda, Anda dapat bertanya kepada seorang ahli.",
+    ar: "هذه مسألة فيها خلاف معتبر بين أهل العلم. وإن كان سؤالك عن حالتك أنت، فاعرضه على مختص يعرف تفاصيلها.",
+    en: "This is a matter of recognised scholarly difference. If your question is about your own situation, present it to a specialist who knows its details.",
+    tr: "Bu, âlimler arasında muteber bir görüş ayrılığı bulunan bir meseledir. Sorunuz kendi durumunuzla ilgiliyse, ayrıntılarını bilen bir uzmana danışın.",
+    fr: "C'est une question qui fait l'objet d'une divergence reconnue entre les savants. Si votre question concerne votre propre situation, présentez-la à un spécialiste qui en connaît les détails.",
+    ur: "یہ ایسا مسئلہ ہے جس میں اہلِ علم کے درمیان معتبر اختلاف ہے۔ اگر آپ کا سوال اپنی صورتِ حال کے بارے میں ہے تو اسے کسی ایسے ماہر کے سامنے رکھیں جو اس کی تفصیل جانتا ہو۔",
+    id: "Ini adalah masalah yang diperselisihkan secara muktabar di antara para ulama. Jika pertanyaan Anda tentang keadaan Anda sendiri, sampaikan kepada seorang ahli yang mengetahui rinciannya.",
   },
   /** عاجل: خطر على النفس أو عنف. */
   urgent: {

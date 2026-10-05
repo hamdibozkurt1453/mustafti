@@ -294,7 +294,16 @@
     "dorarClosest": "Closest results in the Hadith Encyclopedia",
     "hadithNone": "I did not find a verdict on this hadith in the approved sources.",
     "askMentor": "Send your question to a mentor",
-    "askDaee": "Contact a da'i"
+    "askDaee": "Contact a da'i",
+    "labels": {
+      "narrator": "Narrator",
+      "grade": "Grade",
+      "explanation": "Explanation",
+      "benefits": "Benefits",
+      "source": "Source",
+      "translation": "Translation",
+      "hadith": "Hadith"
+    }
   },
   "auth": {
     "loginTitle": "Sign in",

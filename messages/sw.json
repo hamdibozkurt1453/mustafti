@@ -263,7 +263,16 @@
     "dorarClosest": "Matokeo ya karibu zaidi katika Ensaiklopidia ya Hadithi",
     "hadithNone": "Sikupata hukumu ya hadithi hii katika vyanzo vilivyoidhinishwa.",
     "askMentor": "Tuma swali lako kwa mlezi",
-    "askDaee": "Wasiliana na mlinganiaji"
+    "askDaee": "Wasiliana na mlinganiaji",
+    "labels": {
+      "narrator": "Msimulizi",
+      "grade": "Daraja",
+      "explanation": "Maelezo",
+      "benefits": "Mafunzo",
+      "source": "Chanzo",
+      "translation": "Tafsiri",
+      "hadith": "Hadithi"
+    }
   },
   "case": {
     "start": "",

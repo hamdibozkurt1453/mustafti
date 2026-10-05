@@ -18,6 +18,10 @@ import { findTerms } from "./glossary";
 import {
   applyScores,
   clean,
+  CLEAR_MIN,
+  CLEAR_SCORE,
+  isClearMatch,
+  looksLikeCode,
   cleanToolText,
   focusExcerpt,
   keywordScore,
@@ -106,6 +110,10 @@ export type RetrievalStages = {
   rerank2Ms?: number;
   /** الجولات اللاحقة (إعادة التخطيط). */
   laterMs?: number;
+  /** R5: تطابق واضح بالكلمات في الجولة الأولى، فلم يُطلب تقييم الصلة من النموذج. */
+  rerankSkipped?: boolean;
+  /** R5: نتائج «بيّنات» و«الإسلام سؤال وجواب» بالسؤال نفسه بدأت مع التصنيف (الجلب المسبق). */
+  prefetched?: boolean;
 };
 
 export type WebDiag = {
@@ -767,6 +775,21 @@ export async function rerank(
   }
 }
 
+/**
+ * تخطّي التقييم بالنموذج (R5): المطابقات الواضحة تأخذ CLEAR_SCORE، والمراجع المحددة درجة تداخلها،
+ * والباقي درجة تداخلها بحد 55 (لا يُقبل بلا نموذج إلا الواضح). الفتوى و«رابط فقط» صفر: لا تُعرض
+ * بطاقةً بلا تقييم النموذج.
+ */
+export function scoreByKeywords(cands: Candidate[], clear: Candidate[], terms: string[]): { cands: Candidate[]; mode: "keywords" } {
+  for (const c of cands) {
+    if (c.score !== undefined) continue;
+    const kw = keywordScore(overlap(c, terms));
+    c.score = clear.includes(c) ? CLEAR_SCORE : c.fatwa || c.linkOnly ? 0 : c.pinned ? kw : Math.min(55, kw);
+    c.scoredBy = "keywords";
+  }
+  return { cands, mode: "keywords" };
+}
+
 // ---------------------------------------------------------------------------
 // المصادر حسب نوع السؤال (Quranpedia والدرر)
 // ---------------------------------------------------------------------------
@@ -966,9 +989,11 @@ async function islamqaCandidates(
   deps: PinDeps,
   diag: SearchDiag[],
   left: () => number,
+  /** عبارة بُحث بها مسبقاً (مع التصنيف): لا تُكرر. */
+  skip?: string,
 ): Promise<Candidate[]> {
   const fn = deps.islamqa ?? DEFAULT_PIN_DEPS.islamqa!;
-  const queries = islamqaQueries(c, question);
+  const queries = islamqaQueries(c, question).filter((q) => q.q !== skip);
   if (!queries.length) return [];
   const t0 = Date.now();
   const errors: string[] = [];
@@ -989,6 +1014,53 @@ async function islamqaCandidates(
     ...(errors.length ? { error: [...new Set(errors)].join(" | ").slice(0, 300) } : {}),
   });
   return found.map(fromSource);
+}
+
+// ---------------------------------------------------------------------------
+// الجلب المسبق (R5): يبدأ مع التصنيف، لا بعده
+// ---------------------------------------------------------------------------
+
+export type Prefetch = {
+  /** عبارة «بيّنات» (السؤال العربي نفسه، كما يبحث بها retrieve). */
+  bayyinatQuery: string;
+  bayyinat: Promise<Candidate[]>;
+  /** عبارة «الإسلام سؤال وجواب» المحلية (السؤال نفسه). */
+  islamqaQuery: string;
+  islamqa: Promise<Candidate[]>;
+  searches: SearchDiag[];
+};
+
+/**
+ * المصدران المحليان السريعان بالسؤال العربي نفسه («بيّنات» و«الإسلام سؤال وجواب»): لا يحتاجان
+ * عبارات المصنّف، فيبدآن معه بالتوازي، ويأخذ retrieve نتيجتهما بدل طلب جديد. لغير العربية لا شيء.
+ */
+export function prefetchFast(question: string, lang: string, deps: PinDeps = DEFAULT_PIN_DEPS): Prefetch | undefined {
+  if (lang !== "ar" || !/[\u0600-\u06FF]/.test(question)) return undefined;
+  const searches: SearchDiag[] = [];
+  const q = question.trim().slice(0, 300);
+  const bayyinat = searchBayyinat(question, searches).catch(() => [] as Candidate[]);
+  const fn = deps.islamqa ?? DEFAULT_PIN_DEPS.islamqa!;
+  const t0 = Date.now();
+  const errors: string[] = [];
+  const islamqa = withTimeout(
+    fn([{ q, lang: "ar" }], "ar", keywords(question), (e) => errors.push(e)).catch((e) => {
+      errors.push(String((e as Error)?.message ?? e).slice(0, 200));
+      return [] as SourceResult[];
+    }),
+    ISLAMQA_MS,
+    [] as SourceResult[],
+  ).then((found) => {
+    searches.push({
+      query: `${q.slice(0, 100)} (مسبقاً)`,
+      lang: "ar",
+      source: "islamqa-local",
+      results: found.length,
+      ms: Date.now() - t0,
+      ...(errors.length ? { error: [...new Set(errors)].join(" | ").slice(0, 300) } : {}),
+    });
+    return found.map(fromSource);
+  });
+  return { bayyinatQuery: question, bayyinat, islamqaQuery: q, islamqa, searches };
 }
 
 // ---------------------------------------------------------------------------
@@ -1040,6 +1112,9 @@ function settle<T>(p: Promise<T>, fallback: T): { promise: Promise<T>; done: () 
 export const WEB_DEADLINE_MS = 35_000;
 /** المصادر السريعة تُنتظر حتى هذا الحد قبل التقييم الأول (R1d). */
 export const FAST_WAIT_MS = 8_000;
+/** R5: أقل انتظار للمصادر السريعة، ثم يكفي ما وصل إن بلغ FAST_ENOUGH مرشحاً. */
+export const FAST_MIN_MS = 4_500;
+export const FAST_ENOUGH = 6;
 /** مصدران ذوا صلة (≥ 60) في التقييم الأول يكفيان: لا تُنتظر «ابحث واقرأ». */
 export const EARLY_EXIT_MIN = 2;
 /** يُترك من الميزانية بعد الانتظار الثاني لتقييم الصلة. */
@@ -1162,6 +1237,8 @@ export type RetrieveOptions = {
   web?: Promise<WebResult>;
   /** وضع المحادثة (R3: lib/brain/modes.ts): ترتيب المصادر وأولويتها فقط، والقبول كما هو. */
   mode?: ChatMode;
+  /** R5: نتائج بدأت مع التصنيف (prefetchFast). */
+  prefetch?: Prefetch;
 };
 
 export type RetrieveResult = {
@@ -1232,6 +1309,7 @@ export async function retrieve(
   // «بيّنات»: السؤال كما كتبه السائل إن كان عربياً، وإلا كلمات البحث العربية.
   const bayyinatQuery = /[\u0600-\u06FF]/.test(question) && c.lang === "ar" ? question : c.searchQueries.ar.join(" ");
   const pins = pinnedJobs(c, question, diag, plan, deps, deadline, mode);
+  const pre = opts.prefetch;
   const others = RETRIEVAL_SOURCES.filter((x) => x !== "quranenc");
   const phrases = [...arabicPhrases(c, question), ...c.searchQueries.userLang].slice(0, 5);
   const webMs = Math.min(WEB_DEADLINE_MS, Math.max(2_000, deadline - Date.now() - 8_000));
@@ -1241,8 +1319,17 @@ export async function retrieve(
     job("pinned", "core", withTimeout(pins.core, left(), none)),
     job("pinned", "quranPins", pins.quran),
     job("pinned", "tafsir", tafsirCandidates(c, question, deps, diag.searches, left).then((xs) => xs.map((x) => ({ ...x, kw: 50, pinned: true })))),
-    job("raw", "islamqa", wantsIslamqa(c) ? islamqaCandidates(c, question, terms, deps, diag.searches, left) : Promise.resolve(none)),
-    job("raw", "bayyinat", searchBayyinat(bayyinatQuery, diag.searches).catch(() => none)),
+    job(
+      "raw",
+      "islamqa",
+      wantsIslamqa(c)
+        ? Promise.all([
+            pre?.islamqa ?? none,
+            islamqaCandidates(c, question, terms, deps, diag.searches, left, pre?.islamqaQuery),
+          ]).then((xs) => xs.flat())
+        : Promise.resolve(none),
+    ),
+    job("raw", "bayyinat", pre && pre.bayyinatQuery === bayyinatQuery ? pre.bayyinat : searchBayyinat(bayyinatQuery, diag.searches).catch(() => none)),
     job("raw", "found", searchSources(queries, diag.searches, others, left())),
     job("raw", "quranSearch", searchSources(queries, diag.searches, ["quranenc"], left())),
     job("raw", "published", runExtra(extra, deps, diag.searches, left)),
@@ -1306,19 +1393,32 @@ export async function retrieve(
 
   // 1) المصادر السريعة حتى ~8 ثوانٍ (أو حتى تكتمل كلها). بحث القرآن بالكلمات أبطأ: لا يُنتظر هنا،
   //    ويُؤخذ إن كان قد انتهى، وإلا ففي الجولة الثانية.
+  //    R5: بعد FAST_MIN_MS يكفي ما وصل إن بلغ FAST_ENOUGH مرشحاً (لا يُنتظر أبطأ مصدر سريع).
   const SLOW = new Set(["quranPins", "quranSearch"]);
+  const fastJobs = jobs.filter((j) => !SLOW.has(j.key));
   await waitAll(
-    jobs.filter((j) => !SLOW.has(j.key)).map((j) => j.s.promise),
-    Math.min(FAST_WAIT_MS, left()),
+    fastJobs.map((j) => j.s.promise),
+    Math.min(FAST_MIN_MS, left()),
   );
+  const arrived = () => fastJobs.filter((j) => j.s.done()).reduce((n, j) => n + j.s.value().length, 0);
+  if (fastJobs.some((j) => !j.s.done()) && arrived() < FAST_ENOUGH) {
+    await waitAll(
+      fastJobs.map((j) => j.s.promise),
+      Math.min(FAST_WAIT_MS - (Date.now() - started), left()),
+    );
+  }
   const fastMs = Date.now() - started;
   const webInRound1 = web.done();
   const first = await batch(RERANK_POOL);
   opts.onVerify?.();
   const t1 = Date.now();
-  const reranked = await rerank(question, first, terms);
+  // R5: تطابق واضح بالكلمات في ثلاثة مرشحين فأكثر ⇒ لا تقييم بالنموذج في هذه الجولة.
+  const questionTerms = keywords(question);
+  const clear = first.filter((x) => x.score === undefined && !x.linkOnly && !x.fatwa && isClearMatch(x, questionTerms, terms));
+  const rerankSkipped = clear.length >= CLEAR_MIN;
+  const reranked = rerankSkipped ? scoreByKeywords(first, clear, terms) : await rerank(question, first, terms);
   let all = reranked.cands;
-  const stages: RetrievalStages = { fastMs, rerank1Ms: Date.now() - t1, earlyExit: false, webInRound1 };
+  const stages: RetrievalStages = { fastMs, rerank1Ms: Date.now() - t1, earlyExit: false, webInRound1, ...(rerankSkipped ? { rerankSkipped } : {}), ...(pre ? { prefetched: true } : {}) };
   diag.stages = stages;
 
   // 2) مصدران ذوا صلة يكفيان؛ وإلا انتظار «ابحث واقرأ» وما تأخر، وتقييم ما جاء في طلب واحد.
@@ -1371,7 +1471,9 @@ export async function retrieve(
   // العلاوة للترتيب فقط (مصادر المبتدئين و«بيّنات» في الوضعين الموجّهين)، والقبول بالدرجة نفسها (≥ 60).
   const rankOf = (x: Candidate) => (x.score ?? 0) + rankBonus(mode, x.sourceId);
   const byScore = (a: Candidate, b: Candidate) => rankOf(b) - rankOf(a) || (b.kw ?? 0) - (a.kw ?? 0);
-  const ranked = cands.filter((x) => (x.score ?? 0) >= MIN_SCORE).sort(byScore);
+  // R5: بقايا الكود (JSON-LD وHTML) لا تصل إلى الصياغة ولا إلى البطاقات أبداً (ولو كانت مرجعاً محدداً).
+  const ranked = cands.filter((x) => (x.score ?? 0) >= MIN_SCORE && !looksLikeCode(x.text)).sort(byScore);
+  if (pre) diag.searches.push(...pre.searches);
   // «رابط فقط» لا يُرسل للصياغة أبداً (لا نص فيه): الفتوى منه بطاقة بلا مقتطف، وغيره رابط.
   // الفتوى لا تُعرض إلا إن قيّمها النموذج ضد السؤال الحالي (≥ 60).
   const fatwaKept = ranked.filter((x) => x.fatwa && x.scoredBy === "llm");
@@ -1383,7 +1485,7 @@ export async function retrieve(
     .slice(0, 3)
     .map((x) => ({ title: x.title, url: x.url, site: x.source }));
   const related = cands
-    .filter((x) => !x.fatwa && !x.linkOnly && (x.score ?? 0) >= RELATED_MIN && (x.score ?? 0) < MIN_SCORE)
+    .filter((x) => !x.fatwa && !x.linkOnly && (x.score ?? 0) >= RELATED_MIN && (x.score ?? 0) < MIN_SCORE && !looksLikeCode(x.text))
     .sort(byScore)
     .slice(0, 3);
   return {

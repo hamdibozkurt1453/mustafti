@@ -510,3 +510,20 @@ revoke all on public.adhkar from anon, authenticated;
 grant select on public.adhkar to anon, authenticated;
 drop policy if exists adhkar_select on public.adhkar;
 create policy adhkar_select on public.adhkar for select to anon, authenticated using (true);
+
+-- ---------------------------------------------------------------------------
+-- R5: ذاكرة الأجوبة لمدة 7 أيام (migrations/20261010_answer_cache.sql). مفتاح الخادم وحده.
+-- ---------------------------------------------------------------------------
+create table if not exists public.answer_cache (
+  key text primary key,
+  question_norm text not null,
+  mode text not null default 'general' check (mode in ('general', 'new_muslim', 'discover')),
+  lang text not null,
+  version text not null,
+  reply jsonb not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default (now() + interval '7 days')
+);
+create index if not exists answer_cache_expires_idx on public.answer_cache (expires_at);
+alter table public.answer_cache enable row level security;
+revoke all on public.answer_cache from anon, authenticated;

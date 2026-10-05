@@ -4,10 +4,14 @@
  *   stage  ← مرحلة العمل (لمؤشر «يبحث في المصادر…»).
  *   start  ← نوع الرد ولغته واتجاهه وبطاقات المصادر (قبل أول كلمة).
  *   delta  ← جزء من النص (كلمة أو كلمات)، بالترتيب.
+ *   reset  ← R5: امسح ما كُتب (محاولة صياغة ثانية تبدأ).
+ *   final  ← R5: الرد النهائي بعد التحقق الكامل (النص والمصادر وكل الحقول)، يحل محل ما بُث.
  *   done   ← اكتمل الرد.
  *   error  ← رسالة لطيفة ثابتة (بلا تفاصيل فنية ولا اسم نموذج).
  *
- * النص المبثوث هو رد مُستفتي بعد الحارس كاملاً (lib/brain/respond.ts)، فلا تصل كلمة لم تُفحص.
+ * R5: الجواب يُبث أثناء كتابته جملةً جملة، وكل جملة تمر بالتحقق قبل إرسالها (lib/brain/respond.ts)،
+ * ثم يأتي الجواب النهائي بعد التحقق الحرفي على الجواب كاملاً في حدث final. والردود الثابتة
+ * والمخزّنة تُبث كما كانت (start ثم delta ثم done).
  */
 
 export type ChatStage = "understanding" | "searching" | "reading" | "readingFatwa" | "verifying" | "writing";
@@ -36,31 +40,37 @@ export type ChatFatwa = { title: string; mufti: string; excerpt: string; url: st
 /** رابط من المرجعية بلا اقتباس (قرأته طبقة «ابحث واقرأ» ولم يُوثَّق نص منه). */
 export type ChatLink = { title: string; url: string; site: string };
 
+/** رأس الرد: نوعه ولغته واتجاهه وبطاقاته (في start، ومع النص في final). */
+export type ChatReplyHead = {
+  kind: ChatReplyKind;
+  lang: string;
+  dir: "rtl" | "ltr";
+  level?: string;
+  /** R5: الجواب عرض خلافاً فقهياً معتبراً (شارة «مسألة خلافية»). */
+  khilaf?: boolean;
+  sources: ChatSource[];
+  /** للإحالة: نوع رسالتها، وللإحالة والامتناع: الباب ونوع السائل (لبدء الاستيضاح). */
+  referral?: "personal" | "ruling";
+  chapter?: string;
+  userType?: string;
+  /** «فتاوى منشورة ذات صلة» (تحت الجواب، أو قبل الإحالة في الحالة الشخصية). */
+  fatwas?: ChatFatwa[];
+  /** عند الامتناع: أسئلة قريبة يمكن الجواب عنها من المصادر. */
+  suggestions?: string[];
+  /** سطر ثابت بعد بطاقات الفتاوى في الحالة الشخصية («الأفضل لحالتك أن يراها مختص»). */
+  note?: string;
+  /** روابط من المصادر المعتمدة بلا اقتباس موثَّق. */
+  links?: ChatLink[];
+  /** سؤال تحقق من حديث: المتصفح يطلب الدرر بهذه العبارة (JSONP). */
+  hadithCheck?: { query: string; fallback?: boolean };
+};
+
 export type ChatEvent =
   | { type: "stage"; stage: ChatStage }
-  | {
-      type: "start";
-      kind: ChatReplyKind;
-      lang: string;
-      dir: "rtl" | "ltr";
-      level?: string;
-      sources: ChatSource[];
-      /** للإحالة: نوع رسالتها، وللإحالة والامتناع: الباب ونوع السائل (لبدء الاستيضاح). */
-      referral?: "personal" | "ruling";
-      chapter?: string;
-      userType?: string;
-      /** «فتاوى منشورة ذات صلة» (تحت الجواب، أو قبل الإحالة في الحالة الشخصية). */
-      fatwas?: ChatFatwa[];
-      /** عند الامتناع: أسئلة قريبة يمكن الجواب عنها من المصادر. */
-      suggestions?: string[];
-      /** سطر ثابت بعد بطاقات الفتاوى في الحالة الشخصية («الأفضل لحالتك أن يراها مختص»). */
-      note?: string;
-      /** روابط من المصادر المعتمدة بلا اقتباس موثَّق. */
-      links?: ChatLink[];
-      /** سؤال تحقق من حديث: المتصفح يطلب الدرر بهذه العبارة (JSONP). */
-      hadithCheck?: { query: string; fallback?: boolean };
-    }
+  | ({ type: "start" } & ChatReplyHead)
   | { type: "delta"; text: string }
+  | { type: "reset" }
+  | ({ type: "final"; text: string } & ChatReplyHead)
   | { type: "done" }
   | { type: "error"; code: "rate_limited" | "busy" | "bad_request"; text?: string };
 

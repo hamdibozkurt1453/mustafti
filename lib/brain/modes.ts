@@ -1,8 +1,8 @@
 /**
  * أوضاع المحادثة (R3): العامة في الرئيسية، و«المرشد» في /new-muslim، و«الداعية» في /discover.
- * الوضع لا يغيّر القواعد (لا فتوى، وكل جملة منسوبة إلى نص مسترجع، والامتناع كما هو)، وإنما:
+ * الوضع لا يغيّر القواعد (لا فتوى شخصية، وكل حكم ودليل ونسبة بإشارة [n] إلى نص مسترجع، والامتناع كما هو)، وإنما:
  *   - ترتيب المصادر وأولويتها (sourceOrder، sourceBoost، rankBonus)،
- *   - ونبرة الصياغة (modeNote)،
+ *   - والشخصية وموجّه نظامها (R5: lib/brain/personas/)،
  *   - ونوع السائل الافتراضي (modeUserType)،
  *   - ومسار المسألة عند الإحالة (track في cases، والمختص بحسب دوره: lib/case/routing.ts).
  * ملف نقي بلا server-only: يُستورد في الواجهة والخادم والاختبارات.
@@ -77,15 +77,4 @@ export function modeUserType(mode: ChatMode, userType: string): string | null {
   if (mode === "new_muslim" && userType !== "new_muslim") return "new_muslim";
   if (mode === "discover" && userType !== "non_muslim") return "non_muslim";
   return null;
-}
-
-/** نبرة الصياغة لكل وضع (تُضاف إلى تعليمات الجواب، ولا تغيّر القواعد غير القابلة للكسر). */
-export function modeNote(mode: ChatMode): string {
-  if (mode === "new_muslim") {
-    return `GUIDE MODE (new Muslim): the asker recently embraced Islam. Be warm, welcoming and gentle, like a kind mentor; never scold or overwhelm. Use simple everyday words and short sentences, and explain any Arabic term in plain words the first time. Basics come first (the two testimonies, purification, prayer step by step, fasting, kind relations with non-Muslim family). When the passages describe steps (wudu, ghusl, prayer), give them in order as short separate lines, each with its [n]; never add a step that is not in the passages.`;
-  }
-  if (mode === "discover") {
-    return `DA'I MODE (non-Muslim learning about Islam): be respectful and calm, with no pressure to convert and no repeated invitations. Never criticise, mock or belittle any other religion or its followers. Explain Islamic belief only as the passages state it. For a doubt or objection about Islam, prefer quoting the «بيّنات» passage verbatim inside «…» with its [n].`;
-  }
-  return "";
 }

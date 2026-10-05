@@ -263,7 +263,16 @@
     "dorarClosest": "Sakamako mafi kusa a Kundin Hadisi",
     "hadithNone": "Ban sami hukunci kan wannan hadisin a majiyoyin da aka amince ba.",
     "askMentor": "Aika tambayarka ga mai jagora",
-    "askDaee": "Tuntuɓi mai da'awa"
+    "askDaee": "Tuntuɓi mai da'awa",
+    "labels": {
+      "narrator": "Mai ruwaya",
+      "grade": "Daraja",
+      "explanation": "Bayani",
+      "benefits": "Darussa",
+      "source": "Majiya",
+      "translation": "Fassara",
+      "hadith": "Hadisi"
+    }
   },
   "case": {
     "start": "",

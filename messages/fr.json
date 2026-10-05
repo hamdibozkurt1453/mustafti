@@ -263,7 +263,16 @@
     "dorarClosest": "Résultats les plus proches dans l'Encyclopédie du hadith",
     "hadithNone": "Je n'ai pas trouvé de jugement sur ce hadith dans les sources approuvées.",
     "askMentor": "Envoyer votre question à un accompagnateur",
-    "askDaee": "Contacter un da'i"
+    "askDaee": "Contacter un da'i",
+    "labels": {
+      "narrator": "Rapporteur",
+      "grade": "Degré",
+      "explanation": "Explication",
+      "benefits": "Enseignements",
+      "source": "Source",
+      "translation": "Traduction",
+      "hadith": "Hadith"
+    }
   },
   "case": {
     "start": "",

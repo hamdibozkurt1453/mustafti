@@ -50,60 +50,88 @@ type Props = {
   onTerm: (term: GlossaryTerm) => void;
 };
 
+/** «**عنوان**» وسطر «## عنوان» (R5: الجواب الحر قد يُنظَّم بعناوين قصيرة): أجزاء عادية وعريضة. */
+function boldParts(text: string): { text: string; bold: boolean }[] {
+  const src = text.replace(/^[ \t]*#{1,4}[ \t]+(.+?)[ \t]*$/gm, "**$1**");
+  const parts: { text: string; bold: boolean }[] = [];
+  let last = 0;
+  for (const m of src.matchAll(/\*\*([^*\n]+)\*\*/g)) {
+    if (m.index! > last) parts.push({ text: src.slice(last, m.index), bold: false });
+    parts.push({ text: m[1], bold: true });
+    last = m.index! + m[0].length;
+  }
+  if (last < src.length) parts.push({ text: src.slice(last), bold: false });
+  return parts;
+}
+
 export function RichText({ text, messageId, cards, onTerm }: Props) {
   const t = useTranslations("chat");
   const used = new Set<string>();
-  const out: ReactNode[] = [];
   let key = 0;
 
-  const pushTerms = (segment: string) => {
-    let rest = segment;
-    while (rest) {
-      const span = findSpans(rest).find((s) => !used.has(s.term.id));
-      if (!span) {
-        out.push(rest);
-        break;
+  const render = (segment: string): ReactNode[] => {
+    const out: ReactNode[] = [];
+    const pushTerms = (part: string) => {
+      let rest = part;
+      while (rest) {
+        const span = findSpans(rest).find((s) => !used.has(s.term.id));
+        if (!span) {
+          out.push(rest);
+          break;
+        }
+        used.add(span.term.id);
+        if (span.start) out.push(rest.slice(0, span.start));
+        const word = rest.slice(span.start, span.end);
+        out.push(
+          <button
+            key={`t${key++}`}
+            type="button"
+            onClick={() => onTerm(span.term)}
+            title={t("term.hint")}
+            className="cursor-help rounded-sm font-semibold text-green-600 underline decoration-gold-500 decoration-dotted decoration-2 underline-offset-4 transition hover:bg-gold-50"
+          >
+            {word}
+          </button>,
+        );
+        rest = rest.slice(span.end);
       }
-      used.add(span.term.id);
-      if (span.start) out.push(rest.slice(0, span.start));
-      const word = rest.slice(span.start, span.end);
+    };
+
+    let last = 0;
+    for (const m of segment.matchAll(REF)) {
+      pushTerms(segment.slice(last, m.index));
+      const n = Number(m[1]);
       out.push(
-        <button
-          key={`t${key++}`}
-          type="button"
-          onClick={() => onTerm(span.term)}
-          title={t("term.hint")}
-          className="cursor-help rounded-sm font-semibold text-green-600 underline decoration-gold-500 decoration-dotted decoration-2 underline-offset-4 transition hover:bg-gold-50"
-        >
-          {word}
-        </button>,
+        cards.includes(n) ? (
+          <a
+            key={`r${key++}`}
+            href={`#src-${messageId}-${n}`}
+            aria-label={t("sourceRef", { n })}
+            className="mx-0.5 inline-flex h-5 min-w-5 -translate-y-0.5 items-center justify-center rounded-full bg-green-900/10 px-1.5 align-middle text-[11px] font-semibold text-green-900 no-underline transition hover:bg-gold-500"
+          >
+            {n}
+          </a>
+        ) : (
+          <span key={`r${key++}`}>{m[0]}</span>
+        ),
       );
-      rest = rest.slice(span.end);
+      last = (m.index ?? 0) + m[0].length;
     }
+    pushTerms(segment.slice(last));
+    return out;
   };
 
-  let last = 0;
-  for (const m of text.matchAll(REF)) {
-    pushTerms(text.slice(last, m.index));
-    const n = Number(m[1]);
-    out.push(
-      cards.includes(n) ? (
-        <a
-          key={`r${key++}`}
-          href={`#src-${messageId}-${n}`}
-          aria-label={t("sourceRef", { n })}
-          className="mx-0.5 inline-flex h-5 min-w-5 -translate-y-0.5 items-center justify-center rounded-full bg-green-900/10 px-1.5 align-middle text-[11px] font-semibold text-green-900 no-underline transition hover:bg-gold-500"
-        >
-          {n}
-        </a>
-      ) : (
-        <span key={`r${key++}`}>{m[0]}</span>
-      ),
-    );
-    last = (m.index ?? 0) + m[0].length;
-  }
-  pushTerms(text.slice(last));
-
-  return <>{out}</>;
+  return (
+    <>
+      {boldParts(text).map((p) =>
+        p.bold ? (
+          <strong key={`b${key++}`} className="font-semibold text-green-900">
+            {render(p.text)}
+          </strong>
+        ) : (
+          render(p.text)
+        ),
+      )}
+    </>
+  );
 }
-
