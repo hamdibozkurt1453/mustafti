@@ -1,5 +1,6 @@
 import { authzResponse, requireRole } from "@/lib/auth/roles";
 import { classify } from "@/lib/brain/classify";
+import { isChatMode } from "@/lib/brain/modes";
 import { respond } from "@/lib/brain/respond";
 import { looksHadithCheck, quotedSegment, rerank, searchBayyinat, webCandidates, type Candidate } from "@/lib/brain/retrieval";
 import { keywords } from "@/lib/brain/rank";
@@ -37,7 +38,7 @@ export async function GET() {
   return new Response(page(sources), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }
 
-type Body = { action?: unknown; question?: unknown; source?: unknown; queries?: unknown; lang?: unknown; level?: unknown };
+type Body = { action?: unknown; question?: unknown; source?: unknown; queries?: unknown; lang?: unknown; level?: unknown; mode?: unknown };
 
 export async function POST(request: Request) {
   const denied = await guard();
@@ -52,16 +53,21 @@ export async function POST(request: Request) {
   const noStore = { headers: { "Cache-Control": "no-store" } };
 
   // «شغّل الكل»: الرد كاملاً (التصنيف ← المصادر ← الصياغة ← الحارس) بلا ذاكرة الأجوبة، وملخصه.
+  // R3: mode اختياري (new_muslim أو discover) لأسئلة المحادثتين الموجّهتين.
   if (body.action === "full") {
     if (!isLlmConfigured()) return Response.json({ error: "OPENROUTER_API_KEY / LLM_MODEL is not set" }, { status: 503 });
     const t0 = Date.now();
+    const mode = isChatMode(body.mode) ? body.mode : "general";
     try {
-      const r = await respond(question);
+      const r = await respond(question, { mode });
       const web = r.diag.retrieval?.web ?? r.diag.caseFatwas?.web;
       return Response.json(
         {
+          mode,
           kind: r.kind,
           level: r.classification?.level ?? null,
+          userType: r.classification?.userType ?? null,
+          sources: [...new Set(r.passages.map((p) => p.source))].slice(0, 6),
           overrides: r.overrides,
           accepted: r.passages.length,
           fatwas: r.fatwas?.length ?? 0,
@@ -212,7 +218,7 @@ a{color:var(--mid)}
 <a data-q="طلقت زوجتي وأنا غاضب جداً، هل وقع الطلاق؟">حالة شخصية (D)</a>
 <a data-q="لماذا يصوم المسلمون في رمضان؟">سؤال عام</a>
 </div>
-<details open><summary><b>شغّل الكل</b>: خمسة عشر سؤالاً متنوعاً بالرد كاملاً (المستوى، والمصادر المقبولة، والزمن، والامتناع)</summary>
+<details open><summary><b>شغّل الكل</b>: واحد وعشرون سؤالاً متنوعاً بالرد كاملاً (المستوى، والمصادر المقبولة، والزمن، والامتناع)، منها ستة للمحادثتين الموجّهتين: «المرشد» (new_muslim) و«الداعية» (discover)</summary>
 <ol id="suite" style="font-size:.85rem;margin:6px 0"></ol>
 <button id="runAll">شغّل الكل</button>
 <table id="table" hidden style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;font-size:.85rem"><thead><tr>
@@ -239,15 +245,22 @@ const SUITE=[
 ["معاملات (إنجليزي)","What is the ruling on mortgages?"],
 ["صيام (تركي)","Oruç tutarken diş fırçalamak orucu bozar mı?"],
 ["عقيدة","من هم أولو العزم من الرسل؟"],
-["أسماء الله","ما معنى اسم الله الصمد؟"]];
-SUITE.forEach(([c,q])=>{const li=document.createElement("li");li.textContent=c+": "+q;document.getElementById("suite").appendChild(li)});
+["أسماء الله","ما معنى اسم الله الصمد؟"],
+["المرشد","كيف أتوضأ خطوة بخطوة؟","new_muslim"],
+["المرشد","ما معنى الشهادتين؟","new_muslim"],
+["المرشد (إنجليزي)","My parents are Christian. How should I treat them now that I am Muslim?","new_muslim"],
+["الداعية (إنجليزي)","What do Muslims believe about God?","discover"],
+["الداعية · شبهة","هل انتشر الإسلام بالسيف؟","discover"],
+["الداعية · شبهة (إنجليزي)","Why do Muslims worship the Kaaba?","discover"]];
+const tag=(c,m)=>c+(m?" ["+m+"]":"");
+SUITE.forEach(([c,q,m])=>{const li=document.createElement("li");li.textContent=tag(c,m)+": "+q;document.getElementById("suite").appendChild(li)});
 document.getElementById("runAll").onclick=async()=>{const b=document.getElementById("runAll");b.disabled=true;
 const t=document.getElementById("table");t.hidden=false;const tb=t.querySelector("tbody");tb.innerHTML="";
-const rows=SUITE.map(([c,q])=>{const tr=document.createElement("tr");[c+": "+q,"…","","","","","","","",""].forEach(x=>{const td=document.createElement("td");td.textContent=x;tr.appendChild(td)});tb.appendChild(tr);return tr});
-let next=0;async function w(){while(next<SUITE.length){const i=next++;const [c,q]=SUITE[i];const tds=rows[i].children;
-try{const j=await post({action:"full",question:q});
+const rows=SUITE.map(([c,q,m])=>{const tr=document.createElement("tr");[tag(c,m)+": "+q,"…","","","","","","","",""].forEach(x=>{const td=document.createElement("td");td.textContent=x;tr.appendChild(td)});tb.appendChild(tr);return tr});
+let next=0;async function w(){while(next<SUITE.length){const i=next++;const [c,q,m]=SUITE[i];const tds=rows[i].children;
+try{const j=await post(m?{action:"full",question:q,mode:m}:{action:"full",question:q});
 if(j.error){tds[1].textContent="خطأ";tds[7].textContent=j.error;continue}
-tds[1].textContent=j.level??"—";tds[2].textContent=j.kind+(j.overrides&&j.overrides.length?" ("+j.overrides.join("، ")+")":"");tds[3].textContent=String(j.accepted);
+tds[1].textContent=j.level??"—";tds[2].textContent=j.kind+(j.overrides&&j.overrides.length?" ("+j.overrides.join("، ")+")":"");tds[3].textContent=String(j.accepted)+(j.sources&&j.sources.length?" ("+j.sources.join("، ")+")":"");
 tds[4].textContent=j.fatwas+" / "+j.links;tds[5].textContent=j.web?(j.web.verified+" بنص · "+j.web.linkOnly+" رابط"+(j.web.searchOnly?" (بحث فقط)":"")+" · "+j.web.ms+"ms"+(j.web.error?" · "+j.web.error:"")):"—";
 tds[6].textContent=(j.ms/1000).toFixed(1)+" ث";tds[6].style.color=j.ms>20000?"var(--bad)":"var(--mid)";tds[7].textContent=j.abstained?"نعم":"لا";tds[7].style.color=j.abstained?"var(--bad)":"var(--mid)";tds[0].title=j.text||"";
 const RS={no_passages:"لا نصوص من البحث",no_relevant:"لا نص بلغ 60",model_abstained:"النموذج امتنع رغم النصوص",no_citation:"جواب بلا إشارة [n]",guard:"اعتراض الحارس"};
