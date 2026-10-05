@@ -1,5 +1,8 @@
 import "server-only";
 
+import type { CaseTrack } from "@/lib/brain/modes";
+import type { ExpertRole } from "@/lib/experts/types";
+import { missingColumn } from "@/lib/case/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { averageAnswerMinutes, CASE_STATUSES, EXPERT_STATUSES, percent, statsWindows, type CaseStatus } from "./rules";
 
@@ -17,20 +20,42 @@ export type AdminCase = {
   askerCountry: string | null;
   createdAt: string;
   expertName: string | null;
+  /** R3: مسار المسألة، والدور المحالة إليه. */
+  track: CaseTrack;
+  routeTo: ExpertRole | null;
 };
 
-/** كل الملفات بالأحدث (أو بحالة واحدة)، مع اسم المختص المسند إليه. */
-export async function listCases(status: CaseStatus | null, limit = 200): Promise<AdminCase[]> {
+type CaseListRow = {
+  id: string;
+  status: CaseStatus;
+  chapter: string | null;
+  priority: string | null;
+  asker_country: string | null;
+  created_at: string;
+  assigned_expert: string | null;
+  route_to: ExpertRole | null;
+  track?: CaseTrack | null;
+};
+
+/** كل الملفات بالأحدث (أو بحالة واحدة، أو بمسار واحد: R3)، مع اسم المختص المسند إليه. */
+export async function listCases(status: CaseStatus | null, limit = 200, track: CaseTrack | null = null): Promise<AdminCase[]> {
   const db = createAdminClient();
-  let q = db
-    .from("cases")
-    .select("id, status, chapter, priority, asker_country, created_at, assigned_expert")
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (status) q = q.eq("status", status);
-  const { data, error } = await q.returns<
-    { id: string; status: CaseStatus; chapter: string | null; priority: string | null; asker_country: string | null; created_at: string; assigned_expert: string | null }[]
-  >();
+  const query = (withTrack: boolean) => {
+    let q = db
+      .from("cases")
+      .select(`id, status, chapter, priority, asker_country, created_at, assigned_expert, route_to${withTrack ? ", track" : ""}`)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (status) q = q.eq("status", status);
+    if (withTrack && track) q = q.eq("track", track);
+    return q.returns<CaseListRow[]>();
+  };
+  let { data, error } = await query(true);
+  // قبل migration المسار (20261009_case_track.sql): كل المسائل عامة.
+  if (error && missingColumn(error, "track")) {
+    ({ data, error } = await query(false));
+    if (track && track !== "general") data = [];
+  }
   if (error) console.error("admin cases:", error.message);
   const rows = data ?? [];
 
@@ -49,6 +74,8 @@ export async function listCases(status: CaseStatus | null, limit = 200): Promise
     askerCountry: r.asker_country,
     createdAt: r.created_at,
     expertName: r.assigned_expert ? (names.get(r.assigned_expert) ?? "—") : null,
+    track: r.track ?? "general",
+    routeTo: r.route_to,
   }));
 }
 

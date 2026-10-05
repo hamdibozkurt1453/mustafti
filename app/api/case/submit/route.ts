@@ -3,6 +3,7 @@ import { redactDraft } from "@/lib/case/draft";
 import { translateEdits } from "@/lib/case/file";
 import { ChapterSchema, DraftSchema, guardCaseRequest, KindSchema, LangSchema } from "@/lib/case/http";
 import { saveCase } from "@/lib/case/store";
+import { CASE_TRACKS } from "@/lib/brain/modes";
 import { countryCodeOf } from "@/lib/experts/countries";
 import { isAdminClientConfigured } from "@/lib/supabase/admin";
 
@@ -25,6 +26,8 @@ const Body = z.object({
   draft: DraftSchema,
   edited: z.object({ summary: z.boolean(), rows: z.array(z.string().max(40)).max(24) }),
   email: z.union([z.literal(""), z.email().max(200)]).nullish(),
+  /** R3: مسار المسألة (المرشد ← mentor، الداعية ← daee، والاحتياط إلى المفتي). */
+  track: z.enum(CASE_TRACKS).optional(),
 });
 
 export async function POST(request: Request) {
@@ -37,7 +40,7 @@ export async function POST(request: Request) {
     const emailBad = parsed.error.issues.some((i) => i.path[0] === "email");
     return Response.json({ error: emailBad ? "bad_email" : "bad_request" }, { status: 400 });
   }
-  const { lang, chapter, userType, kind, edited, email } = parsed.data;
+  const { lang, chapter, userType, kind, edited, email, track } = parsed.data;
   const lang2 = lang.toLowerCase().split(/[-_]/)[0];
   const draft = await translateEdits(redactDraft(parsed.data.draft), lang2, edited);
 
@@ -52,6 +55,7 @@ export async function POST(request: Request) {
       ownerId: gate.ctx.userId,
       // البلد فقط من ترويسة Vercel (رمز ISO مثل TN)، ولا يُقرأ عنوان IP ولا يُحفظ.
       askerCountry: countryCodeOf(request.headers.get("x-vercel-ip-country")),
+      track,
     });
     return Response.json({ token: saved.token, routeTo: saved.routeTo, linked: Boolean(gate.ctx.userId) });
   } catch (error) {

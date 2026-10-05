@@ -8,6 +8,7 @@ import { placeholderMetadata } from "@/components/PagePlaceholder";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { AuthzError, getAuthContext } from "@/lib/auth/roles";
+import { CASE_TRACKS, type CaseTrack } from "@/lib/brain/modes";
 import { CHAPTERS } from "@/lib/brain/prompts";
 import { chapterAr, chapterOptionsAr, shortDateTime } from "@/lib/experts/format";
 import { expertArchive, expertQueue, requireApprovedExpert, type ExpertSelf } from "@/lib/experts/store";
@@ -16,7 +17,7 @@ import { isAdminClientConfigured } from "@/lib/supabase/admin";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ tab?: string; chapter?: string; status?: string }>;
+  searchParams: Promise<{ tab?: string; chapter?: string; status?: string; track?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -51,6 +52,7 @@ export default async function ExpertPage({ params, searchParams }: Props) {
   const tab = sp.tab === "archive" ? "archive" : "cases";
   const chapter = (CHAPTERS as readonly string[]).includes(sp.chapter ?? "") ? sp.chapter : undefined;
   const status = (CASE_STATUSES as readonly string[]).includes(sp.status ?? "") ? sp.status : undefined;
+  const track = (CASE_TRACKS as readonly string[]).includes(sp.track ?? "") ? (sp.track as CaseTrack) : undefined;
 
   const t = await getTranslations("experts.dashboard");
   const tj = await getTranslations("experts.join");
@@ -111,6 +113,19 @@ export default async function ExpertPage({ params, searchParams }: Props) {
             </select>
           </label>
         )}
+        {tab === "cases" && (
+          <label className="space-y-1 text-sm">
+            <span className="block font-semibold text-green-900">{t("filterTrack")}</span>
+            <select name="track" defaultValue={track ?? ""} className="rounded-xl border border-sand-200 bg-white px-3 py-2">
+              <option value="">{t("all")}</option>
+              {CASE_TRACKS.map((x) => (
+                <option key={x} value={x}>
+                  {t(`tracks.${x}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button type="submit" className="rounded-full bg-green-900 px-5 py-2 text-sm font-semibold text-ivory-50">
           {t("apply")}
         </button>
@@ -126,14 +141,14 @@ export default async function ExpertPage({ params, searchParams }: Props) {
         )}
       </form>
 
-      {tab === "cases" ? <CasesList self={self} chapter={chapter} status={status} /> : <ArchiveList self={self} chapter={chapter} uiLocale={uiLocale} />}
+      {tab === "cases" ? <CasesList self={self} chapter={chapter} status={status} track={track} /> : <ArchiveList self={self} chapter={chapter} uiLocale={uiLocale} />}
     </main>
   );
 }
 
-async function CasesList({ self, chapter, status }: { self: ExpertSelf; chapter?: string; status?: string }) {
+async function CasesList({ self, chapter, status, track }: { self: ExpertSelf; chapter?: string; status?: string; track?: CaseTrack }) {
   const t = await getTranslations("experts.dashboard");
-  const cases = await expertQueue(self, { chapter, status });
+  const cases = await expertQueue(self, { chapter, status, track });
   if (!cases.length) return <Empty text={t("empty")} />;
   return (
     <ul className="mt-6 space-y-3">
@@ -146,6 +161,9 @@ async function CasesList({ self, chapter, status }: { self: ExpertSelf; chapter?
             )}
             {c.priority === "high" && <span className="rounded-full bg-alert-600 px-3 py-1 text-xs font-semibold text-ivory-50">{t("high")}</span>}
             {c.mine && <span className="rounded-full border border-green-600 px-3 py-1 text-xs font-semibold text-green-600">{t("mine")}</span>}
+            {c.track !== "general" && (
+              <span className="rounded-full bg-gold-500/20 px-3 py-1 text-xs font-semibold text-green-900">{t(`tracks.${c.track}`)}</span>
+            )}
             <span className="ms-auto">
               <CaseMeta chapter={c.chapter} lang={c.lang} createdAt={c.created_at} />
             </span>

@@ -1,6 +1,8 @@
 import "server-only";
 
 import { AuthzError, getAuthContext, type AuthContext } from "@/lib/auth/roles";
+import type { CaseTrack } from "@/lib/brain/modes";
+import { missingColumn } from "@/lib/case/store";
 import type { CaseRow, CaseUnknown } from "@/lib/case/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SUPABASE_URL } from "@/lib/supabase/env";
@@ -41,28 +43,34 @@ export type QueueCase = {
   /** السائل من بلد المختص (مقارنة في الخادم؛ رمز بلد السائل نفسه لا يصل إلى الواجهة). */
   fromMyCountry: boolean;
   summary: string;
+  /** R3: مسار المسألة (general، new_muslim، discover). */
+  track: CaseTrack;
 };
 
 /**
  * تبويب «المسائل»: المحالة إلى دوره وتنتظر (submitted بلا مختص)، أو المسندة إليه ولم يُجب عنها.
  * المجاب عنها في «الأرشيف». الترتيب: بلد المختص أولاً ثم الأحدث (sortCases).
+ * R3: الدور يحدد المسار عملياً (mentor ← new_muslim، daee ← discover، والاحتياط إلى mufti)،
+ * ويُعرض المسار على كل مسألة مع فلتر له.
  */
 export async function expertQueue(
   self: ExpertSelf,
-  filter: { chapter?: string; status?: string },
+  filter: { chapter?: string; status?: string; track?: CaseTrack },
 ): Promise<QueueCase[]> {
   const db = createAdminClient();
-  let q = db
-    .from("cases")
-    .select("id, chapter, priority, status, lang, created_at, assigned_expert, asker_country, case_files(summary_ar)")
-    .or(
-      `and(route_to.eq.${self.role},status.eq.submitted,assigned_expert.is.null),and(assigned_expert.eq.${self.id},status.eq.assigned)`,
-    )
-    .order("created_at", { ascending: false })
-    .limit(300);
-  if (filter.chapter) q = q.eq("chapter", filter.chapter);
-  if (filter.status) q = q.eq("status", filter.status);
-  const { data, error } = await q.returns<
+  const query = (withTrack: boolean) => {
+    let q = db
+      .from("cases")
+      .select(`id, chapter, priority, status, lang, created_at, assigned_expert, asker_country, ${withTrack ? "track, " : ""}case_files(summary_ar)`)
+      .or(
+        `and(route_to.eq.${self.role},status.eq.submitted,assigned_expert.is.null),and(assigned_expert.eq.${self.id},status.eq.assigned)`,
+      )
+      .order("created_at", { ascending: false })
+      .limit(300);
+    if (filter.chapter) q = q.eq("chapter", filter.chapter);
+    if (filter.status) q = q.eq("status", filter.status);
+    if (withTrack && filter.track) q = q.eq("track", filter.track);
+    return q.returns<
     {
       id: string;
       chapter: string | null;
@@ -72,9 +80,17 @@ export async function expertQueue(
       created_at: string;
       assigned_expert: string | null;
       asker_country: string | null;
+      track?: CaseTrack | null;
       case_files: { summary_ar: string | null }[];
     }[]
-  >();
+    >();
+  };
+  let { data, error } = await query(true);
+  // قبل migration المسار (20261009_case_track.sql): القائمة بلا المسار (وفلتره يُعطي العام وحده).
+  if (error && missingColumn(error, "track")) {
+    ({ data, error } = await query(false));
+    if (filter.track && filter.track !== "general") data = [];
+  }
   if (error) console.error("expert queue:", error.message);
   return sortCases(
     (data ?? []).map((c) => ({
@@ -87,6 +103,7 @@ export async function expertQueue(
       mine: c.assigned_expert === self.id,
       fromMyCountry: Boolean(self.countryCode && c.asker_country && c.asker_country === self.countryCode),
       summary: c.case_files[0]?.summary_ar ?? "",
+      track: c.track ?? "general",
     })),
   );
 }
@@ -143,6 +160,8 @@ export async function expertArchive(self: ExpertSelf, filter: { chapter?: string
 
 export type ExpertCase = {
   id: string;
+  /** R3: ملاحظة التوجيه عند الاحتياط إلى المفتي (لا مرشد أو داعية معتمد). */
+  routingNote?: string;
   chapter: string | null;
   priority: string | null;
   status: string;
@@ -181,7 +200,11 @@ export async function expertCase(self: ExpertSelf, caseId: string): Promise<Expe
       .eq("case_id", c.id)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle<{ pillars: { question?: string; rows?: CaseRow[] } | null; summary_ar: string | null; unknowns: CaseUnknown[] | null }>(),
+      .maybeSingle<{
+        pillars: { question?: string; rows?: CaseRow[]; routing?: { note?: string } } | null;
+        summary_ar: string | null;
+        unknowns: CaseUnknown[] | null;
+      }>(),
     mine
       ? db.from("expert_answers").select("answer_ar, answer_translated").eq("case_id", c.id).eq("expert_id", self.id).limit(1).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -196,6 +219,7 @@ export async function expertCase(self: ExpertSelf, caseId: string): Promise<Expe
     lang: c.lang,
     createdAt: c.created_at,
     mine,
+    ...(file?.pillars?.routing?.note ? { routingNote: file.pillars.routing.note } : {}),
     question: file?.pillars?.question ?? "",
     summaryAr: file?.summary_ar ?? "",
     rows: file?.pillars?.rows ?? [],

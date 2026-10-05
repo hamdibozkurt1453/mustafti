@@ -101,6 +101,8 @@ create table if not exists public.cases (
   route_to          public.expert_role,
   assigned_expert   uuid references public.experts (id) on delete set null,
   contact_email     text,
+  -- R3: مسار المسألة (migrations/20261009_case_track.sql).
+  track             text not null default 'general' check (track in ('general', 'new_muslim', 'discover')),
   created_at        timestamptz not null default now()
 );
 
@@ -322,7 +324,7 @@ to authenticated;
 -- الحالات: لا يُعطى المسجّل عمودي الرمز السري والبريد؛ الخادم وحده يقرؤهما.
 grant select (
   id, owner_id, user_type, level, chapter, priority, lang, status,
-  route_to, assigned_expert, created_at
+  route_to, assigned_expert, track, created_at
 ) on public.cases to authenticated;
 
 -- المستخدم يعدّل تفضيلاته فقط (لا البريد ولا المعرّف).

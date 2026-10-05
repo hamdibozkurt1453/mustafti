@@ -62,6 +62,11 @@ export default async function ExpertCasePage({ params }: Props) {
         </div>
 
         <div dir="rtl" lang="ar" className="mt-5 space-y-5">
+          {c.routingNote && (
+            <p role="note" className="rounded-xl border border-gold-500/50 bg-gold-500/10 px-3 py-2 text-sm text-green-900">
+              {c.routingNote}
+            </p>
+          )}
           <section>
             <h2 className="mb-1 text-xs font-semibold text-green-600">{t("summary")}</h2>
             <p className="whitespace-pre-wrap leading-relaxed text-green-900">{c.summaryAr}</p>
