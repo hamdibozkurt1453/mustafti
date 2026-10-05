@@ -161,13 +161,13 @@ async function generate(question: string, c: Classification, mode: AnswerMode, p
 export type BrainStage = "understanding" | "searching" | "reading" | "readingFatwa" | "verifying" | "writing";
 
 /**
- * ميزانية السؤال كله (R1b: 55 ث مع «ابحث واقرأ»): الاسترجاع حتى 42 ث (والطبقة حتى 30 ث منها)،
- * ثم الصياغة. ما تأخر من المصادر يسقط، ولا امتناع بسبب البطء قبلها.
+ * ميزانية السؤال كله: 55 ث حداً أقصى، والهدف أقل من 20 ث لأغلب الأسئلة (R1d): المصادر السريعة أولاً،
+ * و«ابحث واقرأ» لا تُنتظر إن كفت المصادر السريعة. الاسترجاع حتى 32 ث، ثم الصياغة.
  */
 export const QUESTION_BUDGET_MS = 55_000;
-const RETRIEVAL_SHARE_MS = 42_000;
-/** مهلة «ابحث واقرأ» من بداية السؤال (تبقى 8 ثوانٍ قبل نهاية الاسترجاع لتقييم الصلة). */
-const WEB_EARLY_MS = 34_000;
+const RETRIEVAL_SHARE_MS = 32_000;
+/** مهلة «ابحث واقرأ» من بداية السؤال (R1d: 20 ث). */
+const WEB_EARLY_MS = 20_000;
 
 export type RespondOptions = {
   history?: ChatMessage[];

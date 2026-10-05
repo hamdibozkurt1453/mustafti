@@ -319,7 +319,7 @@ export const SOURCES: SourceDef[] = [
     rule: "فتاوى منشورة منسوبة لأصحابها؛ تُعرض للاطلاع مع رابطها ولا تُطبَّق على حالة السائل. " + EXTERNAL_NOTE,
     access: [],
     group: "specialized",
-    blocked: "نتائج بحث الموقع تُبنى بالجافاسكربت فلا يراها الخادم؛ لا نبحث فيه مباشرة، ونصل إلى فتاواه عبر Quranpedia (بشرط أن يكون رابطها من نطاقه). رابط فقط.",
+    blocked: "نتائج بحث الموقع تُبنى بالجافاسكربت فلا يراها الخادم؛ لا نبحث فيه مباشرة. فتاواه من نسخة محلية (جدول islamqa_fatwas من المجموعة العامة kingkaung/islamqainfo_parallel_corpus، CC BY-NC 4.0؛ lib/sources/islamqaLocal.ts)، وعبر Quranpedia و«ابحث واقرأ».",
     langs: ["ar", "en", "id", "tr", "fr", "ur", "bn", "ru", "es", "fa", "hi", "de", "pt", "zh", "ug", "ja", "tg"],
   },
   {
@@ -332,7 +332,7 @@ export const SOURCES: SourceDef[] = [
     access: [],
     group: "specialized",
     langs: ["ar"],
-    blocked: "نتائج بحث الموقع تُبنى بالجافاسكربت فلا يراها الخادم؛ لا نبحث فيه مباشرة، ونصل إلى فتاواه عبر Quranpedia (بشرط أن يكون رابطها من نطاقه). رابط فقط.",
+    blocked: "نتائج بحث الموقع تُبنى بالجافاسكربت فلا يراها الخادم؛ لا نبحث فيه مباشرة. فتاواه من نسخة محلية (جدول islamqa_fatwas من المجموعة العامة kingkaung/islamqainfo_parallel_corpus، CC BY-NC 4.0؛ lib/sources/islamqaLocal.ts)، وعبر Quranpedia و«ابحث واقرأ».",
   },
   {
     id: "binothaimeen",
@@ -344,7 +344,7 @@ export const SOURCES: SourceDef[] = [
     access: [],
     group: "specialized",
     langs: ["ar"],
-    blocked: "نتائج بحث الموقع تُبنى بالجافاسكربت فلا يراها الخادم؛ لا نبحث فيه مباشرة، ونصل إلى فتاواه عبر Quranpedia (بشرط أن يكون رابطها من نطاقه). رابط فقط.",
+    blocked: "نتائج بحث الموقع تُبنى بالجافاسكربت فلا يراها الخادم؛ لا نبحث فيه مباشرة. فتاواه من نسخة محلية (جدول islamqa_fatwas من المجموعة العامة kingkaung/islamqainfo_parallel_corpus، CC BY-NC 4.0؛ lib/sources/islamqaLocal.ts)، وعبر Quranpedia و«ابحث واقرأ».",
   },
   {
     id: "ksaa",

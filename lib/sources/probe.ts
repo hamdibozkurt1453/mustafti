@@ -3,6 +3,8 @@ import "server-only";
 import { matchBasics, verseRefsInText } from "@/lib/brain/basics";
 import { explicitVerseRef } from "@/lib/brain/quran-index";
 import { webSearchRead, type WebResult } from "@/lib/brain/web";
+import { keywords } from "@/lib/brain/rank";
+import { searchIslamqaLocal, type IslamqaQuery } from "./islamqaLocal";
 import { callTool, listTools, toolData, toolText } from "@/lib/mcp";
 import { clip } from "./html";
 import {
@@ -44,6 +46,7 @@ export type ProbeSourceId =
   | "mcp_library_search"
   | "mcp_extra"
   | "bayyinat"
+  | "islamqa_local"
   | "basics"
   | "dorar";
 
@@ -62,6 +65,7 @@ export const PROBE_SOURCES: { id: ProbeSourceId; label: string; deadlineMs: numb
   { id: "mcp_library_search", label: "MCP — search (sources=library): فتاوى ومقالات IslamHouse", deadlineMs: 26_000 },
   { id: "mcp_extra", label: "MCP — search في المجموعات الإضافية (إن أعلنها الخادم)", deadlineMs: 20_000 },
   { id: "bayyinat", label: "بيّنات (Supabase: search_bayyinat)", deadlineMs: 8_000 },
+  { id: "islamqa_local", label: "الإسلام سؤال وجواب محلياً (Supabase: search_islamqa، مقتطف يقتطعه الكود)", deadlineMs: 8_000, scoreAll: true },
   { id: "basics", label: "الأساسيات (data/basics.json)", deadlineMs: 2_000 },
   { id: "dorar", label: "الدرر السنية من الخادم (للتوثيق فقط: المحادثة تطلبها من المتصفح)", deadlineMs: 8_000 },
 ];
@@ -112,6 +116,17 @@ export async function runProbeSource(
       const mode = level === "D" ? "case" : "general";
       const web = await webSearchRead(question, { mode, lang, phrases: queries, timeoutMs: 40_000 });
       return { results: [], notes: [`الوضع: ${mode === "case" ? "فتاوى منشورة مشابهة (D)" : "عام"}`], web };
+    }
+    case "islamqa_local": {
+      const errors: string[] = [];
+      const terms = [...new Set([question, ...qs].flatMap((q) => keywords(q)))];
+      const local: IslamqaQuery[] = qs.map((q) => ({ q, lang: "ar" }));
+      if (/[\u0600-\u06FF]/.test(question)) local.unshift({ q: question, lang: "ar" });
+      if (lang === "en") local.push({ q: question, lang: "en" });
+      const results = await searchIslamqaLocal(local, lang, terms, { onError: (e) => errors.push(e) });
+      if (errors.length) notes.push(...[...new Set(errors)]);
+      if (!results.length && !errors.length) notes.push("لا نتائج (هل نُفّذت migration 20261007_islamqa_fatwas.sql واكتمل الاستيراد من /api/admin/import-islamqa؟)");
+      return { results, notes };
     }
     case "qp_fatwas": {
       const raw: RawTrace[] = [];

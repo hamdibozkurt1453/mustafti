@@ -110,8 +110,12 @@ describe("التحقق من الاقتباس", () => {
     const { sources, dropped } = verifyWebAnswer(ANSWER, extractFetched(RAW));
     assert.deepEqual(
       sources.map((s) => `${s.domain}:${s.status}:${s.reason ?? ""}`),
-      ["islamqa.info:verified:", "binbaz.org.sa:link_only:no_content", "hadeethenc.com:link_only:empty_quote"],
+      // R1d: نتيجة الأداة القصيرة مقتطف من الصفحة (نص حرفي) بدل «رابط فقط».
+      ["islamqa.info:verified:", "binbaz.org.sa:link_only:no_content", "hadeethenc.com:verified:"],
     );
+    assert.equal(sources[2].snippet, true);
+    assert.equal(sources[2].match, "snippet");
+    assert.equal(sources[2].quote, "نص حديث طويل بما يكفي ليُعدّ محتوى مقروءاً");
     assert.equal(sources[0].site, "الإسلام سؤال وجواب");
     assert.match(sources[0].quote!, /^مَن نامَ عن صلاةِ الفجرِ/);
     assert.equal(sources[1].quote, undefined);
@@ -121,13 +125,15 @@ describe("التحقق من الاقتباس", () => {
     );
   });
 
-  it("الاقتباس غير الموجود في الصفحة المقروءة ← «رابط فقط»", () => {
+  it("اقتباس النموذج غير موجود في الصفحة ← لا يُعرض أبداً؛ النص من الصفحة نفسها (مقتطف) بدله", () => {
     const { sources } = verifyWebAnswer(
       { queries: [], explanation: "", sources: [{ url: "https://islamqa.info/ar/answers/12345", title: "t", site: "", quote: "يجب عليك قضاؤها فوراً دون تأخير ولا عذر" }] },
       extractFetched(RAW),
     );
-    assert.equal(sources[0].status, "link_only");
-    assert.equal(sources[0].reason, "not_found");
+    assert.equal(sources[0].status, "verified");
+    assert.equal(sources[0].match, "snippet");
+    assert.ok(!sources[0].quote!.includes("فوراً دون تأخير"));
+    assert.ok(PAGE.replace(/\s+/g, " ").includes(sources[0].quote!));
   });
 });
 
@@ -265,7 +271,8 @@ describe("التحقق الموسَّع من الاقتباس (R1c)", () => {
   it("سبب الرفض ونسبته في المصدر", () => {
     const { sources } = verifyWebAnswer(
       { queries: [], explanation: "", sources: [{ url: "https://binbaz.org.sa/fatwas/1", title: "t", site: "", quote: "هذه الآية أعظم سورة في القرآن لما فيها من الأحكام والقصص" }] },
-      [{ url: "https://binbaz.org.sa/fatwas/1", content: TAFSIR }],
+      // صفحة مقروءة بلا كلمات سؤال للاقتطاع: يبقى اقتباس النموذج وحده، ويُرفض.
+      [{ url: "https://binbaz.org.sa/fatwas/1", content: TAFSIR, kind: "page" }],
     );
     assert.equal(sources[0].status, "link_only");
     assert.equal(sources[0].reason, "not_found");
@@ -279,7 +286,9 @@ describe("احتياط البحث وحده: «رابط فقط» بدل الصف�
       { queries: [], explanation: "", sources: [{ url: "https://islamqa.info/ar/answers/1", title: "فتوى", site: "", quote: "" }, { url: "https://evil.example/x", title: "x", site: "", quote: "" }] },
       [{ url: "https://dorar.net/hadith/sharh/1", title: "حديث", content: "مقتطف من نتيجة البحث بما يكفي من الحروف" }],
     );
-    assert.deepEqual(out.map((x) => `${x.domain}:${x.status}:${x.reason}`), ["islamqa.info:link_only:search_only", "dorar.net:link_only:search_only"]);
+    // R1d: مقتطف البحث نص حرفي من الصفحة («مقتطف من الصفحة») ويُقدَّم؛ «رابط فقط» لما لا نص له.
+    assert.deepEqual(out.map((x) => `${x.domain}:${x.status}:${x.reason ?? x.match}`), ["dorar.net:verified:snippet", "islamqa.info:link_only:search_only"]);
+    assert.equal(out[0].quote, "مقتطف من نتيجة البحث بما يكفي من الحروف");
   });
 
   it("webLayer: القراءة تتأخر ← البحث السريع يبدأ ويُعرض «رابطاً فقط»، والقراءة إن جاءت بمصادر تُقدَّم", async () => {
