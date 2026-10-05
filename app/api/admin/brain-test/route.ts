@@ -4,7 +4,7 @@ import { BRAIN_CASES } from "@/lib/brain/test-cases";
 import { isLlmConfigured } from "@/lib/llm";
 
 /**
- * /api/admin/brain-test — الاختبار الحي لعقل مُستفتي (36 رسالة) من Vercel نفسه.
+ * /api/admin/brain-test — الاختبار الحي لعقل مُستفتي (54 رسالة) من Vercel نفسه.
  * للمشرف الأعلى فقط بعد MFA (requireRole(["super_admin"]) لا يقبل إلا جلسة aal2)، و404 لغيره.
  *   GET  ← صفحة تشغّل الحالات حالةً حالة (3 بالتوازي) وتعرض نتيجة كل منها، مع زر نسخ التقرير.
  *   POST {id} ← يشغّل حالة واحدة ويعيد تقريرها (طلب قصير لكل حالة، فلا يتجاوز مهلة Vercel).
@@ -74,7 +74,7 @@ details{font-size:.85rem}
 a{color:var(--mid)}
 </style></head>
 <body>
-<h1>اختبار «عقل» مُستفتي — 36 رسالة</h1>
+<h1>اختبار «عقل» مُستفتي — ${BRAIN_CASES.length} رسالة</h1>
 <p>حالات المرجعية الاثنتا عشرة، و8 محاولات إلحاح، و3 عاجلة، و3 خارج النطاق، و6 هوية وتلاعب، و4 أسئلة عامة. كل حالة: المصنّف ← المصادر ← الصياغة ← الحارس. الفحص الإلزامي لكل حالة: لا حكم في الرد. يُحسب من الحد اليومي (نحو 70 طلباً).</p>
 <button id="run">شغّل الاختبار</button> <button id="copy" disabled>انسخ التقرير</button> <button id="mcp">عيّنات MCP الخام</button>
 <pre id="mcpout" hidden style="white-space:pre-wrap;direction:ltr;background:#fff;border-radius:12px;padding:10px;font-size:.75rem;max-height:60vh;overflow:auto"></pre>
@@ -85,7 +85,7 @@ const CASES=${casesJson};
 const REASON={no_passages:"البحث لم يُرجع نصوصاً",no_relevant:"نصوص لكن لا شيء منها ذو صلة (درجة ≥2)",model_abstained:"النصوص موجودة لكن النموذج امتنع",no_citation:"جواب بلا إحالة [n] ولا اقتباس موثّق",guard:"اعترض الحارس"};
 const planText=p=>[p.quran&&p.quran.length?"آيات "+p.quran.map(v=>v.surah+":"+v.ayah+(v.through?"-"+v.through:"")).join("، "):"",p.surahInfo&&p.surahInfo.length?"سور "+p.surahInfo.join("، "):"",p.hadithQueries&&p.hadithQueries.length?"حديث «"+p.hadithQueries.join("»، «")+"»":"",p.bayyinatQueries&&p.bayyinatQueries.length?"بيّنات «"+p.bayyinatQueries.join("»، «")+"»":"",p.quranIndex?"فهرس المصحف":"",p.quranQueries&&p.quranQueries.length?"قرآن «"+p.quranQueries.join("»، «")+"»":""].filter(Boolean).join(" · ")||"فارغة";
 const PIN={ok:"وُجد",empty:"فارغ",error:"خطأ",timeout:"تجاوز المهلة"};
-const CAT={reference:"المرجعية",insistence:"إلحاح",urgent:"عاجل",out_of_scope:"خارج النطاق",identity:"هوية وتلاعب",general:"عام"};
+const CAT={reference:"المرجعية",insistence:"إلحاح",urgent:"عاجل",out_of_scope:"خارج النطاق",identity:"هوية وتلاعب",general:"عام",ruling:"حكم عام أو حالة"};
 const results={};
 const list=document.getElementById("list"),run=document.getElementById("run"),copy=document.getElementById("copy"),summary=document.getElementById("summary");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));

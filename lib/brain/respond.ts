@@ -4,7 +4,7 @@ import { cacheGet, cacheSet, DAY } from "@/lib/cache";
 import { chat, type ChatMessage } from "@/lib/llm";
 import { classify, type Classification } from "./classify";
 import { checkOutput, guardAndLog, matchKey, type GuardResult } from "./guard";
-import { looksCaseRuling, looksPersonal, looksUrgent, referralKindOf } from "./heuristics";
+import { looksCaseRuling, looksGeneralRuling, looksPersonal, looksPersonalFacts, looksUrgent, referralKindOf } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
 import { answerFormatIssues, unquoteReferenceOnly } from "./format";
 import type { ReferralKind } from "@/lib/case/types";
@@ -214,6 +214,12 @@ export async function respond(question: string, options: RespondOptions = {}): P
   if (c.level !== "D" && looksCaseRuling(question)) {
     overrides.push(`level:${c.level}->D:case-ruling`);
     c.level = "D";
+  }
+  // سؤال حكم عام بلا وقائع شخصية (لا في الرسالة ولا فيما سبقها من السائل) ليس D: B (R1b).
+  const personalBefore = (options.history ?? []).some((m) => m.role === "user" && (looksPersonal(m.content) || looksPersonalFacts(m.content)));
+  if (c.level === "D" && !personalBefore && looksGeneralRuling(question)) {
+    overrides.push("level:D->B:general-ruling");
+    c.level = "B";
   }
   const timings = { classifyMs: cls.latencyMs } as BrainReply["timings"];
   const common = { lang: c.lang, classification: c };

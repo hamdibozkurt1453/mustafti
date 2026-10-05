@@ -19,7 +19,7 @@ import { answerFormatIssues, firstSentence, unquoteReferenceOnly } from "../lib/
 import { isEmptyPlan, normalizePlan, PlanSchema } from "../lib/brain/plan";
 import { equivalentFor, findTerms, GLOSSARY, glossaryBlock } from "../lib/brain/glossary";
 import { checkOutput, guard, isVerbatim, separateQuoted } from "../lib/brain/guard";
-import { looksPersonal, looksUrgent } from "../lib/brain/heuristics";
+import { looksGeneralRuling, looksPersonal, looksPersonalFacts, looksUrgent } from "../lib/brain/heuristics";
 import { detectIdentityProbe, identityReply, IDENTITY_PROMPT } from "../lib/brain/identity";
 import { MESSAGE_LANGS, MESSAGES, message } from "../lib/brain/messages";
 import { applyScores, clean, cleanToolText, focusExcerpt, keywords, prerank, rerankList, type Candidate, type Dropped } from "../lib/brain/rank";
@@ -32,15 +32,16 @@ const byCategory = (c: string) => BRAIN_CASES.filter((x) => x.category === c);
 
 // ---------------------------------------------------------------------------
 describe("مجموعة الرسائل", () => {
-  it("48 رسالة بالتوزيع المطلوب، ومعرّفات فريدة", () => {
-    assert.equal(BRAIN_CASES.length, 48);
+  it("54 رسالة بالتوزيع المطلوب، ومعرّفات فريدة", () => {
+    assert.equal(BRAIN_CASES.length, 54);
+    assert.equal(byCategory("ruling").length, 6);
     assert.equal(byCategory("general").length, 16);
     assert.equal(byCategory("reference").length, 12);
     assert.equal(byCategory("insistence").length, 8);
     assert.equal(byCategory("urgent").length, 3);
     assert.equal(byCategory("out_of_scope").length, 3);
     assert.equal(byCategory("identity").length, 6);
-    assert.equal(new Set(BRAIN_CASES.map((c) => c.id)).size, 48);
+    assert.equal(new Set(BRAIN_CASES.map((c) => c.id)).size, 54);
   });
 
   it("حالات المرجعية الاثنتا عشرة حرفياً (ص 6)", () => {
@@ -858,5 +859,33 @@ describe("الحارس: أسماء الأعلام ليست حكماً", () => {
   it("«حرام» حكماً بعد اسم العلم ما زالت تُكشف", () => {
     assert.equal(guard("يتجه المسلمون إلى المسجد الحرام، وترك ذلك حرام.").ok, false);
     assert.equal(guard("Facing the Sacred Mosque is required; skipping it is haram.").ok, false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("الحكم العام B/C، والحالة الشخصية D بوقائعها فقط (R1b)", () => {
+  const general = ["rul-01", "rul-02", "rul-03"];
+  const personal = ["rul-04", "rul-05", "rul-06"];
+  for (const id of general) {
+    it(`${id}: سؤال حكم عام بلا وقائع ← لا يبقى D`, () => {
+      const m = BRAIN_CASES.find((c) => c.id === id)!.message;
+      assert.equal(looksGeneralRuling(m), true, m);
+      assert.equal(looksPersonalFacts(m), false, m);
+    });
+  }
+  for (const id of personal) {
+    it(`${id}: وقائع شخصية ← يبقى D`, () => {
+      const m = BRAIN_CASES.find((c) => c.id === id)!.message;
+      assert.ok(looksPersonalFacts(m) || looksPersonal(m), m);
+      assert.equal(looksGeneralRuling(m), false, m);
+    });
+  }
+  it("الإلحاح والتلاعب والحالة المرجعية الخامسة لا تُخفَّض أبداً", () => {
+    for (const c of BRAIN_CASES.filter((x) => x.levels?.includes("D"))) assert.equal(looksGeneralRuling(c.message), false, c.id);
+  });
+  it("الحكم على «من فعل كذا» يبقى D (واقعة فردية)", () => {
+    assert.equal(looksGeneralRuling("ما حكم من يسرق وهو مضطر؟"), false);
+    assert.equal(looksGeneralRuling("ما حكم الموسيقى؟"), true);
+    assert.equal(looksGeneralRuling("هل يجوز لي سماع الموسيقى؟"), false);
   });
 });
