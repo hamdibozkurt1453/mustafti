@@ -1,12 +1,12 @@
 import "server-only";
 
 import { cacheGet, cacheSet, DAY } from "@/lib/cache";
-import { chat, type ChatMessage } from "@/lib/llm";
+import { chat, reasoningFor, type ChatMessage } from "@/lib/llm";
 import { classify, type Classification } from "./classify";
 import { checkOutput, guardAndLog, matchKey, type GuardResult } from "./guard";
 import { looksCaseRuling, looksGeneralRuling, looksPersonal, looksPersonalFacts, looksUrgent, referralKindOf } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
-import { answerFormatIssues, unquoteReferenceOnly } from "./format";
+import { answerFormatIssues, normalizeCitations, stripAbstainSentence, unquoteReferenceOnly, validCitations } from "./format";
 import type { ReferralKind } from "@/lib/case/types";
 import { message } from "./messages";
 import { planCitations, type CitationPlan } from "./planner";
@@ -88,16 +88,27 @@ export type BrainReply = {
   costUsd: number;
 };
 
-function isAbstention(text: string, lang: string): boolean {
+/** جملة الامتناع بالعربية وبلغة السائل (بأي موضع في الرد). */
+function abstainPhrases(lang: string): string[] {
+  return [ABSTAIN_AR, message("abstain", lang)];
+}
+
+function hasAbstainPhrase(text: string, lang: string): boolean {
   const key = matchKey(text);
-  return key.includes(matchKey(ABSTAIN_AR)) || key.includes(matchKey(message("abstain", lang)));
+  return abstainPhrases(lang).some((p) => key.includes(matchKey(p)));
+}
+
+/**
+ * امتناع حقيقي (R1e): جملة الامتناع **بلا** أي إشارة [n] صحيحة. وجملة الامتناع مع جواب بإشاراته
+ * جواب جزئي (يُعرض بـ «ما وجدناه في المصادر:»)، لا امتناع.
+ */
+export function isAbstention(text: string, lang: string, count: number): boolean {
+  return hasAbstainPhrase(text, lang) && validCitations(text, count).length === 0;
 }
 
 /** الإسناد: إشارة [n] صحيحة واحدة على الأقل، أو اقتباس حرفي موثَّق من النصوص (⟦Q⟧). */
 function isGrounded(text: string, count: number, ownText: string): boolean {
-  const refs = [...text.matchAll(/[\[(（]\s*(\d{1,2})\s*[\])）]/g)].map((m) => Number(m[1]));
-  const validRefs = refs.length > 0 && refs.every((n) => n >= 1 && n <= count);
-  return validRefs || ownText.includes("⟦Q⟧");
+  return validCitations(text, count).length > 0 || ownText.includes("⟦Q⟧");
 }
 
 type Generated = {
@@ -106,12 +117,28 @@ type Generated = {
   guard: GuardResult;
   ok: boolean;
   reason?: AbstainReason;
+  /** جواب جزئي: كتب النموذج جملة الامتناع ثم أجاب من النصوص (حُذفت الجملة). */
+  partial?: boolean;
   ms: number;
   cost: number;
   attempts: BrainReply["diag"]["attempts"];
 };
 
-async function generate(question: string, c: Classification, mode: AnswerMode, passages: Passage[]): Promise<Generated> {
+/** حد رموز الجواب (يُضاف له حيّز التفكير في llm.ts إن كان مفعّلاً). */
+const ANSWER_MAX_TOKENS = 1200;
+
+/**
+ * الصياغة من النصوص، ثم الحارس. كل النصوص المرسلة بلغت 60 في تقييم الصلة، فالأصل أن يُجاب منها:
+ * محاولة ثانية واحدة إن اعترض الحارس، أو خالف شكل الجملة الأولى، أو امتنع النموذج، أو لم يُسند.
+ * الامتناع لا يبقى إلا إن أصرّ عليه النموذج بعد التذكير بأن النصوص ذات صلة.
+ */
+async function generate(
+  question: string,
+  c: Classification,
+  mode: AnswerMode,
+  passages: Passage[],
+  deadline = Date.now() + 60_000,
+): Promise<Generated> {
   const input = { question, lang: c.lang, mode, passages, misconception: c.misconception, userType: c.userType };
   const messages: ChatMessage[] = [
     { role: "system", content: answerSystem(input) },
@@ -119,55 +146,80 @@ async function generate(question: string, c: Classification, mode: AnswerMode, p
   ];
   const ctx = { sources: passages.map((p) => p.text), question, lang: c.lang };
   const attempts: Generated["attempts"] = [];
+  const reasoning = reasoningFor("answer");
   let ms = 0;
   let cost = 0;
+  const count = passages.length;
 
-  let res = await chat(messages, { temperature: 0.1, maxTokens: 900 });
+  // مهلة كل طلب: حتى 40 ث، أو ما بقي من الميزانية (12 ث على الأقل).
+  const callMs = () => Math.min(40_000, Math.max(12_000, deadline - Date.now()));
+  let res = await chat(messages, { temperature: 0.1, maxTokens: ANSWER_MAX_TOKENS, reasoning, timeoutMs: callMs() });
   ms += res.latencyMs;
   cost += res.usage.costUsd ?? 0;
-  let raw = res.text.trim();
+  let raw = normalizeCitations(res.text.trim());
   let check = checkOutput(raw, ctx);
-  attempts.push({ raw, guardOk: !check.findings.length, findings: check.findings.map((f) => `${f.reason}: ${f.match}`) });
+  const log = () =>
+    attempts.push({
+      raw,
+      guardOk: !check.findings.length,
+      findings: [...check.findings.map((f) => `${f.reason}: ${f.match}`), ...(res.finishReason && res.finishReason !== "stop" ? [`finish: ${res.finishReason}`] : [])],
+    });
+  log();
 
-  // محاولة ثانية واحدة فقط: لاعتراض الحارس (العبارة المخالفة)، أو لشكل الجملة الأولى
-  // (جواب مباشر بكلام الأداة مع [n]، لا اقتباس ولا مرجع مجرد). ثم الحارس من جديد.
-  const formatIssues = isAbstention(raw, c.lang) ? [] : answerFormatIssues(raw);
-  if (check.findings.length || formatIssues.length) {
+  const abstained = isAbstention(raw, c.lang, count);
+  const ungrounded = !abstained && validCitations(raw, count).length === 0 && !check.ownText.includes("⟦Q⟧");
+  const formatIssues = abstained ? [] : answerFormatIssues(raw);
+  const needRetry = check.findings.length || formatIssues.length || abstained || ungrounded || !raw;
+  // الإعادة لاعتراض الحارس دائماً (لا يُعرض المخالف)، وللشكل والامتناع إن بقي وقت.
+  if (needRetry && (check.findings.length || deadline - Date.now() > 12_000)) {
     const issues = check.findings.map((f) => `- ${f.reason}: «${f.match}»`).join("\n");
     const fix = check.findings.length
       ? `Your reply was blocked by the safety check:\n${issues}\nRewrite it calmly and briefly. Do not write any ruling word (permissible, forbidden, halal, haram, يجوز، حرام…) in your own words: the sources may say it only inside a verbatim «quotation» from the passages with its [n]. Every quotation must be copied exactly from a passage. Do not attribute any hadith that is not quoted verbatim from a passage. Do not mention any AI model or company. Keep the ANSWER FORMAT.`
-      : `Rewrite your reply in the ANSWER FORMAT: the first sentence must be a direct answer in your own plain words that ends with its [n] (not a quotation, not ﴿, not a reference); then the verbatim evidence with [n]. Keep every fact and quotation from the passages only.`;
+      : abstained || ungrounded || !raw
+        ? `Every passage above was already judged RELEVANT to the question. Do not abstain: answer from them now, in ${c.lang}, covering only what they say (even if partial), in the ANSWER FORMAT, with a passage number like [1] after each statement (one number per bracket: [1][2], never [1, 2]). Abstain with the exact sentence only if truly NO passage says anything about the question.`
+        : `Rewrite your reply in the ANSWER FORMAT: the first sentence must be a direct answer in your own plain words that ends with its [n] (not a quotation, not ﴿, not a reference); then the verbatim evidence with [n]. Keep every fact and quotation from the passages only.`;
     res = await chat(
-      [...messages, { role: "assistant", content: raw }, { role: "user", content: fix }],
-      { temperature: 0, maxTokens: 900 },
+      [...messages, { role: "assistant", content: raw || "(empty)" }, { role: "user", content: fix }],
+      { temperature: 0, maxTokens: ANSWER_MAX_TOKENS, reasoning, timeoutMs: callMs() },
     );
     ms += res.latencyMs;
     cost += res.usage.costUsd ?? 0;
-    raw = res.text.trim();
+    raw = normalizeCitations(res.text.trim());
     check = checkOutput(raw, ctx);
-    attempts.push({ raw, guardOk: !check.findings.length, findings: check.findings.map((f) => `${f.reason}: ${f.match}`) });
+    log();
+  }
+
+  // جملة الامتناع مع جواب مُسند: جواب جزئي، تُحذف الجملة ويسبقه «ما وجدناه في المصادر:».
+  let partial = false;
+  if (hasAbstainPhrase(raw, c.lang) && validCitations(raw, count).length) {
+    const stripped = stripAbstainSentence(raw, abstainPhrases(c.lang));
+    if (stripped && validCitations(stripped, count).length) {
+      raw = stripped;
+      partial = true;
+    }
   }
 
   // التسجيل في guard_log والاستبدال بالرد الثابت إن بقيت المخالفة.
   const guard = await guardAndLog(raw, ctx);
   let reason: AbstainReason | undefined;
   if (!guard.ok) reason = "guard";
-  else if (isAbstention(raw, c.lang)) reason = "model_abstained";
-  else if (!isGrounded(raw, passages.length, guard.ownText)) reason = "no_citation";
-  return { text: guard.text, raw, guard, ok: !reason, reason, ms, cost, attempts };
+  else if (isAbstention(raw, c.lang, count)) reason = "model_abstained";
+  else if (!isGrounded(raw, count, guard.ownText)) reason = "no_citation";
+  return { text: guard.text, raw, guard, ok: !reason, reason, partial, ms, cost, attempts };
 }
 
 /** مراحل الرد (لمؤشر «يبحث في المصادر…» في المحادثة). */
 export type BrainStage = "understanding" | "searching" | "reading" | "readingFatwa" | "verifying" | "writing";
 
 /**
- * ميزانية السؤال كله: 55 ث حداً أقصى، والهدف أقل من 20 ث لأغلب الأسئلة (R1d): المصادر السريعة أولاً،
- * و«ابحث واقرأ» لا تُنتظر إن كفت المصادر السريعة. الاسترجاع حتى 32 ث، ثم الصياغة.
+ * ميزانية السؤال كله (R1e، قرار حمدي: الجواب الكامل أهم من السرعة): 80 ث، وmaxDuration للمسار 120.
+ * المصادر السريعة أولاً، و«ابحث واقرأ» بالتوازي (حتى 35 ث) ولا تُنتظر إلا إن لم تكفِ السريعة.
+ * الاسترجاع حتى 55 ث، ثم الصياغة حتى نهاية الميزانية.
  */
-export const QUESTION_BUDGET_MS = 55_000;
-const RETRIEVAL_SHARE_MS = 32_000;
-/** مهلة «ابحث واقرأ» من بداية السؤال (R1d: 20 ث). */
-const WEB_EARLY_MS = 20_000;
+export const QUESTION_BUDGET_MS = 80_000;
+const RETRIEVAL_SHARE_MS = 55_000;
+/** مهلة «ابحث واقرأ» من بداية السؤال (R1e: 35 ث). */
+export const WEB_EARLY_MS = 35_000;
 
 export type RespondOptions = {
   history?: ChatMessage[];
@@ -365,7 +417,7 @@ export async function respond(question: string, options: RespondOptions = {}): P
 
   // 5) الصياغة من النصوص فقط، ثم الحارس.
   stage("writing");
-  const gen = await generate(question, c, hadithQuery ? "hadith" : c.level === "C" ? "khilaf" : "general", passages);
+  const gen = await generate(question, c, hadithQuery ? "hadith" : c.level === "C" ? "khilaf" : "general", passages, started + QUESTION_BUDGET_MS);
   timings.generateMs = gen.ms;
   base.costUsd += gen.cost;
   diag.attempts = gen.attempts;
@@ -377,7 +429,8 @@ export async function respond(question: string, options: RespondOptions = {}): P
   if (gen.reason === "guard") return partial("refused", gen.text, extra);
   if (!gen.ok) return partial("abstain", `${message("abstain", c.lang)} ${message("suggestExpert", c.lang)}`, extra);
   // نص الفهرس والقاموس مرجع يُحال إليه، لا اقتباس: يُزال من «» (والسطر المكرر يُحذف).
-  const answer = unquoteReferenceOnly(gen.text, passages);
+  const unquoted = unquoteReferenceOnly(gen.text, passages);
+  const answer = gen.partial ? `${message("partialAnswer", c.lang)}\n${unquoted}` : unquoted;
   const body = c.level === "C" ? `${answer}\n\n${message("khilaf", c.lang)}` : answer;
   const reply = done({ ...common, ...shared, ...extra, kind: "answer", text: withPrefix(body), fatwas: found.fatwas });
   if (useCache && !prefix) cacheSet(answerKey(question), reply, DAY);

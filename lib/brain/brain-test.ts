@@ -177,7 +177,8 @@ export async function runBrainCase(id: string): Promise<CaseReport> {
 
 /**
  * عيّنات خام من أدوات خادم MCP (لتشخيص IslamHouse وتفاصيل الحديث): مخطط كل أداة،
- * ورد search في المكتبة والحديث، وbrowse_library، ثم get_hadith/fetch لأول نتيجة حديث.
+ * ورد search في المكتبة والحديث، ثم get_hadith/fetch لأول نتيجة حديث. (browse_library موقوف
+ * نهائياً، R1e؛ تجربته في صفحة فحص المصادر وحدها.)
  */
 export async function mcpSamples(): Promise<unknown> {
   const { listTools, callTool, toolData, toolText } = await import("@/lib/mcp");
@@ -202,10 +203,9 @@ export async function mcpSamples(): Promise<unknown> {
   };
   const lib = searchTool ? { ...buildArgs(searchTool, "أركان الإيمان", "ar"), sources: [enumOf("library|house")] } : {};
   const had = searchTool ? { ...buildArgs(searchTool, "أركان الإيمان", "ar"), sources: [enumOf("hadith|hadeeth")] } : {};
-  const [libSearch, hadSearch, browse, verses] = await Promise.all([
+  const [libSearch, hadSearch, verses] = await Promise.all([
     run("search", lib),
     run("search", had),
-    run("browse_library", { name: "الإيمان", language: "ar" }),
     run("get_quran_verses", { surah: 3, ayah: 1, language: "ar", translation_key: "arabic_moyassar" }),
   ]);
   let firstId: string | undefined;
@@ -221,7 +221,7 @@ export async function mcpSamples(): Promise<unknown> {
     : [];
   return {
     tools: tools.map((t) => ({ name: t.name, inputSchema: t.inputSchema })),
-    samples: [libSearch, hadSearch, browse, verses, ...detail],
+    samples: [libSearch, hadSearch, verses, ...detail],
     firstHadithId: firstId ?? null,
   };
 }

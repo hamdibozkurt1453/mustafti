@@ -15,6 +15,7 @@ import { ANSWER_MAX, cutAt, hfRowsUrl, islamqaLink, islamqaResult, parseHfPage, 
 
 const BAYYINAT = readFileSync(new URL("../supabase/migrations/20261006_bayyinat_search.sql", import.meta.url), "utf8");
 const MIGRATION = readFileSync(new URL("../supabase/migrations/20261007_islamqa_fatwas.sql", import.meta.url), "utf8");
+const FAST = readFileSync(new URL("../supabase/migrations/20261007b_islamqa_search_fast.sql", import.meta.url), "utf8");
 const db = new PGlite({ extensions: { pg_trgm } });
 
 const ANSWER_TRAVEL =
@@ -203,5 +204,41 @@ describe("نتيجة البحث ← مصدر", () => {
     const tr = islamqaResult(hit, "tr", keywords("الصلاة في الطائرة"))!;
     assert.equal(tr.title, "Uçakta namaz");
     assert.equal(tr.lang, "ar");
+  });
+});
+
+describe("النسخة السريعة من search_islamqa (20261007b، plpgsql بفهرس pg_trgm)", () => {
+  before(async () => {
+    await db.exec(FAST);
+    await db.exec(FAST); // آمن لإعادة التشغيل
+  });
+
+  it("النتائج والترتيب والحد الأدنى كالنسخة الأولى", async () => {
+    assert.equal((await search("ما حكم الصلاة في الطائرة؟"))[0]?.original_id, "1001");
+    assert.equal((await search("بيع التقسيط بزيادة الثمن"))[0]?.original_id, "1002");
+    assert.equal((await search("What is the ruling on mortgages?", "en"))[0]?.original_id, "1002");
+    assert.deepEqual(await search("ما حكم زكاة الخيل؟"), []);
+    assert.deepEqual(await search("ما حكم"), []);
+    assert.deepEqual(await search(""), []);
+    const hit = (await search("الصلاة في الطائرة"))[0];
+    assert.equal(hit.links.tr, "https://islamqa.info/tr/answers/1001");
+    assert.ok(hit.score > 0);
+  });
+
+  it("دالة plpgsql، والتنفيذ لـ service_role وحده", async () => {
+    const { rows } = await db.query<{ lang: string }>(
+      "select l.lanname as lang from pg_proc p join pg_language l on l.oid = p.prolang where p.proname = 'search_islamqa'",
+    );
+    assert.equal(rows[0].lang, "plpgsql");
+    const grants = await db.query<{ grantee: string }>(
+      "select grantee from information_schema.routine_privileges where routine_name = 'search_islamqa' and privilege_type = 'EXECUTE'",
+    );
+    assert.deepEqual(grants.rows.map((r) => r.grantee).filter((g) => g !== "postgres").sort(), ["service_role"]);
+  });
+
+  it("كلمة فيها علامة اقتباس لا تكسر الشرط (format %L)", async () => {
+    assert.deepEqual(await search("عن قول الله'); drop table islamqa_fatwas; --"), []);
+    const { rows } = await db.query<{ n: number }>("select count(*)::int as n from public.islamqa_fatwas");
+    assert.ok(rows[0].n >= 3);
   });
 });

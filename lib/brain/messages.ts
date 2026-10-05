@@ -28,6 +28,15 @@ export const MESSAGES = {
     ur: "مجھے معتمد مصادر میں کافی جواب نہیں ملا۔",
     id: "Saya tidak menemukan jawaban yang memadai dalam sumber-sumber yang diakui.",
   },
+  /** يسبق الجواب الجزئي (R1e): النصوص تغطي بعض السؤال لا كله، فنعرض ما فيها لا الامتناع. */
+  partialAnswer: {
+    ar: "ما وجدناه في المصادر:",
+    en: "What we found in the sources:",
+    tr: "Kaynaklarda bulduklarımız:",
+    fr: "Ce que nous avons trouvé dans les sources :",
+    ur: "مصادر میں ہمیں یہ ملا:",
+    id: "Yang kami temukan dalam sumber-sumber:",
+  },
   /** يُلحق بالامتناع. */
   suggestExpert: {
     ar: "يمكنك إرسال سؤالك إلى مختص ليجيبك.",

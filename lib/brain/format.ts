@@ -57,3 +57,51 @@ export function unquoteReferenceOnly(text: string, passages: { text: string; sou
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
+/**
+ * توحيد إشارات المصادر (R1e): بعض النماذج تكتب «[1, 2]» أو «[1،2]» أو «[1-3]» أو «【1】» أو «[S1]»
+ * بدل «[1][2]»، فكان الجواب يُعدّ بلا إسناد فيُمتنع عنه. تُحوَّل كلها إلى «[n]» متتالية.
+ */
+export function normalizeCitations(text: string): string {
+  return text
+    .replace(/[【［]\s*(\d{1,2})\s*[】］]/g, "[$1]")
+    .replace(/\[\s*S(\d{1,2})\s*\]/gi, "[$1]")
+    .replace(/\[\s*(\d{1,2}(?:\s*(?:[,،؛;]|و|and|-|–|—)\s*\d{1,2})+)\s*\]/g, (_m, list: string) => {
+      const out: number[] = [];
+      const parts = list.split(/\s*(?:[,،؛;]|و|and)\s*/);
+      for (const p of parts) {
+        const range = p.match(/^(\d{1,2})\s*[-–—]\s*(\d{1,2})$/);
+        if (range) {
+          const [a, b] = [Number(range[1]), Number(range[2])];
+          for (let n = a; n <= Math.min(b, a + 9); n++) out.push(n);
+        } else if (/^\d{1,2}$/.test(p.trim())) out.push(Number(p.trim()));
+      }
+      return out.length ? out.map((n) => `[${n}]`).join("") : _m;
+    });
+}
+
+/** إشارات [n] الصحيحة في النص (بين 1 وعدد النصوص). */
+export function validCitations(text: string, count: number): number[] {
+  return [...normalizeCitations(text).matchAll(/\[\s*(\d{1,2})\s*\]/g)].map((m) => Number(m[1])).filter((n) => n >= 1 && n <= count);
+}
+
+/**
+ * جواب جزئي فيه جملة الامتناع (R1e): النموذج كتب «لم أجد جواباً كافياً…» ثم أجاب من النصوص بإشاراتها.
+ * تُحذف جملة الامتناع (فهي تناقض ما بعدها)، ويبقى الجواب. null إن لم توجد الجملة.
+ */
+export function stripAbstainSentence(text: string, phrases: string[]): string | null {
+  const keys = phrases.map((p) => matchKey(p).replace(/\s*[.。]$/, "")).filter(Boolean);
+  const sentences = text.split(/(?<=[.!؟?۔\n])/u);
+  let found = false;
+  const kept = sentences.filter((s) => {
+    const k = matchKey(s);
+    const hit = keys.some((p) => k.includes(p));
+    if (hit && !/\[\s*\d{1,2}\s*\]/.test(s)) {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+  if (!found) return null;
+  return kept.join("").replace(/^[\s,،:؛—-]+/, "").replace(/\n{3,}/g, "\n\n").trim();
+}
