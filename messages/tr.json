@@ -357,14 +357,6 @@
     "prev": "Önceki zikir",
     "next": "Sonraki zikir"
   },
-  "intro": {
-    "forum": {
-      "kicker": "Mustafti",
-      "title": "Tartışma",
-      "lead": "Kullanıcıların kendileri için önemli konuları nezaketle ve açık kurallarla konuşabileceği sakin bir alan. Yakında açılıyor; o zamana kadar sohbette Mustafti'ye sorun.",
-      "cta": "Sohbete dön"
-    }
-  },
   "library": {
     "kicker": "IslamHouse",
     "title": "Kütüphane",
@@ -426,9 +418,12 @@
       "joinLink": "Uzman olarak katılın"
     },
     "forum": {
-      "title": "Henüz paylaşım yok",
-      "empty": "Tartışma açıldığında paylaşımlarınız ve cevaplarınız burada toplanacak.",
-      "cta": "Tartışma hakkında"
+      "title": "Henüz gönderi yok",
+      "empty": "Henüz tartışma alanında yazmadınız. Bir konu açın veya bir yanıtla katılın.",
+      "cta": "Tartışmaya git",
+      "threadsTitle": "Konularım",
+      "postsTitle": "Yanıtlarım",
+      "replyIn": "Yanıt verilen konu: {title}"
     },
     "settings": {
       "downloadTitle": "Verilerimi indir",
@@ -484,6 +479,145 @@
         "general": "Genel",
         "new_muslim": "Yeni Müslüman",
         "discover": "İslam'ı tanıyın"
+      }
+    }
+  },
+  "forum": {
+    "kicker": "Mustafti",
+    "title": "Tartışma",
+    "lead": "Kullanıcıların nezaketle ve açık kurallarla fikir alışverişi yaptığı sakin bir alan. Doğrulanmış uzmanlar da katılır; katılımcıların yazdıkları fetva değil, görüştür.",
+    "newThread": "Yeni konu",
+    "loginToPost": "Konu açmak için giriş yapın",
+    "searchLabel": "Konu başlıklarında ara",
+    "searchPlaceholder": "Başlığa göre ara…",
+    "searchButton": "Ara",
+    "allCategories": "Tüm bölümler",
+    "categoryFilter": "Bölümler",
+    "categories": {
+      "aqeedah": "Akaid",
+      "ibadat": "İbadetler",
+      "muamalat": "Muamelat",
+      "family": "Aile",
+      "new_muslim": "Yeni Müslüman",
+      "general": "Genel"
+    },
+    "pinned": "Sabitlenmiş",
+    "locked": "Kilitli",
+    "replies": "Yanıtlar: {count}",
+    "lastActivity": "Son etkinlik",
+    "anonymous": "Katılımcı",
+    "empty": "Henüz konu yok. İlk tartışmayı siz başlatın.",
+    "emptySearch": "Aramanızla eşleşen konu yok.",
+    "rulesTitle": "Tartışma adabı",
+    "rules": "Hakaret, tekfir, kışkırtma, reklam ve referans kaynakları dışından bağlantılar kabul edilmez. Burada otomatik üretilmiş yanıt yayımlanmaz; yanıt için Mustafti'ye veya bir uzmana sorun.",
+    "thread": {
+      "back": "Tüm konular",
+      "askMustafti": "Bunu Mustafti'ye sorun",
+      "repliesTitle": "Yanıtlar",
+      "noReplies": "Henüz yanıt yok.",
+      "replyTitle": "Yanıt ekle",
+      "replyPlaceholder": "Yanıtınızı nezaketle yazın…",
+      "send": "Yanıtı gönder",
+      "sending": "Gönderiliyor…",
+      "loginToReply": "Yanıtlamak için giriş yapın",
+      "lockedNote": "Bu konu kilitli: okunabilir ama yanıtlanamaz.",
+      "expertBadge": "Doğrulanmış uzman",
+      "expertRoles": {
+        "mufti": "Müftü",
+        "daee": "Dâî",
+        "mentor": "Rehber"
+      },
+      "viewProfile": "Herkese açık profil",
+      "expertAnswer": "Uzman yanıtı",
+      "markExpert": "“Uzman yanıtı” olarak işaretle",
+      "unmarkExpert": "“Uzman yanıtı” işaretini kaldır",
+      "markAsExpertOnPost": "“Uzman yanıtı” olarak gönder (en üstte gösterilir)",
+      "rulingNotice": "Bu bir katılımcının görüşüdür, fetva değildir. Mustafti'ye veya bir uzmana sorun.",
+      "askLink": "Mustafti'ye sorun"
+    },
+    "new": {
+      "title": "Yeni konu",
+      "lead": "Açık bir başlık yazın ve bir bölüm seçin. Yazdığınız her şey yayımlanmadan önce tartışma adabına göre kontrol edilir.",
+      "titleLabel": "Başlık",
+      "categoryLabel": "Bölüm",
+      "bodyLabel": "Konu metni",
+      "bodyPlaceholder": "Neyi tartışmak istediğinizi açıklayın…",
+      "submit": "Konuyu yayımla",
+      "submitting": "Yayımlanıyor…",
+      "cancel": "İptal",
+      "counter": "{count} / {max}"
+    },
+    "report": {
+      "button": "Bildir",
+      "title": "Gönderiyi bildir",
+      "lead": "Bildirimler yalnızca moderatörlere ulaşır ve adınız gösterilmez.",
+      "reasonLabel": "Neden",
+      "reasons": {
+        "abuse": "Hakaret veya küfür",
+        "takfir": "Tekfir",
+        "incitement": "Kışkırtma",
+        "spam": "Reklam veya spam",
+        "fatwa": "Uzman olmayan birinden fetva",
+        "other": "Diğer"
+      },
+      "noteLabel": "Ayrıntılar (isteğe bağlı)",
+      "submit": "Bildirimi gönder",
+      "sending": "Gönderiliyor…",
+      "cancel": "İptal",
+      "sent": "Bildiriminiz alındı. Teşekkür ederiz.",
+      "loginToReport": "Bildirmek için giriş yapın"
+    },
+    "errors": {
+      "unauthorized": "Lütfen önce giriş yapın.",
+      "invalid": "Alanları kontrol edin: başlık 5–160 karakter, metin en az 10 karakter olmalı.",
+      "limited": "Kısa sürede çok fazla gönderi yaptınız. Birkaç dakika bekleyip tekrar deneyin.",
+      "locked": "Bu konu kilitli veya erişilemiyor.",
+      "duplicate": "Bu gönderiyi zaten bildirdiniz.",
+      "generic": "Gönderilemedi. Lütfen tekrar deneyin.",
+      "rejected": {
+        "insult": "Yayımlanmadı: hakaret veya küfür içeriyor. Lütfen tartışmayı nazik tutun.",
+        "takfir": "Yayımlanmadı: tekfir içeriyor. Bu tartışma alanında kimse tekfir edilmez.",
+        "incitement": "Yayımlanmadı: zarar vermeye kışkırtma içeriyor.",
+        "ads": "Yayımlanmadı: reklam veya platform dışında iletişime davet gibi görünüyor.",
+        "link": "Yayımlanmadı: referans kaynakları dışından bir bağlantı içeriyor."
+      }
+    }
+  },
+  "admin": {
+    "forum": {
+      "tab": "Tartışma",
+      "reportsTitle": "Açık bildirimler",
+      "noReports": "Açık bildirim yok.",
+      "threadsTitle": "Son konular",
+      "noThreads": "Konu yok.",
+      "target": {
+        "thread": "Konu",
+        "post": "Yanıt"
+      },
+      "reason": "Neden",
+      "note": "Ayrıntılar",
+      "reportsCount": "Bildirimler: {count}",
+      "missingTarget": "İçerik silinmiş.",
+      "openThread": "Konuyu aç",
+      "status": {
+        "visible": "Görünür",
+        "hidden": "Gizli",
+        "locked": "Kilitli"
+      },
+      "actions": {
+        "hide": "Gizle",
+        "show": "Göster",
+        "lock": "Kilitle",
+        "unlock": "Kilidi aç",
+        "pin": "Sabitle",
+        "unpin": "Sabitlemeyi kaldır",
+        "resolve": "Bildirimi çöz"
+      },
+      "errors": {
+        "forbidden": "Bu işlem için yetkiniz yok.",
+        "unauthorized": "Oturumunuz sona erdi. Lütfen tekrar giriş yapın.",
+        "invalid": "Geçersiz istek.",
+        "generic": "İşlem tamamlanamadı. Lütfen tekrar deneyin."
       }
     }
   }

@@ -357,14 +357,6 @@
     "prev": "Zikir sebelumnya",
     "next": "Zikir berikutnya"
   },
-  "intro": {
-    "forum": {
-      "kicker": "Mustafti",
-      "title": "Forum",
-      "lead": "Ruang tenang bagi pengguna untuk berdiskusi tentang hal yang penting bagi mereka, dengan santun dan aturan yang jelas. Segera dibuka; sementara itu, tanyakan kepada Mustafti di obrolan.",
-      "cta": "Kembali ke obrolan"
-    }
-  },
   "library": {
     "kicker": "IslamHouse",
     "title": "Perpustakaan",
@@ -426,9 +418,12 @@
       "joinLink": "Bergabung sebagai ahli"
     },
     "forum": {
-      "title": "Belum ada postingan",
-      "empty": "Saat forum dibuka, postingan dan balasan Anda akan terkumpul di sini.",
-      "cta": "Tentang forum"
+      "title": "Belum ada kiriman",
+      "empty": "Anda belum menulis di forum. Mulailah sebuah topik atau ikut serta dengan balasan.",
+      "cta": "Ke forum",
+      "threadsTitle": "Topik saya",
+      "postsTitle": "Balasan saya",
+      "replyIn": "Balasan di: {title}"
     },
     "settings": {
       "downloadTitle": "Unduh data saya",
@@ -484,6 +479,145 @@
         "general": "Umum",
         "new_muslim": "Mualaf",
         "discover": "Mengenal Islam"
+      }
+    }
+  },
+  "forum": {
+    "kicker": "Mustafti",
+    "title": "Forum",
+    "lead": "Ruang tenang bagi pengguna untuk berdiskusi dengan santun dan aturan yang jelas. Para ahli terverifikasi ikut serta; tulisan peserta adalah pendapat, bukan fatwa.",
+    "newThread": "Topik baru",
+    "loginToPost": "Masuk untuk memulai topik",
+    "searchLabel": "Cari judul topik",
+    "searchPlaceholder": "Cari berdasarkan judul…",
+    "searchButton": "Cari",
+    "allCategories": "Semua bagian",
+    "categoryFilter": "Bagian",
+    "categories": {
+      "aqeedah": "Akidah",
+      "ibadat": "Ibadah",
+      "muamalat": "Muamalah",
+      "family": "Keluarga",
+      "new_muslim": "Mualaf",
+      "general": "Umum"
+    },
+    "pinned": "Disematkan",
+    "locked": "Dikunci",
+    "replies": "Balasan: {count}",
+    "lastActivity": "Aktivitas terakhir",
+    "anonymous": "Peserta",
+    "empty": "Belum ada topik. Jadilah yang pertama memulai diskusi.",
+    "emptySearch": "Tidak ada topik yang cocok dengan pencarian Anda.",
+    "rulesTitle": "Adab forum",
+    "rules": "Hinaan, takfir, hasutan, iklan, dan tautan dari luar sumber rujukan akan ditolak. Tidak ada jawaban yang dibuat otomatis di sini; untuk mendapatkan jawaban, tanyakan kepada Mustafti atau seorang ahli.",
+    "thread": {
+      "back": "Semua topik",
+      "askMustafti": "Tanyakan ini kepada Mustafti",
+      "repliesTitle": "Balasan",
+      "noReplies": "Belum ada balasan.",
+      "replyTitle": "Tambahkan balasan",
+      "replyPlaceholder": "Tulis balasan Anda dengan santun…",
+      "send": "Kirim balasan",
+      "sending": "Mengirim…",
+      "loginToReply": "Masuk untuk membalas",
+      "lockedNote": "Topik ini dikunci: dapat dibaca tetapi tidak dapat dibalas.",
+      "expertBadge": "Ahli terverifikasi",
+      "expertRoles": {
+        "mufti": "Mufti",
+        "daee": "Dai",
+        "mentor": "Pendamping"
+      },
+      "viewProfile": "Profil publik",
+      "expertAnswer": "Jawaban ahli",
+      "markExpert": "Tandai sebagai “Jawaban ahli”",
+      "unmarkExpert": "Hapus tanda “Jawaban ahli”",
+      "markAsExpertOnPost": "Kirim sebagai “Jawaban ahli” (ditampilkan pertama)",
+      "rulingNotice": "Ini pendapat peserta, bukan fatwa. Tanyakan kepada Mustafti atau seorang ahli.",
+      "askLink": "Tanya Mustafti"
+    },
+    "new": {
+      "title": "Topik baru",
+      "lead": "Tulis judul yang jelas dan pilih bagian. Semua yang Anda tulis diperiksa sesuai adab forum sebelum diterbitkan.",
+      "titleLabel": "Judul",
+      "categoryLabel": "Bagian",
+      "bodyLabel": "Isi topik",
+      "bodyPlaceholder": "Jelaskan apa yang ingin Anda diskusikan…",
+      "submit": "Terbitkan topik",
+      "submitting": "Menerbitkan…",
+      "cancel": "Batal",
+      "counter": "{count} / {max}"
+    },
+    "report": {
+      "button": "Laporkan",
+      "title": "Laporkan kiriman",
+      "lead": "Laporan hanya sampai kepada moderator, dan nama Anda tidak ditampilkan.",
+      "reasonLabel": "Alasan",
+      "reasons": {
+        "abuse": "Hinaan atau caci maki",
+        "takfir": "Takfir",
+        "incitement": "Hasutan",
+        "spam": "Iklan atau spam",
+        "fatwa": "Fatwa dari yang bukan ahli",
+        "other": "Lainnya"
+      },
+      "noteLabel": "Rincian (opsional)",
+      "submit": "Kirim laporan",
+      "sending": "Mengirim…",
+      "cancel": "Batal",
+      "sent": "Laporan Anda telah diterima. Terima kasih.",
+      "loginToReport": "Masuk untuk melapor"
+    },
+    "errors": {
+      "unauthorized": "Silakan masuk terlebih dahulu.",
+      "invalid": "Periksa isian: judul 5–160 karakter dan isi minimal 10 karakter.",
+      "limited": "Anda telah banyak mengirim dalam waktu singkat. Tunggu beberapa menit lalu coba lagi.",
+      "locked": "Topik ini dikunci atau tidak tersedia.",
+      "duplicate": "Anda sudah melaporkan kiriman ini.",
+      "generic": "Gagal mengirim. Silakan coba lagi.",
+      "rejected": {
+        "insult": "Tidak diterbitkan: mengandung hinaan atau caci maki. Mohon jaga kesantunan diskusi.",
+        "takfir": "Tidak diterbitkan: mengandung takfir. Tidak ada seorang pun yang dikafirkan di forum ini.",
+        "incitement": "Tidak diterbitkan: mengandung hasutan untuk menyakiti.",
+        "ads": "Tidak diterbitkan: tampak seperti iklan atau ajakan berkomunikasi di luar platform.",
+        "link": "Tidak diterbitkan: mengandung tautan dari luar sumber rujukan."
+      }
+    }
+  },
+  "admin": {
+    "forum": {
+      "tab": "Forum",
+      "reportsTitle": "Laporan terbuka",
+      "noReports": "Tidak ada laporan terbuka.",
+      "threadsTitle": "Topik terbaru",
+      "noThreads": "Tidak ada topik.",
+      "target": {
+        "thread": "Topik",
+        "post": "Balasan"
+      },
+      "reason": "Alasan",
+      "note": "Rincian",
+      "reportsCount": "Laporan: {count}",
+      "missingTarget": "Konten telah dihapus.",
+      "openThread": "Buka topik",
+      "status": {
+        "visible": "Tampil",
+        "hidden": "Disembunyikan",
+        "locked": "Dikunci"
+      },
+      "actions": {
+        "hide": "Sembunyikan",
+        "show": "Tampilkan",
+        "lock": "Kunci",
+        "unlock": "Buka kunci",
+        "pin": "Sematkan",
+        "unpin": "Lepas sematan",
+        "resolve": "Selesaikan laporan"
+      },
+      "errors": {
+        "forbidden": "Anda tidak memiliki izin untuk tindakan ini.",
+        "unauthorized": "Sesi Anda telah berakhir. Silakan masuk kembali.",
+        "invalid": "Permintaan tidak valid.",
+        "generic": "Tindakan gagal diselesaikan. Silakan coba lagi."
       }
     }
   }

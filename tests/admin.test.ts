@@ -25,10 +25,10 @@ import { countryName } from "../lib/experts/countries";
 
 describe("أدوار اللوحة", () => {
   it("التبويبات حسب الدور، وviewer يرى الكل", () => {
-    assert.deepEqual(tabsFor("super_admin"), ["home", "experts", "cases", "stats"]);
+    assert.deepEqual(tabsFor("super_admin"), ["home", "experts", "cases", "forum", "stats"]);
     assert.deepEqual(tabsFor("reviewer"), ["home", "experts", "stats"]);
-    assert.deepEqual(tabsFor("moderator"), ["home", "cases", "stats"]);
-    assert.deepEqual(tabsFor("viewer"), ["home", "experts", "cases", "stats"]);
+    assert.deepEqual(tabsFor("moderator"), ["home", "cases", "forum", "stats"]);
+    assert.deepEqual(tabsFor("viewer"), ["home", "experts", "cases", "forum", "stats"]);
   });
 
   it("viewer بلا MFA، وبقية المشرفين بـ MFA", () => {

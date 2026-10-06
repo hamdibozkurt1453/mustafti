@@ -5,6 +5,7 @@ import { AdminCases } from "@/components/admin/AdminCases";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { MfaGate } from "@/components/admin/MfaGate";
 import { CountBadge } from "@/components/AccountButton";
+import { AdminForum } from "@/components/admin/AdminForum";
 import { ExpertApplications } from "@/components/admin/ExpertApplications";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Link } from "@/i18n/navigation";
@@ -12,6 +13,7 @@ import type { Locale } from "@/i18n/locales";
 import { tabsFor, type AdminTab } from "@/lib/admin/rules";
 import { ADMIN_ROLES, adminNeedsMfa, getAuthContext, requireRole } from "@/lib/auth/roles";
 import { pendingApplicationsCount } from "@/lib/experts/store";
+import { openReportsCount } from "@/lib/forum/store";
 
 type Props = {
   params: Promise<{ locale: string; adminPath: string }>;
@@ -23,7 +25,7 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 /**
  * `/[ADMIN_PATH]` — لوحة المشرف. التبويبات حسب الدور (lib/admin/rules: tabsFor):
  *   «طلبات المختصين» (S9) لـ super_admin وreviewer، و«الملفات» (S10) لـ super_admin وmoderator،
- *   و«الإحصاءات» (S10) للجميع. وviewer (حساب اطلاع للجنة التحكيم) يرى الكل بلا أزرار ولا وثائق ولا تواصل.
+ *   و«الحوار» (R4) لـ super_admin وmoderator، و«الإحصاءات» (S10) للجميع. وviewer (حساب اطلاع للجنة التحكيم) يرى الكل بلا أزرار ولا وثائق ولا تواصل.
  * طبقات الحماية، كلها في الخادم ولكل طلب:
  *   1) المسار يطابق متغير ADMIN_PATH، وإلا 404.
  *   2) الحساب مسجّل وله صف في جدول admins، وإلا 404 (لا يُكشف وجود اللوحة).
@@ -62,6 +64,7 @@ export default async function AdminPage({ params, searchParams }: Props) {
     home: t("experts.review.tabHome"),
     experts: t("experts.review.tab"),
     cases: t("admin.cases.tab"),
+    forum: t("admin.forum.tab"),
     stats: t("admin.stats.tab"),
   };
   const tabs = await Promise.all(
@@ -69,7 +72,7 @@ export default async function AdminPage({ params, searchParams }: Props) {
       key,
       href: key === "home" ? base : `${base}?tab=${key}`,
       label: labels[key],
-      count: key === "experts" ? await pendingApplicationsCount() : 0,
+      count: key === "experts" ? await pendingApplicationsCount() : key === "forum" ? await openReportsCount() : 0,
     })),
   );
 
@@ -103,7 +106,10 @@ export default async function AdminPage({ params, searchParams }: Props) {
               }`}
             >
               {x.label}
-              <CountBadge count={x.count} label={t("experts.review.pendingBadge", { count: x.count })} />
+              <CountBadge
+                count={x.count}
+                label={x.key === "forum" ? t("admin.forum.reportsCount", { count: x.count }) : t("experts.review.pendingBadge", { count: x.count })}
+              />
             </Link>
           ))}
         </nav>
@@ -112,6 +118,8 @@ export default async function AdminPage({ params, searchParams }: Props) {
             <ExpertApplications base={base} status={sp.status} selected={sp.app} readOnly={readOnly} />
           ) : tab === "cases" ? (
             <AdminCases base={base} status={sp.status} track={sp.track} canAct={!readOnly} />
+          ) : tab === "forum" ? (
+            <AdminForum canAct={!readOnly} />
           ) : tab === "stats" ? (
             <AdminStats />
           ) : (
