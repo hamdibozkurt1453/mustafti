@@ -297,7 +297,8 @@
         "week": "7 hari terakhir",
         "older": "Lebih lama"
       }
-    }
+    },
+    "chitchatSuggest": "Anda bisa bertanya, misalnya"
   },
   "case": {
     "start": "",

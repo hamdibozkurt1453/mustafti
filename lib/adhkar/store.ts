@@ -2,8 +2,11 @@ import "server-only";
 
 import { createClient as createPublicClient } from "@supabase/supabase-js";
 import { isSupabaseConfigured, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/env";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { DhikrRow, Occasion } from "./rules";
+import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin";
+import { toDhikrs, type Dhikr } from "./group";
+import type { DhikrRow } from "./rules";
+
+export type { Dhikr };
 
 const COLUMNS = "hadith_id, lang, occasions, position, title, text, explanation, grade, repeat_count, source_url";
 /** F2: أعمدة migration ‏20261014_adhkar_timed.sql (قبل تنفيذها تُقرأ الأعمدة الأولى وحدها). */
@@ -11,64 +14,39 @@ const F2_COLUMNS = `${COLUMNS}, transliteration, meaning_en, reference`;
 /** بذرة الأذكار المشهورة بتخريجها (في الـ migration): لا يحذفها بناء أذكار الموسوعة. */
 export const SEED_PREFIX = "seed-";
 
-/** ذكر للعرض: النص العربي، ومعناه بلغة الواجهة إن وُجد في المصدر. */
-export type Dhikr = {
-  id: string;
-  occasions: Occasion[];
-  text: string;
-  title: string | null;
-  grade: string;
-  count: number | null;
-  url: string;
-  /** بلغة الواجهة: ترجمة الحديث من الموسوعة (لغير العربية)، أو شرحه العربي من الموسوعة. */
-  meaning: string | null;
-  meaningGrade: string | null;
-  meaningUrl: string | null;
-  explanation: string | null;
-  /** F2: النطق، والمعنى بالإنجليزية، والتخريج (الكتاب ورقم الحديث). */
-  transliteration: string | null;
-  meaningEn: string | null;
-  reference: string | null;
-};
+
+type Reader = { from: (table: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+/** يقرأ صفوف لغات العرض بعميل واحد: أعمدة F2 أولاً، ثم الأعمدة الأولى إن لم تُنفَّذ migration ‏20261014. */
+async function readRows(db: Reader, langs: string[]): Promise<{ rows: DhikrRow[] | null; error: string | null }> {
+  const query = (columns: string) => db.from("adhkar").select(columns).in("lang", langs).order("position");
+  let { data, error } = await query(F2_COLUMNS);
+  if (error) ({ data, error } = await query(COLUMNS));
+  return error || !data ? { rows: null, error: error?.message ?? "no data" } : { rows: data as DhikrRow[], error: null };
+}
 
 /**
- * الأذكار للعرض (قراءة عامة بسياسة RLS). [] إن لم تُبنَ بعد أو لم يُعدّ Supabase.
- * بالمفتاح العام بلا كوكيز الجلسة، فتبقى الرئيسية ثابتة (ISR) ولا تُرسم لكل طلب.
+ * الأذكار للعرض. [] إن لم تُبنَ بعد أو لم يُعدّ Supabase.
+ * بالمفتاح العام بلا كوكيز الجلسة (سياسة RLS للقراءة العامة)، فتبقى الرئيسية ثابتة (ISR).
+ * F2b: إن رُفضت القراءة العامة (في الإنتاج سُحبت صلاحية anon على الجدول، فكانت الصفحة فارغة مع 29 صفاً)،
+ * تُقرأ بمفتاح الخادم (المحتوى عام أصلاً، والقراءة في الخادم فقط)، وتُصلح migration ‏20261015 الصلاحية.
  */
 export async function listAdhkar(locale: string): Promise<Dhikr[]> {
   if (!isSupabaseConfigured()) return [];
+  const langs = [...new Set(["ar", locale])];
   try {
-    const supabase = createPublicClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
-    const langs = [...new Set(["ar", locale])];
-    const query = (columns: string) => supabase.from("adhkar").select(columns).in("lang", langs).order("position");
-    let { data, error } = await query(F2_COLUMNS);
-    if (error) ({ data, error } = await query(COLUMNS));
-    if (error || !data) return [];
-    const rows = data as unknown as DhikrRow[];
-    const local = new Map(rows.filter((r) => r.lang === locale && locale !== "ar").map((r) => [r.hadith_id, r]));
-    return rows
-      .filter((r) => r.lang === "ar")
-      .map((ar) => {
-        const tr = local.get(ar.hadith_id);
-        return {
-          id: ar.hadith_id,
-          occasions: ar.occasions,
-          text: ar.text,
-          title: tr?.title ?? ar.title,
-          grade: ar.grade,
-          count: ar.repeat_count,
-          url: ar.source_url,
-          // لغير العربية: ترجمة الموسوعة إن وُجدت، وإلا المعنى بالإنجليزية من البذرة.
-          meaning: tr ? tr.text : locale !== "ar" ? (ar.meaning_en ?? null) : null,
-          meaningGrade: tr?.grade ?? null,
-          meaningUrl: tr?.source_url ?? null,
-          explanation: tr ? tr.explanation : ar.explanation,
-          transliteration: ar.transliteration ?? null,
-          meaningEn: ar.meaning_en ?? null,
-          reference: ar.reference ?? null,
-        };
-      });
-  } catch {
+    let { rows, error } = await readRows(createPublicClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } }), langs);
+    if (!rows && isAdminClientConfigured()) {
+      console.warn("adhkar public read failed, using server key:", error);
+      ({ rows, error } = await readRows(createAdminClient(), langs));
+    }
+    if (!rows) {
+      console.error("adhkar read:", error);
+      return [];
+    }
+    return toDhikrs(rows, locale);
+  } catch (e) {
+    console.error("adhkar read:", e instanceof Error ? e.message : e);
     return [];
   }
 }

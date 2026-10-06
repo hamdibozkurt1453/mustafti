@@ -31,13 +31,15 @@ type Props = {
   title?: string;
   /** F2: سجل المحادثات للمسجّل (الشريط الجانبي). */
   history?: ConversationsApi;
+  /** الرأس ثابت فوق الصفحة (الرئيسية)، لا في مجرى الصفحة. */
+  fixedHeader?: boolean;
 };
 
 /**
  * واجهة المحادثة: السائل في فقاعة خضراء داكنة، ومُستفتي في فقاعة بيضاء مع بطاقات المصادر،
  * والخانة مثبتة في الأسفل. اتجاه كل فقاعة حسب لغة نصها (RTL للعربية والأردية والفارسية).
  */
-export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, onAsk, caseApi, busy, inputRef, reduced, title, history }: Props) {
+export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, onAsk, caseApi, busy, inputRef, reduced, title, history, fixedHeader = false }: Props) {
   const t = useTranslations();
   const endRef = useRef<HTMLDivElement>(null);
   const [term, setTerm] = useState<GlossaryTerm | null>(null);
@@ -53,13 +55,14 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, 
     }
   }, [messages.length, last, reduced]);
 
-  // F2: مكان الشريط الجانبي على الشاشات الواسعة (في بداية السطر).
-  const docked = history?.signedIn ? "lg:ps-72" : "";
+  // F2b: على الشاشات الواسعة الشريط الجانبي عمود في بداية السطر (sticky بكامل الارتفاع)، والخانة المثبتة
+  // في الأسفل تبدأ بعده فلا يغطي تدرّجها أسفل الشريط.
+  const docked = Boolean(history?.signedIn);
 
   return (
-    <div className={`flex min-h-[100svh] flex-col bg-ivory-50 ${docked}`}>
-      {history && <ConversationSidebar api={history} onNew={onReset} docked />}
-      <section aria-label={t("chat.label")} className="mx-auto w-full max-w-3xl flex-1 px-4 pb-48 pt-24">
+    <div className={`flex min-h-[100svh] flex-col bg-ivory-50 ${docked ? "lg:flex-row" : ""}`}>
+      {history && <ConversationSidebar api={history} onNew={onReset} docked underFixedHeader={fixedHeader} />}
+      <section aria-label={t("chat.label")} className="mx-auto w-full min-w-0 max-w-3xl flex-1 px-4 pb-48 pt-24">
         {/* F1: الزائر غير المسجّل يعرف أن محادثته لا تُحفظ، وبإمكانه الدخول أو إغلاق الشريط. */}
         <GuestNotice />
         <div className="mb-6 flex flex-col items-center gap-2">
@@ -107,7 +110,7 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, 
         <div ref={endRef} />
       </section>
 
-      <div className={`fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t ${docked} from-ivory-50 via-ivory-50/95 to-transparent pt-8`}>
+      <div className={`fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t ${docked ? "lg:start-72" : ""} from-ivory-50 via-ivory-50/95 to-transparent pt-8`}>
         <div className="mx-auto w-full max-w-3xl px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Composer ref={inputRef} value={text} onChange={setText} onSubmit={onSubmit} variant="dock" reduced={reduced} disabled={busy} />
           <p className="mt-2 text-center text-[11px] text-ink-600">{t("disclosure.text")}</p>

@@ -16,7 +16,8 @@
 
 export type ChatStage = "understanding" | "searching" | "reading" | "readingFatwa" | "verifying" | "writing";
 
-export type ChatReplyKind = "identity" | "urgent" | "out_of_scope" | "referral" | "answer" | "abstain" | "refused";
+/** chitchat (F2b): رد الشخصية على التحية والشكر والسؤال عن المنصة، مع أسئلة مقترحة. */
+export type ChatReplyKind = "identity" | "urgent" | "out_of_scope" | "referral" | "answer" | "abstain" | "refused" | "chitchat";
 
 /** بطاقة مصدر: نص منقول بحروفه من المصدر، ورقمه كما رآه النموذج ([n] في الشرح). */
 export type ChatSource = {

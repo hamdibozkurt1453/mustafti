@@ -286,7 +286,7 @@ describe("F2 · طريقة الحساب من البلد", () => {
     const card = src("components/home/PrayerCard.tsx");
     assert.doesNotMatch(card, /t\("change"\)|PrayerSettingsForm/);
     assert.match(card, /fetch\("\/api\/geo"/);
-    assert.match(card, /data-testid="dhikr-now"/);
+    assert.match(card, /<TimedDhikr/); // F2b: الأذكار الموقوتة داخل البطاقة بدل «ذِكر الآن»
     assert.doesNotMatch(src("app/[locale]/me/page.tsx"), /MePrayerSettings|prayerTitle/);
   });
 });

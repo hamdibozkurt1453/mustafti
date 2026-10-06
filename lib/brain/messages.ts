@@ -174,14 +174,14 @@ export const MESSAGES = {
     ur: "سب سے پہلے آپ کی حفاظت۔ اگر آپ یا کوئی اور اس وقت خطرے میں ہے تو فوراً اپنے ملک کے ایمرجنسی نمبر پر کال کریں، یا قریبی محفوظ جگہ یا ہسپتال جائیں، اور اپنے قریب کسی قابلِ اعتماد شخص سے مدد مانگیں۔ آپ اکیلے نہیں ہیں، مدد موجود ہے۔",
     id: "Keselamatan Anda yang utama. Jika Anda atau orang lain sedang dalam bahaya sekarang, segera hubungi nomor darurat di negara Anda, atau pergi ke tempat aman atau rumah sakit terdekat, dan mintalah bantuan orang yang Anda percayai di dekat Anda. Anda tidak sendirian, bantuan tersedia.",
   },
-  /** خارج النطاق. */
+  /** خارج النطاق (F2b: ألطف، ولما هو خارج الدين فعلاً؛ التحية والشكر محادثة عادية لا تصل هنا). */
   outOfScope: {
-    ar: "عذراً، هذا خارج ما أستطيع المساعدة فيه. مُستفتي مخصص للأسئلة عن الإسلام من مصادر معتمدة، ولإيصال سؤالك الشخصي إلى أهل العلم، ومعه مواقيت الصلاة والأذكار.",
-    en: "Sorry, this is outside what I can help with. Mustafti is for questions about Islam answered from approved sources, for sending your personal question to scholars, and for prayer times and adhkar.",
-    tr: "Üzgünüm, bu yardımcı olabileceğim konuların dışında. Mustafti, onaylı kaynaklardan İslam hakkındaki sorular, kişisel sorunuzu âlimlere iletmek, namaz vakitleri ve zikirler içindir.",
-    fr: "Désolé, cela dépasse ce que je peux faire. Mustafti sert aux questions sur l'islam, répondues à partir de sources approuvées, à transmettre votre question personnelle aux savants, ainsi qu'aux horaires de prière et aux invocations.",
-    ur: "معذرت، یہ میری مدد کے دائرے سے باہر ہے۔ مستفتی اسلام کے بارے میں معتمد مصادر سے سوالات، آپ کا ذاتی سوال اہلِ علم تک پہنچانے، اور نماز کے اوقات و اذکار کے لیے ہے۔",
-    id: "Maaf, ini di luar hal yang dapat saya bantu. Mustafti dibuat untuk pertanyaan tentang Islam dari sumber-sumber yang diakui, untuk menyampaikan pertanyaan pribadi Anda kepada ulama, serta waktu shalat dan dzikir.",
+    ar: "أهلاً بك. مُستفتي متخصص في أسئلة الدين الإسلامي، فلا أستطيع المساعدة في هذا الموضوع. هل لديك سؤال عن العبادات أو العقيدة أو المعاملات؟",
+    en: "Welcome. Mustafti specialises in questions about the Islamic religion, so I can't help with this topic. Do you have a question about worship, belief or dealings?",
+    tr: "Hoş geldiniz. Mustafti İslam diniyle ilgili sorularda uzmanlaşmıştır, bu yüzden bu konuda yardımcı olamıyorum. İbadetler, inanç veya muamelatla ilgili bir sorunuz var mı?",
+    fr: "Bienvenue. Mustafti est spécialisé dans les questions sur la religion musulmane, je ne peux donc pas vous aider sur ce sujet. Avez-vous une question sur les actes d'adoration, la croyance ou les transactions ?",
+    ur: "خوش آمدید۔ مستفتی اسلامی دین کے سوالات میں مہارت رکھتا ہے، اس لیے میں اس موضوع میں مدد نہیں کر سکتا۔ کیا آپ کا عبادات، عقیدہ یا معاملات کے بارے میں کوئی سوال ہے؟",
+    id: "Selamat datang. Mustafti khusus untuk pertanyaan tentang agama Islam, jadi saya tidak dapat membantu dalam topik ini. Apakah Anda punya pertanyaan tentang ibadah, akidah, atau muamalah?",
   },
   /** «من أنت؟ ومن طوّرك؟» — نص القسم 0.5 من الخطة. */
   identityWho: {

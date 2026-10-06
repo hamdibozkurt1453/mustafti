@@ -297,7 +297,8 @@
         "week": "Son 7 gün",
         "older": "Daha eski"
       }
-    }
+    },
+    "chitchatSuggest": "Örneğin bana şunu sorabilirsiniz"
   },
   "case": {
     "start": "",
