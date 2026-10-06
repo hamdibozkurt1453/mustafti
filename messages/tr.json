@@ -428,7 +428,6 @@
     "limited": "Kısa sürede çok fazla arama yaptınız. Biraz bekleyip tekrar deneyin.",
     "unavailable": "Kütüphaneye şu anda ulaşılamıyor. Biraz sonra tekrar deneyin.",
     "empty": "Kitap bulunamadı. Başka bir kelime veya konu deneyin.",
-    "note": "İçerikler IslamHouse'tandır (islamhouse.com) ve resmî bağlantısından açılır; hiçbir dosyayı barındırmıyoruz.",
     "types": {
       "books": "Kitap",
       "articles": "Makale",
@@ -440,7 +439,6 @@
     },
     "latest": "En yeni kitaplar",
     "downloadPdf": "PDF indir",
-    "islamhousePage": "IslamHouse sayfası",
     "by": "Yazar:",
     "arabicToo": "Arapça kitaplar da",
     "ownLanguage": "Kendi dilimdeki kitaplar",

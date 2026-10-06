@@ -428,7 +428,6 @@
     "limited": "Trop de recherches en peu de temps. Patientez un instant puis réessayez.",
     "unavailable": "La bibliothèque est inaccessible pour le moment. Réessayez dans un instant.",
     "empty": "Aucun livre trouvé. Essayez un autre mot ou un thème.",
-    "note": "Les documents proviennent d'IslamHouse (islamhouse.com) et s'ouvrent depuis leur lien officiel ; nous n'hébergeons aucun fichier.",
     "types": {
       "books": "Livre",
       "articles": "Article",
@@ -440,7 +439,6 @@
     },
     "latest": "Derniers livres",
     "downloadPdf": "Télécharger le PDF",
-    "islamhousePage": "Page sur IslamHouse",
     "by": "Par",
     "arabicToo": "Livres en arabe aussi",
     "ownLanguage": "Livres dans ma langue",

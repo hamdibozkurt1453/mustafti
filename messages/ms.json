@@ -428,7 +428,6 @@
     "limited": "Terlalu banyak carian dalam masa singkat. Tunggu sebentar dan cuba lagi.",
     "unavailable": "Perpustakaan tidak dapat dicapai sekarang. Cuba lagi sebentar nanti.",
     "empty": "Tiada buku ditemui. Cuba perkataan atau topik lain.",
-    "note": "Bahan daripada IslamHouse (islamhouse.com) dan dibuka daripada pautan rasminya; kami tidak menyimpan sebarang fail.",
     "types": {
       "books": "Buku",
       "articles": "Artikel",
@@ -440,7 +439,6 @@
     },
     "latest": "Buku terkini",
     "downloadPdf": "Muat turun PDF",
-    "islamhousePage": "Halaman di IslamHouse",
     "by": "Oleh",
     "arabicToo": "Buku bahasa Arab juga",
     "ownLanguage": "Buku dalam bahasa saya",

@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { BookCard as Book, BookPage } from "@/lib/library/islamhouse-core";
 import { BookCard } from "./BookCard";
 
-type Labels = { pdf: string; page: string; by: string; more: string; loading: string; error: string };
+type Labels = { pdf: string; by: string; more: string; loading: string; error: string };
 
 /**
  * F2: «اكتشف المزيد» تحت الكتب الستة الأولى: كل ضغطة تطلب الصفحة التالية (6 كتب) من /api/library

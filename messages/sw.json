@@ -428,7 +428,6 @@
     "limited": "Umetafuta mara nyingi kwa muda mfupi. Subiri kidogo kisha ujaribu tena.",
     "unavailable": "Maktaba haipatikani kwa sasa. Jaribu tena baada ya muda mfupi.",
     "empty": "Hakuna kitabu kilichopatikana. Jaribu neno au mada nyingine.",
-    "note": "Maudhui yanatoka IslamHouse (islamhouse.com) na yanafunguliwa kupitia kiungo chake rasmi; hatuhifadhi faili lolote.",
     "types": {
       "books": "Kitabu",
       "articles": "Makala",
@@ -440,7 +439,6 @@
     },
     "latest": "Vitabu vipya",
     "downloadPdf": "Pakua PDF",
-    "islamhousePage": "Ukurasa kwenye IslamHouse",
     "by": "Na",
     "arabicToo": "Vitabu vya Kiarabu pia",
     "ownLanguage": "Vitabu kwa lugha yangu",
