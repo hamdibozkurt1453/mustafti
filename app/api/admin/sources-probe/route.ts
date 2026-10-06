@@ -271,7 +271,7 @@ if(j.error){tds[1].textContent="خطأ";tds[7].textContent=j.error;continue}
 tds[1].textContent=j.level??"—";tds[2].textContent=j.kind+(j.overrides&&j.overrides.length?" ("+j.overrides.join("، ")+")":"");tds[3].textContent=String(j.accepted)+(j.sources&&j.sources.length?" ("+j.sources.join("، ")+")":"");
 tds[4].textContent=j.fatwas+" / "+j.links;tds[5].textContent=j.web?(j.web.verified+" بنص · "+j.web.linkOnly+" رابط"+(j.web.searchOnly?" (بحث فقط)":"")+" · "+j.web.ms+"ms"+(j.web.error?" · "+j.web.error:"")):"—";
 tds[6].textContent=(j.ms/1000).toFixed(1)+" ث"+(j.timings&&j.timings.cached?" (ذاكرة)":"");tds[6].style.color=j.ms>25000?"var(--bad)":"var(--mid)";tds[7].textContent=j.abstained?"نعم":"لا";tds[7].style.color=j.abstained?"var(--bad)":"var(--mid)";tds[0].title=j.text||"";
-const RS={no_passages:"لا نصوص من البحث",no_relevant:"لا نص بلغ 60",model_abstained:"النموذج امتنع رغم النصوص",no_citation:"جواب بلا إشارة [n]",guard:"اعتراض الحارس"};
+const RS={no_passages:"لا نصوص من البحث",no_relevant:"لا نص بلغ 60",model_abstained:"النموذج امتنع رغم النصوص",no_citation:"جواب فارغ",guard:"اعتراض الحارس"};
 tds[8].textContent=j.abstainReason?(RS[j.abstainReason]||j.abstainReason)+(j.attempts&&j.attempts.length?" · محاولات: "+j.attempts.length:""):"—";
 tds[8].title=(j.attempts||[]).map((a,i)=>(i+1)+") "+(a.findings.join("، ")||"—")+" ← "+a.head).join("\\n");
 const sec=(x)=>x==null?"—":(x/1000).toFixed(1)+"ث";const t=j.timings||{},st=j.stages;

@@ -1,26 +1,30 @@
 import { MESSAGES, message } from "./messages";
 
 /**
- * الحارس: فحص بالكود (بلا نموذج) لكلام الأداة قبل أن يصل إلى السائل.
+ * الحارس: فحص بالكود (بلا نموذج) لكلام الأداة قبل أن يصل إلى السائل. له وضعان:
  *
- * 1) يفصل النص المنقول عن صياغة الأداة: كل مقطع بين علامات الاقتباس (« » ﴿ ﴾ “ ” " ")
- *    يُعدّ منقولاً **فقط إن وُجد حرفياً** (بعد توحيد التشكيل والهمزات) في النصوص المسترجعة
- *    أو في سؤال السائل. فلا يمكن تهريب حكم في علامات اقتباس.
- * 2) يفحص صياغة الأداة وحدها بست لغات (ar en tr fr ur id) عن:
- *    - ruling: عبارات الحكم (يجوز، حرام، وقع الطلاق، عليك أن، permissible, haram, caiz…)
- *    - tarjih: الترجيح بين الأقوال (الراجح، the stronger opinion…)
- *    - unsourced_quote: اقتباس أو نسبة حديث لا أصل لها في النصوص المسترجعة
- *    - identity_leak: اسم نموذج لغوي أو شركة ذكاء اصطناعي
- * 3) عند الاكتشاف: يستبدل الكلام كله برد ثابت (messages.ts)، ويُسجَّل في guard_log (guardAndLog).
+ * أ) الحارس الصارم `guard()` / `checkOutput()` لكلام الأداة **غير الجواب** (الردود الثابتة،
+ *    وأسئلة الاستيضاح وملف المسألة في D، والأسئلة المقترحة): لا حكم ولا ترجيح ولا اقتباس بلا أصل
+ *    ولا اسم نموذج، بست لغات (ar en tr fr ur id)، وعند الاكتشاف يُستبدل الكلام كله برد ثابت.
+ *    كل مقطع بين علامات الاقتباس (« » ﴿ ﴾ “ ” " ") يُعدّ منقولاً **فقط إن وُجد حرفياً** (بعد توحيد
+ *    التشكيل والهمزات) في النصوص المسترجعة أو في سؤال السائل، فلا يُهرَّب حكم في علامات اقتباس.
  *
- * الملف نقي (بلا server-only) ليُختبر محلياً بلا نموذج: tests/brain.test.ts.
+ * ب) حارس الجواب (R5c: `checkAnswer` / `repairAnswer`): الجواب يكتبه مساعد مسلم بعلمه بحرية
+ *    كاملة، والمصادر [n] تقوّيه ولا تشترط لكل جملة. يتدخل في ثلاث حالات فقط، ويُعدِّل ولا يبتر:
+ *    1) نص منسوب (آية، أو حديث، أو قول عالم) بين علامات اقتباس غير مطابق لمصدر مسترجع: يُصحَّح
+ *       إلى نص المصدر إن قاربه، وإلا تُحذف العلامات والنسبة ويبقى المعنى بصيغة «ورد في السنة ما معناه».
+ *    2) فتوى شخصية لحالة فردية («طلاقك واقع»، «صلاتك باطلة»، «يجوز لك»): تمنع الجواب (إعادة، ثم إحالة).
+ *    3) اسم نموذج لغوي أو شركة، أو محتوى مسيء: تُحذف جملته وحدها.
+ *    وما عدا ذلك يمر كما هو: الأذكار والأدعية والخطوات والشرح وأعداد الركعات والأحكام العامة.
+ *
+ * الملف نقي (بلا server-only) ليُختبر محلياً بلا نموذج: tests/brain.test.ts وtests/r5c.test.ts.
  */
 
-export type GuardReason = "ruling" | "tarjih" | "unsourced_quote" | "identity_leak" | "unsourced_ruling";
+export type GuardReason = "ruling" | "tarjih" | "unsourced_quote" | "identity_leak" | "offensive";
 
 /**
  * verdict: حكم على حالة السائل نفسه («صلاتك باطلة»، «طلاقك واقع»، «أفتيك»): فتوى شخصية تُمنع
- * دائماً ولو بإشارة [n]. وغيره من عبارات الحكم يُقبل في الجواب إن أُسند في جملته (checkAnswer).
+ * دائماً. وغيره من عبارات الحكم لا يمنعه إلا الحارس الصارم (كلام الأداة غير الجواب).
  */
 export type GuardFinding = { reason: GuardReason; lang: string; match: string; verdict?: boolean };
 
@@ -385,35 +389,6 @@ const PATTERNS: Pattern[] = [
   ...P("tarjih", "id", w("pendapat\\s+(?:yang\\s+)?(?:paling\\s+)?(?:kuat|rajih|benar)\\s+(?:adalah|ialah)")),
 ];
 
-/**
- * عبارات حكم إضافية في وضع الجواب وحده (R5): الوجوب والفرضية والتحريم والسنة المؤكدة. يُقبل كلٌّ
- * منها بإشارته [n] في جملته، وبلا إشارة يُعدّ «حكماً بلا مصدر». (لا تدخل الحارس الصارم guard()
- * لأن الردود الثابتة وأسئلة الاستيضاح قد تذكر «الصلاة المفروضة» وصفاً لا حكماً.)
- */
-const ANSWER_RULINGS: Pattern[] = [
-  ...P(
-    "ruling",
-    "ar",
-    ar("واجب[ةه]?|وجوب|[يت]جب"),
-    ar("فرض(?:\\s+(?:عين|كفاي[ةه]))?\\s+على|فريض[ةه]|مفروض[ةه]?"),
-    ar("سن[ةه]\\s+مؤكد[ةه]|[يت]سن|يستحب|تستحب"),
-    ar("[يت]حرم|(?<!شهر\\s+(?:ال)?)محر[ّ]?م[ةه]?|تحريم|[يت]كره|كراه[ةه]"),
-  ),
-  ...P("ruling", "en", w("obligatory|mandatory|compulsory|fard|prohibited|forbidden|disliked|sunnah\\s+mu'?akkadah")),
-  ...P("ruling", "tr", w("farz(?:dır)?|vacip(?:tir)?|haram(?:dır)?")),
-  ...P("ruling", "fr", w("obligatoire|interdit|recommandé|déconseillé")),
-  ...P("ruling", "id", w("wajib|fardhu|makruh")),
-];
-
-/** عبارات الحكم الإضافية في جملة من الجواب. */
-function scanAnswerRulings(ownText: string): GuardFinding[] {
-  const text = maskProperNouns(stripMarks(ownText));
-  return ANSWER_RULINGS.flatMap((p) => {
-    const m = text.match(p.re);
-    return m ? [{ reason: p.reason, lang: p.lang, match: m[0].trim() }] : [];
-  });
-}
-
 /** نسبة حديث في صياغة الأداة: يجب أن يتبعها اقتباس موثَّق (⟦Q⟧) قريباً. */
 const HADITH_ATTRIBUTION: RegExp[] = [
   /(?:قال|يقول|وقال|فقال|روى|يروى|ورد\s+عن|جاء\s+عن|عن)\s+(?:رسول\s+الله|النبي|نبينا|الرسول)/u,
@@ -490,7 +465,7 @@ export function checkOutput(text: string, ctx: GuardContext = {}): { findings: G
 /** الرد الثابت المناسب لنوع المخالفة. */
 export function replacementFor(findings: GuardFinding[], lang?: string): string {
   const reasons = new Set(findings.map((f) => f.reason));
-  if (reasons.has("ruling") || reasons.has("tarjih") || reasons.has("unsourced_ruling")) return message("refusal", lang);
+  if (reasons.has("ruling") || reasons.has("tarjih") || reasons.has("offensive")) return message("refusal", lang);
   if (reasons.has("unsourced_quote")) return `${message("abstain", lang)} ${message("suggestExpert", lang)}`;
   return message("identityWho", lang);
 }
@@ -512,17 +487,20 @@ export async function guardAndLog(text: string, ctx: GuardContext & { caseId?: s
   return result;
 }
 
+
 // ---------------------------------------------------------------------------
-// وضع الجواب (R5): الصياغة الحرة مع قاعدة الدليل
+// حارس الجواب (R5c): يُعدِّل ولا يبتر
 // ---------------------------------------------------------------------------
 //
-// الجواب المولَّد من النصوص المسترجعة يُفحص جملةً جملة:
-//   - عبارة الحكم أو الترجيح مقبولة إن أُسندت في جملتها نفسها بإشارة [n]
-//     صحيحة، وإلا فهي «حكم بلا مصدر» (unsourced_ruling) وتُحذف جملتها.
-//   - الحكم على حالة السائل نفسه (verdict: «صلاتك باطلة»، «طلاقك واقع»، «أفتيك») يُمنع دائماً.
-//   - الاقتباس «…» يجب أن يطابق نصاً مسترجعاً حرفياً: يُصحَّح إلى نص المصدر إن قاربه، وإلا تُحذف جملته.
-//   - نسبة حديث بلا نص منقول موثَّق تُحذف جملتها، واسم نموذج أو شركة يمنع الجواب كله.
-// الجمل الشارحة والرابطة والتشجيعية بلا رقم مقبولة.
+// الجواب يكتبه مساعد مسلم بعلمه بحرية كاملة، والمصادر المسترجعة تقوّيه بإشارات [n] حيث تنطبق.
+// وجود المصدر شرف للجواب لا شرط لكل جملة، فلا تُحذف جملة لغياب رقم أبداً. يتدخل الحارس في:
+//   1) نص منسوب بين علامات اقتباس (آية ﴿…﴾، أو حديث، أو قول عالم) غير مطابق لمصدر مسترجع:
+//      يُصحَّح إلى نص المصدر إن قاربه (closestSpan)، وإلا تُحذف العلامات والنسبة ويبقى المعنى بصيغة
+//      «ورد في السنة ما معناه:» (ومثلها للقرآن ولأهل العلم)، بلا «رواه…» ولا رقم حديث مختلق.
+//      والاقتباس غير المنسوب (ذكر يُقال، دعاء، عبارة) يمر كما هو.
+//   2) فتوى شخصية لحالة فردية (verdict): تمنع الجواب كله (إعادة، ثم الرد الثابت والإحالة).
+//   3) اسم نموذج لغوي أو شركة، أو محتوى مسيء: تُحذف جملته وحدها.
+// ولا يُعرض جواب أقصر من 40% من الجواب المولّد (MIN_KEEP_RATIO، respond.ts).
 
 /** حدود الجملة خارج علامات الاقتباس. */
 const UNIT_END = new Set([".", "!", "؟", "?", "۔", "\n"]);
@@ -560,47 +538,132 @@ export function splitUnits(text: string): string[] {
   return units;
 }
 
-/** أرقام [n] الصحيحة في جملة. */
-function citesIn(unit: string, count: number): number[] {
-  return [...unit.matchAll(/\[\s*(\d{1,2})\s*\]/g)].map((m) => Number(m[1])).filter((n) => n >= 1 && n <= count);
+/** أقل نسبة من طول الجواب المولّد يجوز عرضها: لا يُعرض جواب أقصر من 40% منه أبداً (R5c). */
+export const MIN_KEEP_RATIO = 0.4;
+
+/** هل صار الجواب بعد التعديل أقصر من 40% من المولّد؟ */
+export function isTruncated(generated: string, shown: string): boolean {
+  const g = generated.trim().length;
+  return g > 0 && shown.trim().length < MIN_KEEP_RATIO * g;
 }
 
-export type UnitCheck = { text: string; cited: boolean; findings: GuardFinding[] };
+/** عبارات الفتوى الشخصية وحدها (الحكم على حالة السائل نفسه). */
+const VERDICT_PATTERNS = PATTERNS.filter((p) => p.verdict);
 
-/** فحص جملة واحدة في وضع الجواب (cited: في الجملة إشارة [n] صحيحة). */
-function checkUnit(unit: string, cited: boolean, ctx: GuardContext): GuardFinding[] {
-  const { ownText, unverified } = separateQuoted(unit, ctx);
-  const findings: GuardFinding[] = [];
-  const own = scanOwnText(ownText);
-  // العبارات الإضافية (الوجوب والتحريم…) لا تُكرر ما وجده الحارس في الجملة نفسها.
-  const extra = own.some((f) => f.reason === "ruling" || f.reason === "tarjih") ? [] : scanAnswerRulings(ownText);
-  for (const f of [...own, ...extra]) {
-    if ((f.reason === "ruling" || f.reason === "tarjih") && !f.verdict) {
-      if (!cited) findings.push({ ...f, reason: "unsourced_ruling" });
-    } else findings.push(f);
+/** المحتوى المسيء: شتم موجَّه، أو وصف أتباع دين بألفاظ مهينة، أو ألفاظ بذيئة. */
+const OFFENSIVE: RegExp[] = [
+  new RegExp(`${B}يا\\s+(?:حمار|غبي|حقير|أحمق|احمق|كلب|خنزير|جاهل|تافه)${E}`, "u"),
+  new RegExp(
+    `${B}(?:ال)?(?:نصارى|يهود|مسيحيين|مسيحيون|هندوس|ملحدين|ملحدون|كفار|بوذيين)\\s+(?:أنجاس|انجاس|كلاب|خنازير|قذرون|حثالة|أغبياء|اغبياء|حمير)${E}`,
+    "u",
+  ),
+  w("fuck\\p{L}*|shit|bitch|bastard|whore|retard(?:ed)?"),
+  w("you(?:'re|\\s+are)?\\s+(?:an?\\s+)?(?:idiot|moron|stupid|fool)"),
+  w("(?:christians|jews|hindus|atheists|disbelievers|kuffar)\\s+are\\s+(?:filthy|dogs|pigs|scum|stupid|idiots)"),
+  w("aptal|salak|gerizekalı|şerefsiz|orospu"),
+];
+
+export type QuoteKind = "quran" | "hadith" | "scholar";
+
+/** نسبة النص قبل الاقتباس: إلى الله تعالى (آية)، أو إلى النبي ﷺ (حديث)، أو إلى عالم. */
+const ATTRIBUTION: Record<QuoteKind, RegExp[]> = {
+  quran: [
+    /(?:قال|يقول|وقال|فقال)\s+(?:الله\s+)?(?:تعالى|سبحانه|عز\s+وجل|جل\s+(?:وعلا|جلاله))/u,
+    /(?:قال|يقول|وقال|فقال)\s+الله/u,
+    /قوله\s+تعالى|(?:في\s+)?(?:ال)?قرآن(?:\s+الكريم)?\s*[:：]|(?:في\s+)?(?:ال)?آي[ةه](?:\s+الكريم[ةه])?\s*[:：]/u,
+    /(?<![\p{L}])allah\s+(?:the\s+exalted\s+)?(?:says|said|tells\s+us|states)(?![\p{L}])|(?<![\p{L}])the\s+(?:holy\s+)?qur'?an\s+(?:says|states)(?![\p{L}])/iu,
+    /(?<![\p{L}])allah\s+(?:teâlâ|teala)?[^"“«\n]{0,30}(?:buyurur|buyurmuştur|buyuruyor)/iu,
+    /(?<![\p{L}])allah\s+dit|le\s+coran\s+dit/iu,
+    /اللہ\s+تعالیٰ[^۔"«\n]{0,30}(?:فرماتا|فرمایا|ارشاد)/u,
+    /(?<![\p{L}])allah\s+(?:swt\s+)?berfirman(?![\p{L}])/iu,
+  ],
+  hadith: [
+    /(?:قال|يقول|وقال|فقال|كان\s+يقول)\s+(?:رسول\s+الله|النبي|نبينا|الرسول|ﷺ)/u,
+    /(?:رسول\s+الله|النبي)\s+(?:ﷺ\s+)?(?:قال|يقول)/u,
+    /(?:روى|يروى|ورد\s+عن|جاء\s+عن)\s+(?:رسول\s+الله|النبي)/u,
+    /(?:في|جاء\s+في|ورد\s+في)\s+(?:ال)?حديث/u,
+    /(?<![\p{L}])(?:the\s+)?(?:prophet|messenger\s+of\s+(?:allah|god))(?![\p{L}])[^"“«\n]{0,40}(?<![\p{L}])(?:said|says|stated|taught)(?![\p{L}])/iu,
+    /(?<![\p{L}])(?:in\s+(?:a|the)\s+hadith|a\s+hadith\s+(?:says|states))(?![\p{L}])/iu,
+    /(?<![\p{L}])(?:peygamber(?:imiz)?|resulullah|hz\.\s*muhammed)[^"“«\n]{0,40}(?:buyurdu|buyurmuştur|buyurur|dedi|demiştir)/iu,
+    /(?<![\p{L}])hadis(?:-i\s+şerif)?te(?![\p{L}])/iu,
+    /(?<![\p{L}])le\s+prophète[^"“«\n]{0,40}(?:a\s+dit|dit|disait|a\s+déclaré)|dans\s+un\s+hadith/iu,
+    /(?:نبی|رسول\s+اللہ|حضور)[^۔"«\n]{0,40}(?:نے\s+فرمایا|فرماتے\s+ہیں|کا\s+ارشاد)/u,
+    /(?<![\p{L}])(?:nabi|rasulullah|rasul)(?![\p{L}])[^"“«\n]{0,30}(?:bersabda|berkata)/iu,
+  ],
+  scholar: [
+    /(?:قال|يقول|وقال|ذكر|نص|قرر)\s+(?:ال)?(?:إمام|امام|شيخ|علام[ةه]|حافظ|فقهاء|علماء|أهل\s+العلم|اهل\s+العلم|ابن\s+\p{L}+|نووي)/u,
+    /(?<![\p{L}])(?:imam|shaykh|sheikh|shaikh|scholars?|ibn\s+\p{L}+)(?![\p{L}])[^"“«\n]{0,30}(?<![\p{L}])(?:said|says|wrote|stated)(?![\p{L}])/iu,
+    /(?<![\p{L}])(?:imam|âlim(?:ler)?|alim(?:ler)?|şeyh)(?![\p{L}])[^"“«\n]{0,30}(?:demiştir|dedi|der|söyler)/iu,
+    /(?<![\p{L}])(?:l'imam|le\s+savant|les\s+savants|cheikh)(?![\p{L}])[^"“«\n]{0,30}(?:a\s+dit|dit|disent)/iu,
+    /(?<![\p{L}])(?:imam|syaikh|ulama)(?![\p{L}])[^"“«\n]{0,30}(?:berkata|mengatakan)/iu,
+  ],
+};
+
+/** عزو بعد الاقتباس («رواه البخاري»، «متفق عليه»، "narrated by…"): يجعله حديثاً منسوباً. */
+const REF_AFTER =
+  /^((?:\s*\[\s*\d{1,2}\s*\])*)\s*[(（]?\s*(?:رواه|أخرجه|متفق\s+عليه|narrated\s+by|reported\s+by|recorded\s+by|(?:sahih\s+)?(?:al-)?bukhari|sahih\s+muslim)[^.()\n[\]؟?!]{0,60}(?:[(（][^()\n]{0,20}[)）])?\s*[)）]?/iu;
+
+/** نسبة حديث بلا اقتباس («قال رسول الله ﷺ إن…»): تُليَّن إن لم يتبعها نص ولا إشارة [n]. */
+const BARE_HADITH: RegExp[] = [
+  /(?:و|ف)?(?:قال|يقول)\s+(?:رسول\s+الله|النبي|نبينا|الرسول)(?:\s*(?:ﷺ|صلى\s+الله\s+عليه\s+وسلم|عليه\s+الصلاة\s+والسلام))?\s*[:：]?/gu,
+  /(?<![\p{L}])(?:the\s+)?(?:prophet|messenger\s+of\s+(?:allah|god))(?:\s*(?:ﷺ|\(pbuh\)|\(saw\)|\(s\.a\.w\.?\)|,?\s*peace\s+be\s+upon\s+him,?))?\s+(?:said|says)(?:\s+that)?\s*[:,]?/giu,
+];
+
+const PREFIX: Record<QuoteKind, "quranMeaning" | "sunnahMeaning" | "scholarMeaning"> = {
+  quran: "quranMeaning",
+  hadith: "sunnahMeaning",
+  scholar: "scholarMeaning",
+};
+
+/**
+ * بداية نافذة النسبة قبل الاقتباس: لا تتجاوز نهاية الجملة السابقة ولا اقتباساً سابقاً. السطر
+ * الجديد بعد «:» لا يقطعها («قال ﷺ:» ثم الحديث في السطر التالي).
+ */
+function windowStart(text: string, start: number): number {
+  const from = Math.max(0, start - 100);
+  for (let i = start - 1; i >= from; i--) {
+    const ch = text[i];
+    if ("»﴾”\"".includes(ch)) return i + 1;
+    if (".!?؟۔".includes(ch) && /\s/.test(text[i + 1] ?? "")) return i + 1;
+    if (ch === "\n" && !/[:：]\s*$/.test(text.slice(from, i))) return i + 1;
   }
-  for (const q of unverified) findings.push({ reason: "unsourced_quote", lang: "*", match: q.slice(0, 120) });
-  return findings;
+  return from;
 }
 
-function unitChecks(text: string, ctx: GuardContext): UnitCheck[] {
-  const count = ctx.citeCount ?? ctx.sources?.length ?? 0;
-  return splitUnits(text).map((u) => {
-    const cited = citesIn(u, count).length > 0;
-    return { text: u, cited, findings: checkUnit(u, cited, ctx) };
-  });
+/** نوع النسبة وموضع بدايتها (يُحذف من بدايتها إلى علامة الاقتباس)، أو null للاقتباس غير المنسوب. */
+function attributionOf(text: string, q: Quote): { kind: QuoteKind; at: number } | null {
+  const from = windowStart(text, q.start);
+  const win = text.slice(from, q.start);
+  let best: { kind: QuoteKind; at: number } | null = null;
+  for (const kind of ["quran", "hadith", "scholar"] as QuoteKind[]) {
+    for (const re of ATTRIBUTION[kind]) {
+      const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+      for (const m of win.matchAll(g)) {
+        const at = from + (m.index ?? 0);
+        if (!best || at > best.at) best = { kind, at };
+      }
+    }
+  }
+  const opener = text[q.start];
+  if (opener === "﴿") return { kind: "quran", at: best?.kind === "quran" ? best.at : q.start };
+  if (best) return best;
+  if (REF_AFTER.test(text.slice(q.end, q.end + 80))) return { kind: "hadith", at: q.start };
+  return null;
 }
 
-/** المخالفة التي تمنع الجواب كله (لا تُصلح بحذف جملة): فتوى شخصية، أو اسم نموذج أو شركة. */
-export function isBlocking(f: GuardFinding): boolean {
-  return f.reason === "identity_leak" || Boolean(f.verdict);
-}
+export type AnswerFix = {
+  kind: "quote_fixed" | "quote_softened" | "attribution_softened" | "sentence_removed";
+  reason: GuardReason;
+  match: string;
+};
 
-/** فحص الجواب كله بقاعدة الدليل (بلا تعديل). */
-export function checkAnswer(text: string, ctx: GuardContext = {}): { findings: GuardFinding[]; ownText: string; units: UnitCheck[] } {
-  const units = unitChecks(text, ctx);
-  return { findings: units.flatMap((u) => u.findings), ownText: separateQuoted(text, ctx).ownText, units };
-}
+export type AnswerRepair = {
+  /** الجواب بعد التعديل. */
+  text: string;
+  fixes: AnswerFix[];
+  /** فتوى شخصية: تمنع الجواب كله (إعادة، ثم الرد الثابت والإحالة). */
+  blocked: GuardFinding[];
+};
 
 /**
  * أقرب مقطع حرفي في النصوص لاقتباس غير مطابق (نسخة النموذج من آية أو حديث فيها كلمة زائدة أو
@@ -634,70 +697,137 @@ export function closestSpan(inner: string, sources: string[]): string | null {
   return text && isVerbatim(text, sources) ? text : null;
 }
 
-export type AnswerFix = { kind: "quote_fixed" | "quote_removed" | "sentence_removed"; reason: GuardReason; match: string };
+type Edit = { from: number; to: number; text: string };
 
-export type AnswerRepair = {
-  /** الجواب بعد التصحيح (فارغ إن حُذف كله). */
-  text: string;
-  fixes: AnswerFix[];
-  /** مخالفات تمنع الجواب كله (فتوى شخصية، أو اسم نموذج أو شركة). */
-  blocked: GuardFinding[];
-};
+function applyEdits(text: string, edits: Edit[]): string {
+  return [...edits].sort((a, b) => b.from - a.from).reduce((t, e) => t.slice(0, e.from) + e.text + t.slice(e.to), text);
+}
 
-/**
- * التحقق النهائي على الجواب الكامل (R5): يصحح الاقتباس غير المطابق إلى نص المصدر أو يحذف جملته،
- * ويحذف جملة الحكم بلا مصدر ونسبة الحديث بلا نص، ويعيد ما يمنع الجواب كله في blocked.
- */
-export function repairAnswer(text: string, ctx: GuardContext = {}): AnswerRepair {
+/** 1) الاقتباسات المنسوبة: تصحيح إلى نص المصدر، أو تليين (بلا علامات ولا نسبة، والمعنى باقٍ). */
+function repairQuotes(text: string, ctx: GuardContext, fixes: AnswerFix[]): string {
   const sources = [...(ctx.sources ?? []), ctx.question ?? ""].filter(Boolean);
-  const fixes: AnswerFix[] = [];
-  // 1) الاقتباسات غير المطابقة: تصحيح إلى نص المصدر إن قاربه.
-  let fixed = "";
-  let cursor = 0;
+  const known = [...sources, ...FIXED_TEXTS];
+  const edits: Edit[] = [];
   for (const q of findQuotes(text)) {
-    fixed += text.slice(cursor, q.start);
-    cursor = q.end;
-    const whole = text.slice(q.start, q.end);
-    const key = matchKey(q.inner);
-    // الحرفي تماماً يبقى؛ وشبه الحرفي (كلمة زائدة أو ناقصة) يُصحَّح إلى نص المصدر إن أمكن.
-    const exact = isExactVerbatim(q.inner, [...sources, ...FIXED_TEXTS]);
-    if (key.length < MIN_QUOTE_KEY || exact || isMarkedTranslation(text, q.start, q.end) || isQuotedMeaning(text, q, ctx)) {
-      fixed += whole;
-      continue;
-    }
+    if (matchKey(q.inner).length < MIN_QUOTE_KEY || isExactVerbatim(q.inner, known)) continue;
+    if (isMarkedTranslation(text, q.start, q.end)) continue;
+    const attr = attributionOf(text, q);
+    // المعنى بلغة السائل بجوار [n] صياغة لا اقتباس (R5b)، ما لم يُنسب إلى النبي ﷺ أو إلى عالم.
+    if (isQuotedMeaning(text, q, ctx) && !attr) continue;
     const span = closestSpan(q.inner, sources);
     if (span) {
+      const whole = text.slice(q.start, q.end);
       const at = whole.indexOf(q.inner);
-      fixed += `${whole.slice(0, at)}${span}${whole.slice(at + q.inner.length)}`;
+      edits.push({ from: q.start, to: q.end, text: `${whole.slice(0, at)}${span}${whole.slice(at + q.inner.length)}` });
       fixes.push({ kind: "quote_fixed", reason: "unsourced_quote", match: q.inner.slice(0, 120) });
-    } else fixed += whole;
-  }
-  fixed += text.slice(cursor);
-
-  // 2) جملةً جملة: ما فيه مخالفة قابلة للإصلاح يُحذف، وما يمنع الجواب كله يُجمع.
-  const blocked: GuardFinding[] = [];
-  const kept: string[] = [];
-  for (const u of unitChecks(fixed, ctx)) {
-    const hard = u.findings.filter(isBlocking);
-    blocked.push(...hard);
-    const soft = u.findings.filter((f) => !isBlocking(f));
-    if (!soft.length) {
-      kept.push(u.text);
       continue;
     }
-    const quote = soft.find((f) => f.reason === "unsourced_quote");
-    const f = quote ?? soft[0];
-    fixes.push({ kind: quote ? "quote_removed" : "sentence_removed", reason: f.reason, match: f.match.slice(0, 120) });
-    // نهاية السطر تبقى (لا تلتصق الفقرات).
-    if (u.text.endsWith("\n")) kept.push("\n");
+    // الاقتباس غير المنسوب (ذكر يُقال، دعاء، عبارة) يمر كما هو.
+    if (!attr) continue;
+    const ref = text.slice(q.end).match(REF_AFTER);
+    const to = ref ? q.end + ref[0].length : q.end;
+    if (edits.some((e) => attr.at < e.to && to > e.from)) continue;
+    const cites = ref?.[1] ?? "";
+    const prefix = message(PREFIX[attr.kind], ctx.lang ?? (/[؀-ۿ]/.test(q.inner) ? "ar" : "en"));
+    const space = /\s$/.test(text.slice(q.end, to)) ? " " : "";
+    edits.push({ from: attr.at, to, text: `${prefix} ${q.inner.trim()}${cites}${space}` });
+    fixes.push({ kind: "quote_softened", reason: "unsourced_quote", match: q.inner.slice(0, 120) });
   }
-  const out = kept
-    .join("")
-    .split("\n")
-    // سطر بقي فيه رقم خطوة أو علامة قائمة أو إشارة وحدها.
-    .filter((line) => !/^\s*(?:\d{1,2}[.)]|[-•*])?\s*(?:\[\s*\d{1,2}\s*\]\s*)*$/.test(line) || !line.trim())
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-  return { text: out, fixes, blocked };
+  return applyEdits(text, edits);
+}
+
+/** نسبة حديث بلا اقتباس يتبعها ولا إشارة [n] في جملتها: «ورد في السنة ما معناه:». */
+function softenBareAttributions(text: string, ctx: GuardContext, fixes: AnswerFix[]): string {
+  const count = ctx.citeCount ?? ctx.sources?.length ?? 0;
+  const edits: Edit[] = [];
+  for (const re of BARE_HADITH) {
+    for (const m of text.matchAll(re)) {
+      const from = m.index ?? 0;
+      const to = from + m[0].length;
+      if (edits.some((e) => from < e.to && to > e.from)) continue;
+      const after = text.slice(to);
+      if (/^[\s:：]*[«﴿“"]/.test(after)) continue; // يتبعها نص منقول (فُحص في repairQuotes)
+      const end = after.search(/[.!?؟۔\n]/);
+      const rest = end === -1 ? after : after.slice(0, end + 1) + (after.slice(end + 1).match(CITE_RUN)?.[0] ?? "");
+      if (citesIn(rest, count).length) continue; // مسنَدة إلى نص مسترجع
+      const prefix = message("sunnahMeaning", ctx.lang ?? (/[؀-ۿ]/.test(m[0]) ? "ar" : "en"));
+      edits.push({ from, to, text: `${prefix} ` });
+      fixes.push({ kind: "attribution_softened", reason: "unsourced_quote", match: m[0].trim().slice(0, 120) });
+    }
+  }
+  return applyEdits(text, edits).replace(/ {2,}/g, " ");
+}
+
+/** أرقام [n] الصحيحة في جملة. */
+function citesIn(unit: string, count: number): number[] {
+  return [...unit.matchAll(/\[\s*(\d{1,2})\s*\]/g)].map((m) => Number(m[1])).filter((n) => n >= 1 && n <= count);
+}
+
+/** مخالفات جملة واحدة: فتوى شخصية، أو اسم نموذج، أو محتوى مسيء (في صياغة الأداة وحدها). */
+function unitFindings(unit: string, ctx: GuardContext): GuardFinding[] {
+  const own = maskProperNouns(stripMarks(separateQuoted(unit, ctx).ownText));
+  const findings: GuardFinding[] = [];
+  for (const p of VERDICT_PATTERNS) {
+    const m = own.match(p.re);
+    if (m) findings.push({ reason: "ruling", lang: p.lang, match: m[0].trim(), verdict: true });
+  }
+  const leak = own.match(MODEL_LEAK);
+  if (leak) findings.push({ reason: "identity_leak", lang: "*", match: leak[0] });
+  for (const re of OFFENSIVE) {
+    const m = own.match(re);
+    if (m) {
+      findings.push({ reason: "offensive", lang: "*", match: m[0].trim() });
+      break;
+    }
+  }
+  return findings;
+}
+
+/** الفتوى الشخصية وحدها تمنع الجواب كله؛ اسم النموذج والمسيء تُحذف جملتهما فقط. */
+export function isBlocking(f: GuardFinding): boolean {
+  return Boolean(f.verdict);
+}
+
+/**
+ * حارس الجواب (R5c): يصحح الاقتباس المنسوب أو يليّنه، ويليّن نسبة الحديث بلا نص ولا إشارة،
+ * ويحذف جملة اسم النموذج أو المسيء وحدها، ويعيد الفتوى الشخصية في blocked. لا يحذف شيئاً غير ذلك.
+ */
+export function repairAnswer(text: string, ctx: GuardContext = {}): AnswerRepair {
+  const fixes: AnswerFix[] = [];
+  const softened = softenBareAttributions(repairQuotes(text, ctx, fixes), ctx, fixes);
+  const blocked: GuardFinding[] = [];
+  const kept: string[] = [];
+  let removed = false;
+  for (const unit of splitUnits(softened)) {
+    const findings = unitFindings(unit, ctx);
+    blocked.push(...findings.filter(isBlocking));
+    const drop = findings.find((f) => f.reason === "identity_leak" || f.reason === "offensive");
+    if (!drop) {
+      kept.push(unit);
+      continue;
+    }
+    removed = true;
+    fixes.push({ kind: "sentence_removed", reason: drop.reason, match: drop.match.slice(0, 120) });
+    if (unit.endsWith("\n")) kept.push("\n"); // نهاية السطر تبقى (لا تلتصق الفقرات)
+  }
+  let out = kept.join("");
+  if (removed) {
+    out = out
+      .split("\n")
+      // سطر بقي فيه رقم خطوة أو علامة قائمة أو إشارة وحدها بعد حذف جملته.
+      .filter((line) => !/^\s*(?:\d{1,2}[.)]|[-•*])?\s*(?:\[\s*\d{1,2}\s*\]\s*)*$/.test(line) || !line.trim())
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n");
+  }
+  return { text: out.trim(), fixes, blocked };
+}
+
+/** فحص الجواب بلا تعديل: ما كان الحارس سيعدّله أو يمنعه (فارغ = يمر كما هو). */
+export function checkAnswer(text: string, ctx: GuardContext = {}): { findings: GuardFinding[]; ownText: string } {
+  const r = repairAnswer(text, ctx);
+  const findings: GuardFinding[] = [
+    ...r.blocked,
+    ...r.fixes.filter((f) => f.kind !== "quote_fixed").map((f) => ({ reason: f.reason, lang: "*", match: `${f.kind}: ${f.match}` })),
+  ];
+  return { findings, ownText: separateQuoted(text, ctx).ownText };
 }

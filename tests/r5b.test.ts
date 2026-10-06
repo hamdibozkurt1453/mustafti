@@ -199,9 +199,9 @@ describe("R5b · الجواب التركي والإنجليزي: الاقتبا�
     const EN = `Wudu is required before prayer [1]. Allah says: ﴿يَا أَيُّهَا الَّذِينَ آمَنُوا إِذَا قُمْتُمْ إِلَى الصَّلَاةِ فَاغْسِلُوا وُجُوهَكُمْ﴾ — "O you who believe, when you rise to pray, wash your faces" [2].`;
     const ctx = { sources: [WUDU_HADITH, WUDU_VERSE], lang: "en" };
     assert.deepEqual(checkAnswer(EN, ctx).findings, []);
-    // نسبة حديث بنص إنجليزي بلا عربي موثَّق تبقى ممنوعة (تُحذف جملتها).
+    // نسبة حديث بنص إنجليزي بلا عربي موثَّق: تُحذف العلامات والنسبة ويبقى المعنى (R5c، كانت جملته تُحذف).
     const fake = `The Prophet said: "Drinking tea after Fajr increases faith" [1]. May Allah bless you.`;
-    assert.equal(repairAnswer(fake, ctx).text, "May Allah bless you.");
+    assert.equal(repairAnswer(fake, ctx).text, "It is reported in the Sunnah, in meaning: Drinking tea after Fajr increases faith [1]. May Allah bless you.");
   });
 
   it("respond بالتركية: جواب لا رفض", async () => {
@@ -241,7 +241,7 @@ describe("R5b · قوائم العناصر الواجبة للأسئلة الع�
     for (const id of ["takbir", "istiftah", "fatiha", "ruku", "rafa", "sujud", "jalsa", "tashahhud", "salawat", "taslim", "rakat"]) assert.ok(ids.includes(id), id);
   });
 
-  it("ربط العناصر بالنصوص بدليلها في النص، والعنصر بلا نص يُنبَّه أنه لا يُختلق", () => {
+  it("ربط العناصر بالنصوص بدليلها في النص، والقائمة تذكير لا بوابة (R5c): العنصر بلا نص يُكتب من العلم", () => {
     const list = matchChecklist("كيف أصلي؟")!;
     const passages = [
       { text: "كان النبي ﷺ يقول في ركوعه: «سبحان ربي العظيم»، وفي سجوده: «سبحان ربي الأعلى». الدرجة: صحيح" },
@@ -255,8 +255,10 @@ describe("R5b · قوائم العناصر الواجبة للأسئلة الع�
     assert.deepEqual(at("istiftah"), []);
     const block = checklistBlock(list, mapping, "ar");
     assert.match(block, /ITEMS TO COVER/);
+    assert.match(block, /REMINDER so your answer is complete/);
     assert.match(block, /Bowing \(ruku'\) and its dhikr \(الركوع وذكره\) — passages \[1\]/);
-    assert.match(block, /Opening supplication \(دعاء الاستفتاح\) — NO PASSAGE: do not write this item and never invent it\./);
+    assert.match(block, /Opening supplication \(دعاء الاستفتاح\) — has words to say — from your knowledge \(no passage number\)/);
+    assert.doesNotMatch(block, /NO PASSAGE|do not write this item|never invent it|Never write words to say that no passage contains/);
     assert.match(block, /\*\*قبل الصلاة\*\*/);
     assert.match(block, /«ماذا تفعل»/);
     assert.doesNotMatch(block, /transliteration/);

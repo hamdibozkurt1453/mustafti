@@ -7,12 +7,13 @@ import { matchKey } from "./guard";
  *   1) تُشغَّل بحوث فرعية موجّهة بالتوازي لكل عنصر (حديث MCP بعبارة الذكر، ومكتبة IslamHouse،
  *      و«الإسلام سؤال وجواب» المحلي، و«الأساسيات») — retrieval.ts: checklistCandidates.
  *   2) لا يُقبل نص لعنصر إلا إن وُجد فيه دليله بالكود (evidence)، فلا يُنسب ذكر إلى نص لا يحويه.
- *   3) تُمرَّر للنموذج «العناصر المطلوب تغطيتها» بأقسامها ومعها أرقام النصوص التي فيها كل عنصر،
- *      والعنصر بلا نص يُذكر له أنه لا يُكتب ولا يُختلق (prompts.ts: checklistBlock).
+ *   3) تُمرَّر للنموذج «العناصر المطلوب تغطيتها» بأقسامها ومعها أرقام النصوص التي فيها كل عنصر
+ *      (checklistBlock). R5c: القائمة **تذكير** ليكمل النموذج الجواب، لا بوابة حذف: العنصر بلا نص
+ *      يُكتب من علم المساعد بلا رقم مصدر، ولا يُحذف من الجواب شيء لغياب نصه.
  *   4) «الاكتمال» = نسبة العناصر المذكورة في الجواب (markers)، في التشخيص وصفحة الفحص.
  *
- * الملف مراجع فقط، لا نص ديني يصل إلى السائل: عبارات البحث وكلمات التحقق تُطابَق بها نصوص المصادر،
- * والجواب يقتبس من المصادر وحدها (قاعدة الدليل في guard.ts). ملف نقي: يُختبر بلا شبكة.
+ * الملف مراجع فقط، لا نص ديني يصل إلى السائل: عبارات البحث وكلمات التحقق تُطابَق بها نصوص المصادر.
+ * ملف نقي: يُختبر بلا شبكة.
  */
 
 export type ChecklistId = "salah" | "wudu" | "ghusl" | "siyam" | "shahada";
@@ -233,12 +234,12 @@ export function checklistCoverage(list: Checklist, answer: string): ChecklistCov
 }
 
 /**
- * «العناصر المطلوب تغطيتها» للنموذج: الأقسام بالترتيب، وتحت كل قسم عناصره مع أرقام نصوصها، والعنصر
- * بلا نص يُنبَّه أنه لا يُكتب. ثم شكل «ماذا تفعل» و«ماذا تقول».
+ * «العناصر المطلوب تغطيتها» للنموذج (تذكير لا بوابة، R5c): الأقسام بالترتيب، وتحت كل قسم عناصره مع
+ * أرقام نصوصها إن وُجدت، والعنصر بلا نص يُكتب من علم المساعد بلا رقم. ثم شكل «ماذا تفعل» و«ماذا تقول».
  */
 export function checklistBlock(list: Checklist, mapping: ChecklistMapping, lang: string): string {
   const lines: string[] = [
-    `ITEMS TO COVER — «${list.topic_ar}» (${list.topic_en}). A complete practical answer covers EVERY item below that has passages, in this order, under these short section headings (translate the headings into the asker's language: ${lang}):`,
+    `ITEMS TO COVER — «${list.topic_ar}» (${list.topic_en}). This is a REMINDER so your answer is complete: a complete practical answer covers EVERY item below, in this order, under these short section headings (translate the headings into the asker's language: ${lang}). Write each item from your own knowledge; add the passage numbers where given:`,
   ];
   for (const section of list.sections) {
     const rows = mapping.filter((m) => m.item.section === section.id);
@@ -248,14 +249,14 @@ export function checklistBlock(list: Checklist, mapping: ChecklistMapping, lang:
       lines.push(
         passages.length
           ? `- ${item.en} (${item.ar}) — passages ${passages.map((n) => `[${n}]`).join("")}${item.say ? " — has words to say" : ""}`
-          : `- ${item.en} (${item.ar}) — NO PASSAGE: do not write this item and never invent it.`,
+          : `- ${item.en} (${item.ar})${item.say ? " — has words to say" : ""} — from your knowledge (no passage number)`,
       );
     }
   }
   lines.push(
-    `For each step write two short lines: «ماذا تفعل» (what to do) and, when the step has words to say, «ماذا تقول» (what to say). The words to say are copied EXACTLY in Arabic inside «…» from the passage, with its [n].${
+    `For each step write two short lines: «ماذا تفعل» (what to do) and, when the step has words to say, «ماذا تقول» (what to say): the Arabic words inside «…», with [n] when a passage contains them.${
       lang === "ar" ? "" : " After the Arabic, give the Latin transliteration and then the meaning in the asker's language, both OUTSIDE quotation marks."
-    } Never write words to say that no passage contains. Begin with one reassuring sentence and end with one short encouraging sentence.`,
+    } Give the number of repetitions of each dhikr and the number of rak'ahs where they apply. Begin with one reassuring sentence and end with one short encouraging sentence.`,
   );
   return lines.join("\n");
 }

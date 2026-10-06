@@ -127,6 +127,35 @@ export const MESSAGES = {
     ur: "(ترجمۂ معنی)",
     id: "(terjemahan makna)",
   },
+  /**
+   * R5c: يحل محل نسبة حديث لم يطابق نصه مصدراً مسترجعاً (تُحذف علامات الاقتباس والنسبة ويبقى المعنى).
+   */
+  sunnahMeaning: {
+    ar: "ورد في السنة ما معناه:",
+    en: "It is reported in the Sunnah, in meaning:",
+    tr: "Sünnette anlam olarak şöyle geçer:",
+    fr: "Il est rapporté dans la Sunna, en substance :",
+    ur: "سنت میں اس مفہوم کی بات آئی ہے:",
+    id: "Diriwayatkan dalam Sunnah, maknanya:",
+  },
+  /** R5c: مثله لآية لم يطابق نصها مصدراً مسترجعاً. */
+  quranMeaning: {
+    ar: "ورد في القرآن الكريم ما معناه:",
+    en: "The Qur'an states, in meaning:",
+    tr: "Kur'an-ı Kerim'de anlam olarak şöyle geçer:",
+    fr: "Le Coran dit, en substance :",
+    ur: "قرآنِ کریم میں اس مفہوم کی بات آئی ہے:",
+    id: "Disebutkan dalam Al-Qur'an, maknanya:",
+  },
+  /** R5c: مثله لقول عالم لم يطابق نصه مصدراً مسترجعاً. */
+  scholarMeaning: {
+    ar: "ومن كلام أهل العلم ما معناه:",
+    en: "Scholars have said, in meaning:",
+    tr: "Âlimlerin sözlerinde anlam olarak şöyle geçer:",
+    fr: "Les savants ont dit, en substance :",
+    ur: "اہلِ علم کے کلام کا مفہوم یہ ہے:",
+    id: "Para ulama berkata, maknanya:",
+  },
   /** المستوى (ج) في باب فقهي (R5): الخلاف معتبر، وتطبيقه على الحالة الشخصية لمختص. */
   khilaf: {
     ar: "هذه مسألة فيها خلاف معتبر بين أهل العلم. وإن كان سؤالك عن حالتك أنت، فاعرضه على مختص يعرف تفاصيلها.",

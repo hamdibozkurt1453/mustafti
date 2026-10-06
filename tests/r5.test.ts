@@ -135,7 +135,7 @@ describe("R5 · ثلاث شخصيات، لكل وضع موجّه مستقل في
       const sys = answerSystem({ question: "س", lang: "ar", mode: "general", passages: [], chatMode: mode });
       assert.ok(sys.includes(PERSONAS[mode].system), mode);
       for (const other of CHAT_MODES.filter((m) => m !== mode)) assert.ok(!sys.includes(PERSONAS[other].system), `${mode} ≠ ${other}`);
-      assert.match(sys, /EVIDENCE RULE/);
+      assert.match(sys, /PASSAGES STRENGTHEN THE ANSWER/);
     }
   });
 
@@ -202,25 +202,25 @@ const HADITH = "عن النعمان بن بشير رضي الله عنهما ق�
 const VERSE = "قال تعالى: ﴿لَا إِكْرَاهَ فِي الدِّينِ قَدْ تَبَيَّنَ الرُّشْدُ مِنَ الْغَيِّ﴾ [البقرة: 256]";
 const CTX = { sources: [HADITH, VERSE] };
 
-describe("R5 · قاعدة الدليل: الصياغة حرة، والحكم والدليل والنسبة بإشارة [n]", () => {
+describe("R5 (معدّلة في R5c) · الصياغة حرة، والمصادر [n] شرف للجواب لا شرط لكل جملة", () => {
   it("جملة شرح أو تشجيع بلا رقم مقبولة", () => {
     const t = "الصلاة صلة بين العبد وربه، وستجدها أسهل مما تظن. خطوة خطوة، بارك الله فيك.";
     assert.deepEqual(checkAnswer(t, CTX).findings, []);
     assert.equal(repairAnswer(t, CTX).text, t);
   });
 
-  it("حكم بلا مصدر مرفوض (تُحذف جملته)، والحكم نفسه بإشارته مقبول", () => {
-    const bad = checkAnswer("الصلاة واجبة على كل مسلم بالغ عاقل.", CTX);
-    assert.ok(bad.findings.some((f) => f.reason === "unsourced_ruling"), JSON.stringify(bad.findings));
+  it("R5c: الحكم العام بلا رقم مصدر يمر كما هو (كانت جملته تُحذف)، وبإشارته كذلك", () => {
+    assert.deepEqual(checkAnswer("الصلاة واجبة على كل مسلم بالغ عاقل.", CTX).findings, []);
     assert.deepEqual(checkAnswer("الصلاة واجبة على كل مسلم بالغ عاقل [1].", CTX).findings, []);
     assert.deepEqual(checkAnswer("أكل الربا حرام [2].", CTX).findings, []);
-    const r = repairAnswer("الصلاة صلة بين العبد وربه. وأكل الربا حرام. والحلال بين [1].", CTX);
-    assert.equal(r.text, "الصلاة صلة بين العبد وربه. والحلال بين [1].");
-    assert.ok(r.fixes.some((f) => f.kind === "sentence_removed" && f.reason === "unsourced_ruling"));
+    const t = "الصلاة صلة بين العبد وربه. وأكل الربا حرام. والحلال بين [1].";
+    const r = repairAnswer(t, CTX);
+    assert.equal(r.text, t);
+    assert.deepEqual(r.fixes, []);
   });
 
-  it("الترجيح مقبول بإشارته فقط", () => {
-    assert.ok(checkAnswer("والراجح أن القضاء على الفور.", CTX).findings.some((f) => f.reason === "unsourced_ruling"));
+  it("R5c: الترجيح العام يمر بلا رقم", () => {
+    assert.deepEqual(checkAnswer("والراجح أن القضاء على الفور.", CTX).findings, []);
     assert.deepEqual(checkAnswer("والراجح عند أهل العلم أن القضاء على الفور [1].", CTX).findings, []);
   });
 
@@ -233,20 +233,23 @@ describe("R5 · قاعدة الدليل: الصياغة حرة، والحكم و
     assert.equal(closestSpan("لا إكراه في الدين قد تبين الرشد من الغي والضلال", CTX.sources), "لَا إِكْرَاهَ فِي الدِّينِ قَدْ تَبَيَّنَ الرُّشْدُ مِنَ الْغَيِّ");
   });
 
-  it("اقتباس مختلق (آية أو حديث) يُحذف بجملته، ويبقى منع الاختلاق", () => {
+  it("R5c: حديث غير مطابق لمصدر ← تُحذف العلامات والنسبة ويبقى المعنى («ورد في السنة»)، والجواب لا يُبتر", () => {
     const t = "الحلال بين [1]. قال رسول الله ﷺ: «من شرب الشاي بعد الفجر زاد إيمانه» [1]. وفقك الله.";
     const r = repairAnswer(t, CTX);
-    assert.equal(r.text, "الحلال بين [1]. وفقك الله.");
-    assert.equal(r.fixes[0].kind, "quote_removed");
-    // ونسبة حديث بلا نص منقول تُحذف أيضاً.
-    assert.equal(repairAnswer("قال رسول الله ﷺ إن الشاي يزيد الإيمان [1]. وفقك الله.", CTX).text, "وفقك الله.");
+    assert.equal(r.text, "الحلال بين [1]. ورد في السنة ما معناه: من شرب الشاي بعد الفجر زاد إيمانه [1]. وفقك الله.");
+    assert.equal(r.fixes[0].kind, "quote_softened");
+    // نسبة حديث بلا نص ولا إشارة [n] تُليَّن أيضاً، ولا تُحذف جملتها.
+    assert.equal(repairAnswer("قال رسول الله ﷺ إن الشاي يزيد الإيمان. وفقك الله.", CTX).text, "ورد في السنة ما معناه: إن الشاي يزيد الإيمان. وفقك الله.");
   });
 
-  it("الفتوى الشخصية واسم النموذج يمنعان الجواب كله (ولو بإشارة)", () => {
+  it("الفتوى الشخصية تمنع الجواب (ولو بإشارة)، واسم النموذج تُحذف جملته وحدها", () => {
     assert.ok(repairAnswer("صلاتك باطلة [1].", CTX).blocked.length);
     assert.ok(repairAnswer("يجوز لك تأخير الصلاة [1].", CTX).blocked.length);
     assert.ok(repairAnswer("Your divorce has occurred [1].", CTX).blocked.length);
-    assert.ok(repairAnswer("أنا مبني على Gemma [1].", CTX).blocked.length);
+    const leak = repairAnswer("أنا مبني على Gemma [1]. الصلاة صلة بين العبد وربه.", CTX);
+    assert.deepEqual(leak.blocked, []);
+    assert.equal(leak.text, "الصلاة صلة بين العبد وربه.");
+    assert.equal(leak.fixes[0].kind, "sentence_removed");
   });
 
   it("الحارس الصارم كما هو للردود الأخرى (لا حكم بكلام الأداة)", () => {
@@ -294,15 +297,18 @@ describe("R5 · البث: المصادر أولاً، ثم الجواب جملة
     }
   });
 
-  it("اقتباس مختلق لا يصل إلى السائل أثناء البث، والجواب النهائي بلا جملته", async () => {
+  it("R5c: حديث مختلق لا يصل إلى السائل حديثاً منسوباً أثناء البث ولا بعده (يُليَّن ولا يُبتر الجواب)", async () => {
     answers = ["من نام عن الصلاة يصليها إذا استيقظ [1]. قال رسول الله ﷺ: «من شرب الشاي بعد الفجر زاد إيمانه» [1]. بارك الله فيك."];
     bodies.length = 0;
     let text = "";
     const r = await brain.respond("كيف يقضي النائم صلاته؟ بث ٢", { onDelta: (d) => (text += d) });
-    assert.doesNotMatch(text, /الشاي/);
-    assert.doesNotMatch(r.text, /الشاي/);
-    assert.match(r.text, /بارك الله فيك/);
-    assert.ok(r.guard?.findings.some((f) => /quote_removed/.test(f.match)));
+    for (const shown of [text, r.text]) {
+      assert.doesNotMatch(shown, /«من شرب الشاي|قال رسول الله ﷺ: «من/);
+      assert.match(shown, /ورد في السنة ما معناه: من شرب الشاي/);
+      assert.match(shown, /من نام عن الصلاة يصليها إذا استيقظ \[1\]/);
+      assert.match(shown, /بارك الله فيك/);
+    }
+    assert.ok(r.guard?.findings.some((f) => /quote_softened/.test(f.match)));
   });
 
   it("محاولة ثانية بعد الامتناع: «reset» ثم الجواب", async () => {

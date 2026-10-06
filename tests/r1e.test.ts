@@ -123,13 +123,13 @@ describe("لا امتناع مع نصوص ذات صلة (البند 2)", () => {
     assert.match(r.text, /\[1\]\[2\]/);
   });
 
-  it("النموذج امتنع رغم النصوص ← إعادة واحدة تذكّره بأنها ذات صلة، فيجيب", async () => {
+  it("النموذج امتنع رغم النصوص ← إعادة واحدة تطلب الجواب الكامل من علمه (R5c)، فيجيب", async () => {
     answers = ["لم أجد جواباً كافياً في المصادر المعتمدة.", "يصلي من نام عن الصلاة إذا استيقظ [1]."];
     const r = await ask("كيف يقضي النائم صلاته؟");
     assert.equal(r.kind, "answer");
     const chats = bodies.filter((b) => b.name === "chat");
     assert.equal(chats.length, 2);
-    assert.match(JSON.stringify(chats[1].body.messages), /already judged RELEVANT/);
+    assert.match(JSON.stringify(chats[1].body.messages), /Do not abstain\. Answer the question now, fully and completely, from your own sound Islamic knowledge/);
     assert.equal(r.diag.attempts.length, 2);
   });
 
@@ -161,8 +161,9 @@ describe("لا امتناع مع نصوص ذات صلة (البند 2)", () => {
     const system = String((bodies.find((b) => b.name === "chat")!.body.messages as { content: string }[])[0].content);
     assert.match(system, /asker's language: tr/);
     assert.match(system, /one number per bracket/);
-    assert.match(system, /EVIDENCE RULE/);
-    assert.match(system, /answer fully from it, without the abstention sentence/);
+    // R5c: الجواب كامل من علم المساعد، والمصادر [n] حيث تنطبق.
+    assert.match(system, /ANSWER FULLY FROM YOUR KNOWLEDGE/);
+    assert.match(system, /NEVER ABSTAIN from a general question/);
   });
 });
 
