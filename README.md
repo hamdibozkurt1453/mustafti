@@ -2,6 +2,8 @@
 
 [![www.mustafti.com](https://img.shields.io/badge/www.mustafti.com-04301F?style=flat)](https://www.mustafti.com)
 
+> **📘 [دليل التشغيل المحلي للجنة التحكيم](docs/SETUP.md)** · **[Local setup guide for the judges](docs/SETUP.md#english)**
+
 # مُستفتي · Mustafti
 
 **مُستفتي يستوضح السؤال الشرعي ولا يُفتي.** يجيب عن الأسئلة العامة عن الإسلام بأي لغة، ويقوّي جوابه بنصوص
@@ -100,7 +102,7 @@ npm test                     # الاختبارات
 npm run build                # بناء الإنتاج
 ```
 
-إعداد Supabase: [docs/setup-supabase.md](docs/setup-supabase.md) (`supabase/schema.sql` ثم `supabase/migrations/`).
+الدليل الكامل خطوة بخطوة: [docs/SETUP.md](docs/SETUP.md). إعداد Supabase للإنتاج: [docs/setup-supabase.md](docs/setup-supabase.md).
 
 ### متغيرات البيئة
 
