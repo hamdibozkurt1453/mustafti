@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useActionState, useState } from "react";
 import { Link } from "@/i18n/navigation";
+import { PasswordInput } from "./PasswordInput";
 import { sendMagicLink, signInWithPassword, signUp, type AuthFormState } from "@/lib/auth/actions";
 
 // GOOGLE_ENABLED = false: الدخول بـ Google معطّل في نسخة التحدي (السبب في lib/auth/actions.ts).
@@ -87,17 +88,23 @@ export function AuthForm({ mode, next = "", initialError }: Props) {
           </label>
           <label className="block space-y-1.5">
             <span className="text-sm font-semibold">{t("password")}</span>
-            <input
+            <PasswordInput
               name="password"
-              type="password"
               required
               minLength={mode === "register" ? 8 : undefined}
               autoComplete={mode === "register" ? "new-password" : "current-password"}
-              dir="ltr"
               className={fieldClass}
             />
             {mode === "register" && <span className="block text-xs text-ink-600">{t("passwordHint")}</span>}
           </label>
+          {/* F1: «نسيت كلمة المرور؟» خارج الحقل حتى لا يفتحه الضغط على العنوان. */}
+          {mode === "login" && (
+            <p className="-mt-2 text-end text-sm">
+              <Link href="/auth/reset" className="font-semibold text-green-600 underline-offset-4 hover:underline">
+                {t("forgot")}
+              </Link>
+            </p>
+          )}
           <button type="submit" disabled={pwPending} className={buttonClass}>
             {pwPending ? t("sending") : mode === "login" ? t("signIn") : t("signUp")}
           </button>

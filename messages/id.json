@@ -38,8 +38,7 @@
     "tagline": "",
     "colPlatform": "",
     "colProject": "",
-    "sourceNote": "",
-    "login": ""
+    "sourceNote": ""
   },
   "home": {
     "intro": "",
@@ -274,7 +273,12 @@
       "hadith": "Hadits"
     },
     "openDownload": "Buka / unduh",
-    "showText": "Tampilkan teks"
+    "showText": "Tampilkan teks",
+    "guest": {
+      "text": "Obrolan Anda tidak disimpan karena Anda belum masuk. Masuk agar obrolan Anda tersimpan.",
+      "login": "Masuk",
+      "close": "Tutup"
+    }
   },
   "case": {
     "start": "",
@@ -415,7 +419,11 @@
       "applicationHint": "Pendaftaran Anda sebagai ahli:",
       "applicationLink": "Status pendaftaran",
       "joinHint": "Anda seorang ahli ilmu?",
-      "joinLink": "Bergabung sebagai ahli"
+      "joinLink": "Bergabung sebagai ahli",
+      "bio": "Bio singkat",
+      "bioPlaceholder": "Satu atau dua baris tentang Anda (opsional)",
+      "cardHint": "Foto Anda tampil di tombol “Akun saya” dan di Forum menggantikan inisial nama Anda.",
+      "cardUnavailable": "Foto dan bio sedang disiapkan dan segera tersedia."
     },
     "forum": {
       "title": "Belum ada kiriman",
@@ -619,6 +627,25 @@
         "invalid": "Permintaan tidak valid.",
         "generic": "Tindakan gagal diselesaikan. Silakan coba lagi."
       }
+    }
+  },
+  "auth": {
+    "showPassword": "Tampilkan kata sandi",
+    "hidePassword": "Sembunyikan kata sandi",
+    "forgot": "Lupa kata sandi?",
+    "resetTitle": "Atur ulang kata sandi",
+    "resetLead": "Masukkan email Anda, kami kirimkan tautan untuk membuat kata sandi baru.",
+    "sendReset": "Kirim tautan atur ulang",
+    "sentReset": "Jika email ini memiliki akun, kami telah mengirim tautan atur ulang. Periksa kotak masuk Anda.",
+    "backToLogin": "Kembali ke masuk",
+    "updateTitle": "Kata sandi baru",
+    "updateLead": "Pilih kata sandi baru untuk akun Anda.",
+    "newPassword": "Kata sandi baru",
+    "confirmPassword": "Konfirmasi kata sandi",
+    "savePassword": "Simpan kata sandi",
+    "passwordUpdated": "Kata sandi Anda telah diperbarui.",
+    "errors": {
+      "mismatch": "Kata sandi tidak cocok."
     }
   }
 }

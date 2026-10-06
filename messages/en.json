@@ -39,8 +39,7 @@
     "tagline": "Clarifies your question. Never issues fatwas.",
     "colPlatform": "Platform",
     "colProject": "The project",
-    "sourceNote": "Primary source: the association's official Islamic content server.",
-    "login": "Sign in"
+    "sourceNote": "Primary source: the association's official Islamic content server."
   },
   "home": {
     "intro": "I answer from trusted Islamic sources, with links, and carry your personal question to qualified scholars. I never issue religious rulings.",
@@ -138,8 +137,7 @@
     },
     "privacy": {
       "title": "Privacy policy",
-      "description": "What we keep, why, and when we delete it.",
-      "country": "We store only your country (not your address) to route your question to a specialist from your country."
+      "description": "What we keep, why, and when we delete it."
     },
     "eval": {
       "title": "Transparency & testing",
@@ -305,7 +303,12 @@
       "hadith": "Hadith"
     },
     "openDownload": "Open / download",
-    "showText": "Show text"
+    "showText": "Show text",
+    "guest": {
+      "text": "Your chat isn't saved because you're not signed in. Sign in to keep your chats.",
+      "login": "Sign in",
+      "close": "Close"
+    }
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -337,7 +340,8 @@
       "rateLimited": "Too many attempts. Please wait a little and try again.",
       "notConfigured": "Accounts are being set up and will be available soon.",
       "generic": "Something went wrong. Please try again.",
-      "link": "This link is invalid or has expired. Request a new one."
+      "link": "This link is invalid or has expired. Request a new one.",
+      "mismatch": "The passwords don't match."
     },
     "account": "Your account",
     "signedInAs": "Signed in as",
@@ -351,7 +355,21 @@
       "visitor": "Visitor",
       "viewer": "Read-only viewer"
     },
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "forgot": "Forgot your password?",
+    "resetTitle": "Reset your password",
+    "resetLead": "Enter your email and we'll send you a link to set a new password.",
+    "sendReset": "Send reset link",
+    "sentReset": "If this email has an account, we've sent it a reset link. Check your inbox.",
+    "backToLogin": "Back to sign in",
+    "updateTitle": "New password",
+    "updateLead": "Choose a new password for your account.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "savePassword": "Save password",
+    "passwordUpdated": "Your password has been updated."
   },
   "admin": {
     "mfaTitle": "Two-step verification",
@@ -916,7 +934,11 @@
       "applicationHint": "Your expert application:",
       "applicationLink": "Application status",
       "joinHint": "A scholar or specialist?",
-      "joinLink": "Join as an expert"
+      "joinLink": "Join as an expert",
+      "bio": "Short bio",
+      "bioPlaceholder": "A line or two about you (optional)",
+      "cardHint": "Your photo appears on the “My account” button and in the Forum instead of your initial.",
+      "cardUnavailable": "Photo and bio are being set up and will be available soon."
     },
     "forum": {
       "title": "No posts yet",

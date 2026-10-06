@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { LABEL_KEYS, localizeLabels, type LabelKey } from "@/lib/chat/labels";
 import { dirForText, type ChatSource } from "@/lib/chat/protocol";
+import { cleanQuranText } from "@/lib/quran-text";
 
 const LONG = 320;
 
@@ -51,9 +52,9 @@ export function SourceCard({ source, messageId, foldHadith = false }: { source: 
           <blockquote
             dir="rtl"
             lang="ar"
-            className="mt-2 rounded-2xl bg-ivory-50 px-4 py-3 text-center text-[19px] leading-[2.1] text-green-900"
+            className="quran-text mt-2 rounded-2xl bg-ivory-50 px-4 py-3 text-center text-[21px] leading-[2.2] text-green-900"
           >
-            ﴿{source.verse}﴾
+            ﴿{cleanQuranText(source.verse)}﴾
           </blockquote>
           {note && (
             <div className="mt-2">

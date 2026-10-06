@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { GLOSSARY, type GlossaryTerm } from "@/lib/brain/glossary";
+import { splitQuranSpans } from "@/lib/quran-text";
 
 /**
  * نص جواب مُستفتي: إشارات المصادر [n] تصير روابط إلى بطاقاتها، ومصطلحات القاموس
@@ -69,7 +70,7 @@ export function RichText({ text, messageId, cards, onTerm }: Props) {
   const used = new Set<string>();
   let key = 0;
 
-  const render = (segment: string): ReactNode[] => {
+  const renderPlain = (segment: string): ReactNode[] => {
     const out: ReactNode[] = [];
     const pushTerms = (part: string) => {
       let rest = part;
@@ -120,6 +121,18 @@ export function RichText({ text, messageId, cards, onTerm }: Props) {
     pushTerms(segment.slice(last));
     return out;
   };
+
+  // F1: الآية بين ﴿ ﴾ بخط المصحف (quran-text) بعد تنظيف الرموز التي لا يدعمها الهاتف.
+  const render = (segment: string): ReactNode[] =>
+    splitQuranSpans(segment).flatMap((part): ReactNode[] =>
+      part.quran
+        ? [
+            <span key={`q${key++}`} lang="ar" dir="rtl" className="quran-text">
+              {part.text}
+            </span>,
+          ]
+        : renderPlain(part.text),
+    );
 
   return (
     <>

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { GlossaryTerm } from "@/lib/brain/glossary";
 import { BotReply } from "../chat/BotReply";
+import { GuestNotice } from "../chat/GuestNotice";
 import type { CaseApi } from "../chat/CaseFlow";
 import { TermDialog } from "../chat/TermDialog";
 import type { ChatMessage } from "../chat/useChat";
@@ -51,6 +52,8 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, 
   return (
     <div className="flex min-h-[100svh] flex-col bg-ivory-50">
       <section aria-label={t("chat.label")} className="mx-auto w-full max-w-3xl flex-1 px-4 pb-48 pt-24">
+        {/* F1: الزائر غير المسجّل يعرف أن محادثته لا تُحفظ، وبإمكانه الدخول أو إغلاق الشريط. */}
+        <GuestNotice />
         <div className="mb-6 flex flex-col items-center gap-2">
           {title && <p className="text-sm font-semibold text-green-900">{title}</p>}
           <button

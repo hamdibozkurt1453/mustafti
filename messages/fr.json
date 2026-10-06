@@ -38,8 +38,7 @@
     "tagline": "",
     "colPlatform": "",
     "colProject": "",
-    "sourceNote": "",
-    "login": ""
+    "sourceNote": ""
   },
   "home": {
     "intro": "",
@@ -274,7 +273,12 @@
       "hadith": "Hadith"
     },
     "openDownload": "Ouvrir / télécharger",
-    "showText": "Afficher le texte"
+    "showText": "Afficher le texte",
+    "guest": {
+      "text": "Votre discussion n'est pas enregistrée car vous n'êtes pas connecté. Connectez-vous pour conserver vos discussions.",
+      "login": "Se connecter",
+      "close": "Fermer"
+    }
   },
   "case": {
     "start": "",
@@ -415,7 +419,11 @@
       "applicationHint": "Votre candidature d'expert :",
       "applicationLink": "État de la candidature",
       "joinHint": "Vous êtes savant ou spécialiste ?",
-      "joinLink": "Rejoindre en tant qu'expert"
+      "joinLink": "Rejoindre en tant qu'expert",
+      "bio": "Courte présentation",
+      "bioPlaceholder": "Une ou deux lignes sur vous (facultatif)",
+      "cardHint": "Votre photo s'affiche sur le bouton « Mon compte » et dans le Forum à la place de votre initiale.",
+      "cardUnavailable": "La photo et la présentation sont en cours de configuration et seront bientôt disponibles."
     },
     "forum": {
       "title": "Aucune publication pour l’instant",
@@ -619,6 +627,25 @@
         "invalid": "Requête invalide.",
         "generic": "L’action n’a pas pu aboutir. Veuillez réessayer."
       }
+    }
+  },
+  "auth": {
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "forgot": "Mot de passe oublié ?",
+    "resetTitle": "Réinitialiser le mot de passe",
+    "resetLead": "Saisissez votre e-mail : nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+    "sendReset": "Envoyer le lien",
+    "sentReset": "Si cet e-mail a un compte, un lien de réinitialisation lui a été envoyé. Consultez votre boîte de réception.",
+    "backToLogin": "Retour à la connexion",
+    "updateTitle": "Nouveau mot de passe",
+    "updateLead": "Choisissez un nouveau mot de passe pour votre compte.",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "savePassword": "Enregistrer le mot de passe",
+    "passwordUpdated": "Votre mot de passe a été mis à jour.",
+    "errors": {
+      "mismatch": "Les mots de passe ne correspondent pas."
     }
   }
 }

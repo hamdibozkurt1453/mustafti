@@ -7,7 +7,7 @@ import { getAuthContext } from "@/lib/auth/roles";
 import { AVATAR_BUCKET, EXPERT_BUCKET } from "@/lib/experts/types";
 import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { deleteConfirmed, parseAccountInput } from "./rules";
+import { deleteConfirmed, parseAccountInput, parseProfileCardInput } from "./rules";
 
 export type AccountResult = { ok: true } | { ok: false; error: "invalid" | "auth" | "notConfigured" | "admin" | "expertAnswers" | "confirm" | "generic" };
 
@@ -25,6 +25,35 @@ export async function updateAccount(input: unknown): Promise<AccountResult> {
   if (error) {
     console.error("update account:", error.message);
     return { ok: false, error: "generic" };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * F1: «الصورة والنبذة» لغير المختص المقبول (profiles.avatar_path وbio)، بجلسة المستخدم (RLS: صفّه فقط).
+ * الصورة تُرفع من المتصفح إلى مجلده في expert-avatars، ويتحقق الخادم هنا أنها موجودة في مجلده.
+ * قبل migration ‏20261012_profile_avatar_bio.sql (العمودان غير موجودين) يعيد notConfigured.
+ */
+export async function updateProfileCard(input: unknown): Promise<AccountResult> {
+  const ctx = await getAuthContext();
+  if (!ctx.userId) return { ok: false, error: "auth" };
+  const parsed = parseProfileCardInput(input, ctx.userId);
+  if (!parsed) return { ok: false, error: "invalid" };
+  if (parsed.avatarPath && isAdminClientConfigured()) {
+    const name = parsed.avatarPath.split("/")[1];
+    const { data } = await createAdminClient().storage.from(AVATAR_BUCKET).list(ctx.userId, { search: name, limit: 10 });
+    if (!data?.some((f) => f.name === name)) return { ok: false, error: "invalid" };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_path: parsed.avatarPath, bio: parsed.bio })
+    .eq("id", ctx.userId);
+  if (error) {
+    console.error("update profile card:", error.message);
+    // 42703: العمود غير موجود (الـ migration لم تُنفَّذ بعد).
+    return { ok: false, error: error.code === "42703" || /column/i.test(error.message) ? "notConfigured" : "generic" };
   }
   revalidatePath("/", "layout");
   return { ok: true };

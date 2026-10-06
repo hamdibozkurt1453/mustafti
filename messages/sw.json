@@ -38,8 +38,7 @@
     "tagline": "",
     "colPlatform": "",
     "colProject": "",
-    "sourceNote": "",
-    "login": ""
+    "sourceNote": ""
   },
   "home": {
     "intro": "",
@@ -274,7 +273,12 @@
       "hadith": "Hadithi"
     },
     "openDownload": "Fungua / pakua",
-    "showText": "Onyesha maandishi"
+    "showText": "Onyesha maandishi",
+    "guest": {
+      "text": "Mazungumzo yako hayahifadhiwi kwa sababu hujaingia. Ingia ili mazungumzo yako yabaki.",
+      "login": "Ingia",
+      "close": "Funga"
+    }
   },
   "case": {
     "start": "",
@@ -415,7 +419,11 @@
       "applicationHint": "Ombi lako la mtaalamu:",
       "applicationLink": "Hali ya ombi",
       "joinHint": "Wewe ni mwanazuoni au mtaalamu?",
-      "joinLink": "Jiunge kama mtaalamu"
+      "joinLink": "Jiunge kama mtaalamu",
+      "bio": "Wasifu mfupi",
+      "bioPlaceholder": "Mstari mmoja au miwili kukuhusu (si lazima)",
+      "cardHint": "Picha yako inaonekana kwenye kitufe cha “Akaunti yangu” na kwenye Jukwaa badala ya herufi ya kwanza ya jina lako.",
+      "cardUnavailable": "Picha na wasifu vinaandaliwa na vitapatikana hivi karibuni."
     },
     "forum": {
       "title": "Bado hakuna machapisho",
@@ -619,6 +627,25 @@
         "invalid": "Ombi si sahihi.",
         "generic": "Imeshindikana kukamilisha kitendo. Tafadhali jaribu tena."
       }
+    }
+  },
+  "auth": {
+    "showPassword": "Onyesha nenosiri",
+    "hidePassword": "Ficha nenosiri",
+    "forgot": "Umesahau nenosiri?",
+    "resetTitle": "Weka upya nenosiri",
+    "resetLead": "Andika barua pepe yako, tutakutumia kiungo cha kuweka nenosiri jipya.",
+    "sendReset": "Tuma kiungo",
+    "sentReset": "Ikiwa barua pepe hii ina akaunti, tumetuma kiungo cha kuweka upya. Angalia sanduku lako.",
+    "backToLogin": "Rudi kuingia",
+    "updateTitle": "Nenosiri jipya",
+    "updateLead": "Chagua nenosiri jipya kwa akaunti yako.",
+    "newPassword": "Nenosiri jipya",
+    "confirmPassword": "Thibitisha nenosiri",
+    "savePassword": "Hifadhi nenosiri",
+    "passwordUpdated": "Nenosiri lako limesasishwa.",
+    "errors": {
+      "mismatch": "Manenosiri hayalingani."
     }
   }
 }

@@ -125,3 +125,47 @@ export async function signOut(formData: FormData): Promise<void> {
   }
   redirect(`/${locale}`);
 }
+
+/** F1: نتيجة «نسيت كلمة المرور» وتحديثها. */
+export type ResetFormState = { error?: "invalid" | "weakPassword" | "mismatch" | "rateLimited" | "notConfigured" | "link" | "generic"; sent?: boolean };
+
+/**
+ * F1: «نسيت كلمة المرور؟» (/auth/reset): يرسل Supabase رابط إعادة التعيين (resetPasswordForEmail).
+ * الرابط يمر بـ /api/auth/callback (يفتح الجلسة) ثم صفحة تحديث كلمة المرور. الرد واحد سواء وُجد
+ * الحساب أم لا، حتى لا تكشف الصفحة من له حساب.
+ */
+export async function requestPasswordReset(_: ResetFormState, formData: FormData): Promise<ResetFormState> {
+  if (!isSupabaseConfigured()) return { error: "notConfigured" };
+  const { email, locale } = readForm(formData);
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "invalid" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: callbackUrl(await siteOrigin(), `/${locale}/auth/update-password`),
+  });
+  if (error) {
+    const mapped = mapError(error.message, error.code);
+    if (mapped === "rateLimited") return { error: "rateLimited" };
+    console.error("password reset:", error.message);
+  }
+  return { sent: true };
+}
+
+/** F1: كلمة المرور الجديدة، بالجلسة التي فتحها رابط البريد. */
+export async function updatePassword(_: ResetFormState, formData: FormData): Promise<ResetFormState> {
+  if (!isSupabaseConfigured()) return { error: "notConfigured" };
+  const { password, locale } = readForm(formData);
+  const confirm = String(formData.get("confirm") ?? "");
+  if (password.length < MIN_PASSWORD) return { error: "weakPassword" };
+  if (password !== confirm) return { error: "mismatch" };
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return { error: "link" };
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    const mapped = mapError(error.message, error.code);
+    return { error: mapped === "weakPassword" || mapped === "rateLimited" ? mapped : "generic" };
+  }
+  redirect(`/${locale}/me?password=updated`);
+}

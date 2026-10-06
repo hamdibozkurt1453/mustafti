@@ -4,6 +4,7 @@ import { Link } from "@/i18n/navigation";
 import { getDirection } from "@/i18n/locales";
 import { isEnabledHref } from "@/lib/config";
 import { FooterShell } from "./FooterShell";
+import { footerProjectLinks } from "./nav-items";
 
 /** التذييل: عبارة الهوية، والروابط، و«انضم كمختص»، وسطر المشاركة في التحدي. */
 export function SiteFooter() {
@@ -23,12 +24,7 @@ export function SiteFooter() {
     },
     {
       title: t("footer.colProject"),
-      links: [
-        { href: "/about", label: t("nav.about") },
-        { href: "/eval", label: t("footer.eval") },
-        { href: "/privacy", label: t("footer.privacy") },
-        { href: "/login", label: t("footer.login") },
-      ],
+      links: footerProjectLinks.map((l) => ({ href: l.href, label: t(l.key) })),
     },
   ];
 

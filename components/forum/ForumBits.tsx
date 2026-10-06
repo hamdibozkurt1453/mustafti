@@ -13,7 +13,7 @@ export async function AuthorLine({ author, size = 32 }: { author: ForumAuthor; s
   const name = author.name || t("anonymous");
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center gap-2">
-      <ExpertAvatar url={author.expert?.avatarUrl ?? null} name={name} size={size} />
+      <ExpertAvatar url={author.avatarUrl ?? author.expert?.avatarUrl ?? null} name={name} size={size} />
       <bdi className="truncate font-semibold text-green-900">{name}</bdi>
       {author.expert && (
         <>

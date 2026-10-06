@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Readex_Pro, Reem_Kufi } from "next/font/google";
+import { Amiri_Quran, Readex_Pro, Reem_Kufi } from "next/font/google";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -23,6 +23,15 @@ const reemKufi = Reem_Kufi({
   weight: ["500", "600", "700"],
   variable: "--font-reem",
   display: "swap",
+});
+
+// F1: خط المصحف للنص القرآني فقط (class quran-text): يغطي الرسم العثماني الذي لا يدعمه خط الهاتف.
+const amiriQuran = Amiri_Quran({
+  subsets: ["arabic"],
+  weight: "400",
+  variable: "--font-quran",
+  display: "swap",
+  preload: false,
 });
 
 const SITE_URL = "https://mustafti.com";
@@ -84,7 +93,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   setRequestLocale(locale);
 
   return (
-    <html lang={locale} dir={getDirection(locale)} className={`${readex.variable} ${reemKufi.variable}`}>
+    <html lang={locale} dir={getDirection(locale)} className={`${readex.variable} ${reemKufi.variable} ${amiriQuran.variable}`}>
       <body className="flex min-h-dvh flex-col antialiased">
         <NextIntlClientProvider>
           <SiteHeader />

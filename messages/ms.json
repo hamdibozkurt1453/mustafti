@@ -38,8 +38,7 @@
     "tagline": "",
     "colPlatform": "",
     "colProject": "",
-    "sourceNote": "",
-    "login": ""
+    "sourceNote": ""
   },
   "home": {
     "intro": "",
@@ -274,7 +273,12 @@
       "hadith": "Hadis"
     },
     "openDownload": "Buka / muat turun",
-    "showText": "Papar teks"
+    "showText": "Papar teks",
+    "guest": {
+      "text": "Perbualan anda tidak disimpan kerana anda belum log masuk. Log masuk untuk menyimpan perbualan anda.",
+      "login": "Log masuk",
+      "close": "Tutup"
+    }
   },
   "case": {
     "start": "",
@@ -415,7 +419,11 @@
       "applicationHint": "Permohonan anda sebagai pakar:",
       "applicationLink": "Status permohonan",
       "joinHint": "Anda seorang ahli ilmu?",
-      "joinLink": "Sertai sebagai pakar"
+      "joinLink": "Sertai sebagai pakar",
+      "bio": "Bio ringkas",
+      "bioPlaceholder": "Satu atau dua baris tentang anda (pilihan)",
+      "cardHint": "Foto anda dipaparkan pada butang “Akaun saya” dan dalam Forum menggantikan huruf awal nama anda.",
+      "cardUnavailable": "Foto dan bio sedang disediakan dan akan tersedia tidak lama lagi."
     },
     "forum": {
       "title": "Belum ada hantaran",
@@ -619,6 +627,25 @@
         "invalid": "Permintaan tidak sah.",
         "generic": "Tindakan tidak dapat diselesaikan. Sila cuba lagi."
       }
+    }
+  },
+  "auth": {
+    "showPassword": "Tunjuk kata laluan",
+    "hidePassword": "Sembunyi kata laluan",
+    "forgot": "Lupa kata laluan?",
+    "resetTitle": "Tetapkan semula kata laluan",
+    "resetLead": "Masukkan e-mel anda, kami hantar pautan untuk menetapkan kata laluan baharu.",
+    "sendReset": "Hantar pautan",
+    "sentReset": "Jika e-mel ini mempunyai akaun, pautan tetapan semula telah dihantar. Semak peti masuk anda.",
+    "backToLogin": "Kembali ke log masuk",
+    "updateTitle": "Kata laluan baharu",
+    "updateLead": "Pilih kata laluan baharu untuk akaun anda.",
+    "newPassword": "Kata laluan baharu",
+    "confirmPassword": "Sahkan kata laluan",
+    "savePassword": "Simpan kata laluan",
+    "passwordUpdated": "Kata laluan anda telah dikemas kini.",
+    "errors": {
+      "mismatch": "Kata laluan tidak sepadan."
     }
   }
 }
