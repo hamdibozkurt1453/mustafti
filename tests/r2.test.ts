@@ -7,7 +7,7 @@ import { describe, it } from "node:test";
 import { navItems } from "../components/nav-items";
 import { locales } from "../i18n/locales";
 import { deleteConfirmed, exportFileName, ME_TABS, parseAccountInput, resolveTab } from "../lib/account/rules";
-import { cleanQuery, isIslamhouseUrl, LIBRARY_TOPICS, LIBRARY_TYPES, libraryMeta, shamelaSearchUrl, toLibraryCards } from "../lib/library/items";
+import { cleanQuery, isIslamhouseUrl, LIBRARY_TOPICS, LIBRARY_TYPES, libraryMeta, toLibraryCards } from "../lib/library/items";
 import { settingsFromProfile } from "../lib/prayer/times";
 import nextConfig from "../next.config";
 
@@ -55,8 +55,8 @@ describe("R2 · التحويلات", () => {
 });
 
 describe("R2 · المكتبة", () => {
-  it("التصنيفات الست المقترحة مترجمة في كل اللغات", () => {
-    assert.deepEqual([...LIBRARY_TOPICS], ["aqeedah", "prayer", "fasting", "seerah", "newMuslim", "family"]);
+  it("التصنيفات المقترحة مترجمة في كل اللغات (F1b: عشرة)", () => {
+    assert.deepEqual([...LIBRARY_TOPICS], ["aqeedah", "prayer", "fasting", "seerah", "newMuslim", "family", "tafsir", "hadith", "akhlaq", "dawah"]);
     for (const l of locales) {
       for (const k of LIBRARY_TOPICS) assert.ok(String(get(messages(l), `library.topics.${k}`) ?? "").trim(), `${l}: ${k}`);
       for (const k of LIBRARY_TYPES) assert.ok(String(get(messages(l), `library.types.${k}`) ?? "").trim(), `${l}: type ${k}`);
@@ -85,8 +85,7 @@ describe("R2 · المكتبة", () => {
     assert.equal(cards[0].type, "books");
   });
 
-  it("رابط الشاملة ونص البحث", () => {
-    assert.equal(shamelaSearchUrl("صلاة الفجر"), "https://shamela.ws/search?q=%D8%B5%D9%84%D8%A7%D8%A9%20%D8%A7%D9%84%D9%81%D8%AC%D8%B1");
+  it("نص البحث (F1b: حُذف زر الشاملة من المكتبة)", () => {
     assert.equal(cleanQuery("  الصلاة   والصيام "), "الصلاة والصيام");
     assert.equal(cleanQuery(["a"]), "");
     assert.equal(cleanQuery("x".repeat(500)).length, 120);

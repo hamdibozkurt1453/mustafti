@@ -13,7 +13,6 @@ import { footerProjectLinks } from "../components/nav-items";
 import { locales } from "../i18n/locales";
 import { BIO_MAX, parseProfileCardInput, profileSections } from "../lib/account/rules";
 import { GUEST_NOTICE_KEY, guestLoginHref, showGuestNotice } from "../lib/chat/guest-notice";
-import { LIBRARY_TOPICS, libraryQueryPlan, TOPIC_TERMS, topicForQuery, type LibraryTopic } from "../lib/library/items";
 import { PAGE_CONTENT, pageContent, REPO_URL, type InfoPage } from "../lib/pages/content";
 import { cleanQuranText, splitQuranSpans } from "../lib/quran-text";
 import { consumeHomeRequest, requestHome } from "../lib/ui-store";
@@ -145,41 +144,7 @@ describe("4) صفحة الدخول", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// 5) المكتبة: كلمات التصنيفات
-// ---------------------------------------------------------------------------
-
-describe("5) تصنيفات المكتبة تبحث بالعربية والإنجليزية معاً", () => {
-  const labels = (l: string) => Object.fromEntries(LIBRARY_TOPICS.map((t) => [t, get(messages[l], `library.topics.${t}`)])) as Record<LibraryTopic, string>;
-
-  it("عنوان التصنيف بلغة الواجهة يُعرَف تصنيفاً، والبحث الحر لا", () => {
-    assert.equal(topicForQuery("الأسرة", labels("ar")), "family");
-    assert.equal(topicForQuery(" Family ", labels("en")), "family");
-    assert.equal(topicForQuery("Aile", labels("tr")), "family");
-    assert.equal(topicForQuery("أحكام الميراث", labels("ar")), null);
-  });
-
-  it("كل تصنيف من الستة له صيغ عربية وإنجليزية، والجولة الأولى تجمع العنوان والعربية والإنجليزية", () => {
-    for (const topic of LIBRARY_TOPICS) {
-      assert.ok(TOPIC_TERMS[topic].ar.length >= 2 && TOPIC_TERMS[topic].en.length >= 1, topic);
-      const [first, second] = libraryQueryPlan(labels("tr")[topic], "tr", topic);
-      assert.deepEqual(first.map((x) => x.q), [labels("tr")[topic], TOPIC_TERMS[topic].ar[0], TOPIC_TERMS[topic].en[0]]);
-      assert.ok(first.every((x) => x.lang === "tr"));
-      assert.ok(second.length >= 2 && second.some((x) => x.lang === "ar") && second.some((x) => x.lang === "en"), topic);
-    }
-  });
-
-  it("«الأسرة» بالعربية: بلا تكرار، والاحتياط بالمرادفات (الزواج…) والإنجليزية", () => {
-    const [first, second] = libraryQueryPlan("الأسرة", "ar", "family");
-    assert.deepEqual(first, [{ q: "الأسرة", lang: "ar" }, { q: "family in Islam", lang: "ar" }]);
-    assert.ok(second.some((x) => x.q === "الزواج" && x.lang === "ar"));
-    assert.ok(second.some((x) => x.q === "family in Islam" && x.lang === "en"));
-  });
-
-  it("البحث الحر: لغة الواجهة ثم العربية والإنجليزية", () => {
-    assert.deepEqual(libraryQueryPlan("الحج", "ar", null), [[{ q: "الحج", lang: "ar" }], [{ q: "الحج", lang: "en" }]]);
-  });
-});
+// 5) المكتبة: استُبدلت في F1b بالواجهة البرمجية الرسمية (tests/f1b.test.ts).
 
 // ---------------------------------------------------------------------------
 // 6) صفحات about وeval وprivacy
@@ -205,8 +170,8 @@ describe("6) صفحات المعلومات بمحتوى حقيقي", () => {
     assert.match(text("ar", "eval"), /\(1\)[\s\S]*\(2\)[\s\S]*\(3\)/);
     assert.match(text("ar", "eval"), /ما لا يفعله/);
     assert.match(text("en", "eval"), /What it does not do/);
-    assert.match(text("ar", "privacy"), /ما لا نجمعه[\s\S]*تنزيل بياناتك[\s\S]*حذف الحساب/);
-    assert.match(text("en", "privacy"), /What we don't collect[\s\S]*Download your data[\s\S]*Delete your account/);
+    assert.match(text("ar", "privacy"), /ما لا نجمعه[\s\S]*تنزيل بياناتي[\s\S]*حذف حسابي/);
+    assert.match(text("en", "privacy"), /What we don't collect[\s\S]*Download my data[\s\S]*Delete my account/);
   });
 
   it("رابط المستودع في /eval بكل اللغات", () => {

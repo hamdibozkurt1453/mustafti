@@ -364,7 +364,7 @@
   "library": {
     "kicker": "IslamHouse",
     "title": "Perpustakaan",
-    "lead": "Buku, artikel dan audio percuma daripada IslamHouse dalam bahasa anda. Buka atau muat turun daripada pautan rasminya.",
+    "lead": "Buku percuma daripada IslamHouse dalam bahasa anda; baca atau muat turun dari pautan rasminya.",
     "searchLabel": "Cari dalam perpustakaan",
     "placeholder": "Taip topik atau tajuk buku",
     "search": "Cari",
@@ -375,16 +375,17 @@
       "fasting": "Puasa",
       "seerah": "Sirah Nabawi",
       "newMuslim": "Saudara baru",
-      "family": "Keluarga"
+      "family": "Keluarga",
+      "tafsir": "Tafsir",
+      "hadith": "Hadis",
+      "akhlaq": "Akhlak",
+      "dawah": "Dakwah"
     },
     "resultsFor": "Hasil untuk “{q}”",
-    "shamela": "Cari dalam Al-Maktabah Al-Syamilah",
     "limited": "Terlalu banyak carian dalam masa singkat. Tunggu sebentar dan cuba lagi.",
     "unavailable": "Perpustakaan tidak dapat dicapai sekarang. Cuba lagi sebentar nanti.",
-    "empty": "Tiada bahan untuk carian ini. Cuba perkataan lain atau salah satu topik dicadangkan.",
-    "open": "Buka / Muat turun",
+    "empty": "Tiada buku ditemui. Cuba perkataan atau topik lain.",
     "note": "Bahan daripada IslamHouse (islamhouse.com) dan dibuka daripada pautan rasminya; kami tidak menyimpan sebarang fail.",
-    "hint": "Pilih topik atau taip apa yang anda cari.",
     "types": {
       "books": "Buku",
       "articles": "Artikel",
@@ -393,7 +394,14 @@
       "fatwa": "Fatwa",
       "posters": "Kad",
       "other": "Bahan"
-    }
+    },
+    "latest": "Buku terkini",
+    "downloadPdf": "Muat turun PDF",
+    "islamhousePage": "Halaman di IslamHouse",
+    "by": "Oleh",
+    "arabicToo": "Buku bahasa Arab juga",
+    "ownLanguage": "Buku dalam bahasa saya",
+    "timeout": "Perpustakaan tidak membalas dalam 8 saat. Cuba lagi sebentar."
   },
   "me": {
     "title": "Akaun saya",

@@ -364,7 +364,7 @@
   "library": {
     "kicker": "IslamHouse",
     "title": "Laburare",
-    "lead": "Littattafai, makaloli da sautuka kyauta daga IslamHouse a harshenka. Buɗe ko sauke su daga mahaɗinsu na hukuma.",
+    "lead": "Littattafai kyauta daga IslamHouse da harshenka; karanta ko sauke daga mahadarsu ta hukuma.",
     "searchLabel": "Bincika a laburare",
     "placeholder": "Rubuta maudu'i ko sunan littafi",
     "search": "Bincika",
@@ -375,16 +375,17 @@
       "fasting": "Azumi",
       "seerah": "Tarihin Annabi",
       "newMuslim": "Sabon Musulmi",
-      "family": "Iyali"
+      "family": "Iyali",
+      "tafsir": "Tafsiri",
+      "hadith": "Hadisi",
+      "akhlaq": "Halaye",
+      "dawah": "Da'awa"
     },
     "resultsFor": "Sakamakon “{q}”",
-    "shamela": "Bincika a Al-Maktaba Al-Shamela",
     "limited": "Ka yi bincike da yawa cikin ɗan lokaci. Jira kaɗan sannan ka sake gwadawa.",
     "unavailable": "Ba a iya isa laburare yanzu ba. Sake gwadawa nan da ɗan lokaci.",
-    "empty": "Ba a samu komai ba. Gwada wata kalma ko ɗaya daga cikin maudu'an da aka ba da shawara.",
-    "open": "Buɗe / Sauke",
+    "empty": "Ba a sami littafi ba. Gwada wata kalma ko wani batu.",
     "note": "Kayan sun fito daga IslamHouse (islamhouse.com) kuma suna buɗewa daga mahaɗinsu na hukuma; ba ma adana kowane fayil.",
-    "hint": "Zaɓi maudu'i ko rubuta abin da kake nema.",
     "types": {
       "books": "Littafi",
       "articles": "Makala",
@@ -393,7 +394,14 @@
       "fatwa": "Fatawa",
       "posters": "Kati",
       "other": "Kaya"
-    }
+    },
+    "latest": "Sababbin littattafai",
+    "downloadPdf": "Sauke PDF",
+    "islamhousePage": "Shafi a IslamHouse",
+    "by": "Na",
+    "arabicToo": "Littattafan Larabci ma",
+    "ownLanguage": "Littattafai da harshena",
+    "timeout": "Dakin karatu bai amsa cikin dakika 8 ba. Sake gwadawa nan gaba kadan."
   },
   "me": {
     "title": "Asusuna",
