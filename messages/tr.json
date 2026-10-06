@@ -758,7 +758,9 @@
     "booksTitle": "Büyük sorulara cevap veren kitaplar",
     "booksLead": "Kendi dilinizde ücretsiz kitaplar: Neden İslam? Yaratıcı kim? Hayatın amacı ne?",
     "booksEmpty": "Kitaplara şu anda ulaşılamıyor. Kütüphanede göz atın.",
-    "booksMore": "Kütüphanede daha fazlası"
+    "booksMore": "Kütüphanede daha fazlası",
+    "englishVideos": "İngilizce videolar",
+    "closeVideo": "Videoyu kapat"
   },
   "newsletter": {
     "title": "Bülten",

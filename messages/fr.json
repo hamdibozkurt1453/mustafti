@@ -758,7 +758,9 @@
     "booksTitle": "Livres sur les grandes questions",
     "booksLead": "Des livres gratuits dans votre langue : pourquoi l'islam ? Qui est le Créateur ? Quel est le but de la vie ?",
     "booksEmpty": "Les livres sont inaccessibles pour le moment. Parcourez-les dans la bibliothèque.",
-    "booksMore": "Plus dans la bibliothèque"
+    "booksMore": "Plus dans la bibliothèque",
+    "englishVideos": "Vidéos en anglais",
+    "closeVideo": "Fermer la vidéo"
   },
   "newsletter": {
     "title": "Lettre d'information",

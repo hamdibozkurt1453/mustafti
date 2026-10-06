@@ -3,10 +3,10 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { getDirection, localeNames, locales, type Locale } from "@/i18n/locales";
+import { ENABLED_LOCALES, getDirection, localeNames, type Locale } from "@/i18n/locales";
 import { ChevronIcon, GlobeIcon } from "./icons";
 
-/** زر اللغة: يبدّل لغة الواجهة ويبقى في الصفحة نفسها. */
+/** زر اللغة: يبدّل لغة الواجهة ويبقى في الصفحة نفسها. F4: اللغات المفعّلة وحدها (العربية والإنجليزية). */
 export function LanguageSwitcher() {
   const t = useTranslations("nav");
   const current = useLocale();
@@ -62,7 +62,7 @@ export function LanguageSwitcher() {
           aria-label={t("language")}
           className="absolute end-0 top-12 z-50 max-h-[70vh] w-52 overflow-auto rounded-2xl border border-sand-200 bg-white p-1.5 text-green-900 shadow-xl"
         >
-          {locales.map((locale) => (
+          {ENABLED_LOCALES.map((locale) => (
             <li key={locale} role="option" aria-selected={locale === current}>
               <button
                 type="button"

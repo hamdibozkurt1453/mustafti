@@ -5,6 +5,21 @@ export const locales = [
 
 export type Locale = (typeof locales)[number];
 
+/**
+ * F4: اللغات المفعّلة في الواجهة: العربية والإنجليزية وحدهما (ترجمات R2 إلى F3 مكتملة فيهما فقط).
+ * اللغات العشر الأخرى تبقى ملفاتها وبنيتها كما هي، ومساراتها تحوّل إلى /en (next.config.ts).
+ * لإعادة تفعيل لغة: أضفها هنا فقط. (المحادثة نفسها تجيب بأي لغة يكتب بها السائل، في المحرك.)
+ */
+export const ENABLED_LOCALES = ["ar", "en"] as const satisfies readonly Locale[];
+export type EnabledLocale = (typeof ENABLED_LOCALES)[number];
+
+/** اللغات المعطّلة في الواجهة (مساراتها تحوّل إلى /en). */
+export const DISABLED_LOCALES: Locale[] = locales.filter((l) => !(ENABLED_LOCALES as readonly string[]).includes(l));
+
+export function isEnabledLocale(l: string): l is EnabledLocale {
+  return (ENABLED_LOCALES as readonly string[]).includes(l);
+}
+
 export const defaultLocale: Locale = "ar";
 
 /** اللغات التي تُكتب من اليمين إلى اليسار. */

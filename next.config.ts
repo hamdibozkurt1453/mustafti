@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-import { locales } from "./i18n/locales";
+import { DISABLED_LOCALES, locales } from "./i18n/locales";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -13,6 +13,13 @@ const nextConfig: NextConfig = {
     return [
       { source: `/${L}/prayer`, destination: "/:locale#prayer", permanent: false },
       { source: `/${L}/expert/profile`, destination: "/:locale/me", permanent: false },
+      // F4: اللغات المعطّلة (غير العربية والإنجليزية) تحوّل إلى الإنجليزية بالمسار نفسه.
+      ...(DISABLED_LOCALES.length
+        ? [
+            { source: `/:off(${DISABLED_LOCALES.join("|")})`, destination: "/en", permanent: false },
+            { source: `/:off(${DISABLED_LOCALES.join("|")})/:path*`, destination: "/en/:path*", permanent: false },
+          ]
+        : []),
     ];
   },
 };

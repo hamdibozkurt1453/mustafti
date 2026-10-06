@@ -758,7 +758,9 @@
     "booksTitle": "Buku tentang pertanyaan besar",
     "booksLead": "Buku gratis dalam bahasa Anda: Mengapa Islam? Siapa Sang Pencipta? Apa tujuan hidup?",
     "booksEmpty": "Buku tidak dapat diakses saat ini. Jelajahi di perpustakaan.",
-    "booksMore": "Lainnya di perpustakaan"
+    "booksMore": "Lainnya di perpustakaan",
+    "englishVideos": "Video dalam bahasa Inggris",
+    "closeVideo": "Tutup video"
   },
   "newsletter": {
     "title": "Buletin",

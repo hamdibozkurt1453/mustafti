@@ -52,3 +52,37 @@ export function languageLabel(code: string, uiLocale: string): string {
     return code;
   }
 }
+
+/** F4: احتياط اللغة حين لا يوجد للغة الواجهة فيديوهات. */
+export const FALLBACK_VIDEO_LANG = "en";
+
+/**
+ * F4: فيديوهات لغة الواجهة فقط (/ar العربية، و/en الإنجليزية). إن لم يوجد للغة فيديوهات فالإنجليزية
+ * مع fallback: true (فيظهر سطر «فيديوهات بالإنجليزية»). لا تظهر لغة ثالثة في أي حال.
+ */
+export function videosFor(videos: Video[], locale: string): { videos: Video[]; fallback: boolean } {
+  const own = videos.filter((v) => v.lang === locale);
+  if (own.length) return { videos: own, fallback: false };
+  return { videos: videos.filter((v) => v.lang === FALLBACK_VIDEO_LANG), fallback: locale !== FALLBACK_VIDEO_LANG };
+}
+
+// ---------------------------------------------------------------------------
+// F4: فيديو واحد نشط في الصفحة كلها (نافذة واحدة): فتح فيديو يغلق السابق.
+// ---------------------------------------------------------------------------
+
+let activeVideo: Video | null = null;
+const listeners = new Set<() => void>();
+
+export function openVideo(video: Video | null) {
+  activeVideo = video;
+  listeners.forEach((l) => l());
+}
+
+export function getActiveVideo(): Video | null {
+  return activeVideo;
+}
+
+export function subscribeVideo(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}

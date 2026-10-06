@@ -1,8 +1,10 @@
 import { defineRouting } from "next-intl/routing";
-import { defaultLocale, locales } from "./locales";
+import { defaultLocale, ENABLED_LOCALES, type Locale } from "./locales";
 
 export const routing = defineRouting({
-  locales,
+  // F4: المفعّلة وحدها (العربية والإنجليزية)؛ مسارات اللغات الأخرى تحوّل إلى /en في next.config.ts.
+  // النوع يبقى اللغات الاثنتي عشرة (فلا يتغير شيء في الكود عند إعادة تفعيل لغة).
+  locales: [...ENABLED_LOCALES] as Locale[],
   defaultLocale,
   // مسار اللغة دائماً في الرابط: /ar، /en…
   localePrefix: "always",

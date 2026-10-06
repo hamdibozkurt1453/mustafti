@@ -1,14 +1,18 @@
 import { getLocale, getTranslations } from "next-intl/server";
-import { languageLabel, type Video } from "@/lib/explore/videos";
+import { languageLabel, videosFor, type Video } from "@/lib/explore/videos";
 import { InView } from "./InView";
 import { SectionHead } from "./SectionHead";
 import { VideoGrid } from "./VideoGrid";
 
-/** F3: قسم فيديوهات بعنوانه (قصص المسلمين الجدد، والمحاضرات، والمناظرات)، والتنبيه إن كان محتوى خارجياً. */
-export async function VideoSection({ id, ns, videos, note = false }: { id: string; ns: "stories" | "lectures" | "debates"; videos: Video[]; note?: boolean }) {
+/**
+ * F3: قسم فيديوهات بعنوانه (قصص المسلمين الجدد، والمحاضرات، والمناظرات)، والتنبيه إن كان محتوى خارجياً.
+ * F4: فيديوهات لغة الواجهة وحدها (videosFor)، وإلا الإنجليزية مع سطر «فيديوهات بالإنجليزية».
+ */
+export async function VideoSection({ id, ns, videos: all, note = false }: { id: string; ns: "stories" | "lectures" | "debates"; videos: Video[]; note?: boolean }) {
+  const locale = await getLocale();
+  const { videos, fallback } = videosFor(all, locale);
   if (!videos.length) return null;
   const t = await getTranslations("explore");
-  const locale = await getLocale();
   const langNames = Object.fromEntries([...new Set(videos.map((v) => v.lang))].map((l) => [l, languageLabel(l, locale)]));
   return (
     <InView as="section" className="mt-14">
@@ -20,7 +24,12 @@ export async function VideoSection({ id, ns, videos, note = false }: { id: strin
             {t("externalNote")}
           </p>
         )}
-        <VideoGrid videos={videos} labels={{ play: t("play"), watchOn: t("watchOn"), lang: t("langLabel") }} langNames={langNames} />
+        {fallback && (
+          <p data-testid="video-fallback" className="mt-4 text-sm font-semibold text-green-600">
+            {t("englishVideos")}
+          </p>
+        )}
+        <VideoGrid videos={videos} labels={{ play: t("play"), watchOn: t("watchOn"), lang: t("langLabel"), close: t("closeVideo") }} langNames={langNames} />
       </div>
     </InView>
   );

@@ -39,7 +39,8 @@
     "tagline": "Clarifies your question. Never issues fatwas.",
     "colPlatform": "Platform",
     "colProject": "The project",
-    "sourceNote": "Primary source: the association's official Islamic content server."
+    "sourceNote": "Primary source: the association's official Islamic content server.",
+    "languages": "Arabic and English, with ten more languages in progress."
   },
   "home": {
     "intro": "I answer from trusted Islamic sources, with links, and carry your personal question to qualified scholars. I never issue religious rulings.",
@@ -1206,7 +1207,7 @@
     "langLabel": "Language",
     "storiesKicker": "Real journeys",
     "storiesTitle": "Stories of new Muslims",
-    "storiesLead": "New Muslims from different countries and languages tell how they came to Islam. Each video loads only when you press it.",
+    "storiesLead": "New Muslims from different countries tell how they came to Islam. Each video opens in a window on the site when you press it.",
     "stepsKicker": "Start here",
     "stepsTitle": "Your first steps",
     "stepsLead": "Six cards for your first days. Tap any card to ask the guide about it.",
@@ -1245,7 +1246,7 @@
     },
     "lecturesKicker": "Learn calmly",
     "lecturesTitle": "Introductory lectures on Islam",
-    "lecturesLead": "Short lectures in different languages explaining what Islam is and what Muslims believe.",
+    "lecturesLead": "Lectures explaining what Islam is and what Muslims believe.",
     "debatesKicker": "Big questions",
     "debatesTitle": "Debates and dialogues",
     "debatesLead": "Well-known dialogues between Muslims and atheists or agnostics on God's existence and the meaning of life.",
@@ -1254,7 +1255,9 @@
     "booksTitle": "Books on the big questions",
     "booksLead": "Free books in your language: Why Islam? Who is the Creator? What is the purpose of life?",
     "booksEmpty": "The books can't be reached right now. Browse them in the library.",
-    "booksMore": "More in the library"
+    "booksMore": "More in the library",
+    "englishVideos": "Videos in English",
+    "closeVideo": "Close video"
   },
   "newsletter": {
     "title": "Newsletter",

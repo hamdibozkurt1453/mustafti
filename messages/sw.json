@@ -758,7 +758,9 @@
     "booksTitle": "Vitabu kuhusu maswali makubwa",
     "booksLead": "Vitabu vya bure kwa lugha yako: Kwa nini Uislamu? Muumba ni nani? Lengo la maisha ni nini?",
     "booksEmpty": "Vitabu havipatikani sasa. Vitazame maktabani.",
-    "booksMore": "Zaidi maktabani"
+    "booksMore": "Zaidi maktabani",
+    "englishVideos": "Video kwa Kiingereza",
+    "closeVideo": "Funga video"
   },
   "newsletter": {
     "title": "Jarida",
