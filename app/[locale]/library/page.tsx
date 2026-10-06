@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { BookCard } from "@/components/library/BookCard";
 import { LoadMoreBooks } from "@/components/library/LoadMoreBooks";
 import { Link } from "@/i18n/navigation";
+import { PAGE_WIDTH, PageHero } from "@/components/PageHero";
 import type { Locale } from "@/i18n/locales";
 import { latestBooks, searchBooks, topicBooks } from "@/lib/library/islamhouse";
 import { IslamhouseError, isTopicKey, LIBRARY_TOPIC_KEYS, type BookCard as Book } from "@/lib/library/islamhouse-core";
@@ -67,13 +68,9 @@ export default async function LibraryPage({ params, searchParams }: Props) {
   const cardLabels = { pdf: t("downloadPdf"), page: t("islamhousePage"), by: t("by") };
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:py-14">
-      <section className="mf-stagger relative isolate overflow-hidden rounded-[32px] bg-green-900 p-6 text-ivory-50 sm:p-10">
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-10"
-          style={{ background: "radial-gradient(60% 80% at 85% 10%, rgb(255 184 0 / 0.14), transparent 70%), radial-gradient(80% 70% at 0% 100%, rgb(10 107 69 / 0.7), transparent 70%)" }}
-        />
+    <main className="flex-1">
+      {/* F5: هيرو بعرض الشاشة بنقش /about، والمحتوى تحته بعرض 1200px. */}
+      <PageHero>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">{t("kicker")}</p>
         <h1 className="mt-3 font-display text-[32px] font-semibold leading-tight sm:text-5xl">{t("title")}</h1>
         <p className="mt-3 max-w-2xl text-ivory-50/80 sm:text-[17px]">{t("lead")}</p>
@@ -115,7 +112,9 @@ export default async function LibraryPage({ params, searchParams }: Props) {
             );
           })}
         </ul>
-      </section>
+      </PageHero>
+
+      <div className={`${PAGE_WIDTH} pb-14 pt-2`}>
 
       <section aria-live="polite" className="mt-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -157,6 +156,7 @@ export default async function LibraryPage({ params, searchParams }: Props) {
         )}
         <p className="mt-6 text-xs text-ink-600">{t("note")}</p>
       </section>
+      </div>
     </main>
   );
 }

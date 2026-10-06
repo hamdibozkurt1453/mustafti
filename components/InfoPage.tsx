@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { PAGE_WIDTH, PageHero } from "@/components/PageHero";
 import { pageContent, type InfoPage as InfoPageKey } from "@/lib/pages/content";
 
 /**
@@ -11,23 +12,26 @@ export async function InfoPage({ page, locale, children }: { page: InfoPageKey; 
   const t = await getTranslations("pages");
   const content = pageContent(locale, page);
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:py-14">
-      <h1 className="font-display text-[30px] font-semibold leading-snug text-green-900 sm:text-[42px]">{t(`${page}.title`)}</h1>
-      <p className="mt-3 text-ink-600 sm:text-[17px]">{t(`${page}.description`)}</p>
-      {content.updated && <p className="mt-2 text-sm font-semibold text-green-600">{content.updated}</p>}
+    <main className="flex-1">
+      {/* F5: هيرو بعرض الشاشة بنقش /about، والمحتوى تحته بعرض 1200px. */}
+      <PageHero>
+      <h1 className="font-display text-[30px] font-semibold leading-snug sm:text-[42px]">{t(`${page}.title`)}</h1>
+      <p className="mt-3 max-w-3xl text-ivory-50/85 sm:text-[17px]">{t(`${page}.description`)}</p>
+      {content.updated && <p className="mt-2 text-sm font-semibold text-gold-500">{content.updated}</p>}
       {/* F1b: زر في أعلى الصفحة (المستودع في /eval). */}
       {content.topLink && (
         <a
           href={content.topLink.href}
           target="_blank"
           rel="noopener noreferrer"
-          className="mf-press mt-5 inline-flex items-center gap-2 rounded-full bg-green-900 px-5 py-2.5 text-sm font-semibold text-ivory-50 hover:bg-green-600"
+          className="mf-press mt-5 inline-flex items-center gap-2 rounded-full bg-gold-500 px-5 py-2.5 text-sm font-semibold text-green-900 hover:brightness-105"
         >
           {content.topLink.label}
           <span aria-hidden>↗</span>
         </a>
       )}
-      <div className="mf-stagger mt-8 space-y-5">
+      </PageHero>
+      <div className={`mf-stagger ${PAGE_WIDTH} space-y-5 pb-14 pt-8`}>
         {content.sections.map((section) => (
           <section key={section.title} className="rounded-[24px] border border-sand-200 bg-white p-6 sm:p-8">
             <h2 className="text-xl font-bold text-green-900">{section.title}</h2>

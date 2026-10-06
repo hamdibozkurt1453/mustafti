@@ -1,5 +1,5 @@
 {
-  "_note": "F3: محاضرات تعريفية ومناظرات (محتوى خارجي). F4: تُعرض بلغة الواجهة فقط (lang)، وإلا الإنجليزية. المعرّفات من نتائج البحث (يوتيوب محجوب من بيئة البناء)، وتُفحص من متصفح قبل العرض.",
+  "_note": "F3: محاضرات تعريفية ومناظرات (محتوى خارجي). F4: تُعرض بلغة الواجهة فقط (lang)، وإلا الإنجليزية. المعرّفات من نتائج البحث (يوتيوب محجوب من بيئة البناء)، وتُفحص من متصفح قبل العرض. F5: حُذفت المعرّفات التي لم تثبت وكل ما يخص اسماً محذوفاً، وأُضيفت بدائل عربية؛ والبطاقة التي لا تُحمَّل صورتها تُخفى في الواجهة.",
   "lectures": [
     {
       "id": "OsmYQl3xy_Y",
@@ -8,20 +8,8 @@
       "lang": "en"
     },
     {
-      "id": "BhWzwX9Xqo8",
-      "title": "التعريف بالإسلام لغير المسلمين - الشيخ عبدالعزيز بن باز",
-      "channel": "مشروع كبار العلماء",
-      "lang": "ar"
-    },
-    {
       "id": "gvq3M1n1G2U",
       "title": "التعريف بالإسلام لغير المسلمين - د. سالم بن مبارك الرواحي",
-      "channel": "",
-      "lang": "ar"
-    },
-    {
-      "id": "rcuM1xQOepw",
-      "title": "محاضرة لغير المسلمين عن الإسلام (مترجم) - All What You Need to Know about Islam",
       "channel": "",
       "lang": "ar"
     },
@@ -44,28 +32,22 @@
       "lang": "ar"
     },
     {
-      "id": "RhcVO6n8G1A",
-      "title": "A Closer look into Islam (Urdu)",
-      "channel": "Towards Eternity - Urdu",
-      "lang": "ur"
-    },
-    {
-      "id": "kxNBg1a11Sc",
-      "title": "Mengenal Agama Islam dengan Dalil - Ustadz Jamaludin, Lc.",
-      "channel": "Yufid.TV",
-      "lang": "id"
-    },
-    {
-      "id": "oqniiQO1jeQ",
-      "title": "İslam'ı Öğrenmeye Nereden Ve Nasıl Başlamalıyım?",
-      "channel": "Mehmed Yıldız",
-      "lang": "tr"
-    },
-    {
-      "id": "Fa6rRGeHcHk",
-      "title": "Uislamu ni nini? - Sheikh Ramadhan Mwangi",
+      "id": "XnWcEao0q7w",
+      "title": "تعريف الإسلام - الشيخ عثمان الخميس",
       "channel": "",
-      "lang": "sw"
+      "lang": "ar"
+    },
+    {
+      "id": "5vGUZTWVpos",
+      "title": "ما هو الإسلام؟ (هل الإسلام دين منطقي) - دين وتين",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "m92lSUZAj9I",
+      "title": "ما هو الإسلام؟",
+      "channel": "",
+      "lang": "ar"
     }
   ],
   "debates": [
@@ -88,34 +70,28 @@
       "lang": "en"
     },
     {
-      "id": "2TODfGXY-p4",
-      "title": "مناظرة الإسلام أم الإلحاد مترجمة كاملة - حمزة تزورتزس ولورنس كراوس (الجزء 1)",
-      "channel": "",
-      "lang": "ar"
-    },
-    {
-      "id": "7A1nEEVfjP4",
-      "title": "مناظرة: هل أثبتت الفيزياء عدم وجود الله؟ - محمد بن شمس الدين مع فيزيائي ملحد",
-      "channel": "",
-      "lang": "ar"
-    },
-    {
       "id": "j50LDprAJD0",
       "title": "مناظرة: هل المسيح هو الله؟ - الشيخ أحمد ديدات (مترجم)",
       "channel": "",
       "lang": "ar"
     },
     {
-      "id": "C-CPUeiu8t8",
-      "title": "مناظرة الشيخ أحمد ديدات مع القس د. روبرت دوجلاس (مدبلجة)",
+      "id": "8OOAafLM0ps",
+      "title": "مناظرة الشيخ أحمد ديدات مع القس جيمي سواجارت - المناظرة الكبرى كاملة (مترجم)",
       "channel": "",
       "lang": "ar"
     },
     {
-      "id": "ZQwgZXY37DQ",
-      "title": "\"Delilini Nötrleyebilirim!\" Diyen Ateist İle Müslüman Gencin Tartışması!",
-      "channel": "Sözler Köşkü",
-      "lang": "tr"
+      "id": "YthFbHwJ5CA",
+      "title": "مناظرة الشيخ أحمد ديدات مع القس أنيس شروش: هل يسوع هو الله؟ (مترجم)",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "weBuCg_rf6U",
+      "title": "إثبات النبوة بالعقل والمنطق في حوار مع ملحد",
+      "channel": "",
+      "lang": "ar"
     }
   ]
 }

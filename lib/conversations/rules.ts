@@ -120,3 +120,10 @@ export function firstQuestion(messages: UiMessage[]): string {
   const first = messages.find((m) => m.role === "user" && !m.case && m.text.trim());
   return first ? first.text : "";
 }
+
+/** F5: صفحة كل وضع، لفتح محادثة من «محادثاتي» في /me (‎?c=المعرّف). */
+export const MODE_PATHS: Record<ConversationMode, string> = { general: "/", new_muslim: "/new-muslim", discover: "/discover" };
+
+export function conversationHref(c: { id: string; mode: ConversationMode }): string {
+  return `${MODE_PATHS[c.mode] ?? "/"}?c=${encodeURIComponent(c.id)}`;
+}

@@ -95,7 +95,7 @@ describe("R2 · المكتبة", () => {
 
 describe("R2 · حسابي", () => {
   it("التبويبات، و«ملفي العام» للمختص فقط", () => {
-    assert.deepEqual([...ME_TABS], ["profile", "cases", "forum", "public", "settings"]);
+    assert.deepEqual([...ME_TABS], ["profile", "conversations", "cases", "forum", "public", "settings"]);
     assert.equal(resolveTab(undefined, false), "profile");
     assert.equal(resolveTab("cases", false), "cases");
     assert.equal(resolveTab("public", false), "profile");

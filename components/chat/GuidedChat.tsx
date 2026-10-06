@@ -7,7 +7,7 @@ import type { ChatMode } from "@/lib/brain/modes";
 import { setChatMode } from "@/lib/ui-store";
 import { ChatView } from "../home/ChatView";
 import { Composer } from "../home/Composer";
-import { ConversationSidebar } from "./ConversationSidebar";
+import { PAGE_WIDTH, PageHero } from "@/components/PageHero";
 import { useChat } from "./useChat";
 import { useConversations } from "./useConversations";
 
@@ -69,21 +69,14 @@ export function GuidedChat({ mode, children }: { mode: GuidedMode; children?: Re
   return (
     <LazyMotion features={loadFeatures} strict>
       <MotionConfig reducedMotion="user">
-        {/* F2: زر «محادثاتي» قبل أول سؤال (خارج الحركة: العنصر الثابت لا يتبع عنصراً متحركاً). */}
-        {!chatting && <ConversationSidebar api={history} onNew={newChat} docked={false} />}
+        {/* F5: لا زر «محادثاتي» عائم قبل أول سؤال؛ السجل في قائمة «حسابي» وفي /me، والشريط الجانبي في المحادثة. */}
         <AnimatePresence mode="popLayout" initial={false}>
           {!chatting ? (
             <m.div key="landing" exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.35 }} className="origin-top">
-              <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:py-14">
-                <section className="mf-stagger relative isolate overflow-hidden rounded-[28px] bg-green-900 p-6 text-ivory-50 sm:p-10">
-                  <div
-                    aria-hidden
-                    className="absolute inset-0 -z-10"
-                    style={{
-                      background:
-                        "radial-gradient(70% 80% at 85% 0%, rgb(10 107 69 / 0.8), transparent 70%), radial-gradient(60% 60% at 15% 110%, rgb(255 184 0 / 0.14), transparent 70%)",
-                    }}
-                  />
+              <main className="flex-1">
+                {/* F5: هيرو بعرض الشاشة بنقش /about، والمحتوى تحته بعرض 1200px. */}
+                <PageHero>
+                  <div className="max-w-3xl">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">{t("kicker")}</p>
                   <h1 className="mt-3 font-display text-[30px] font-bold leading-snug sm:text-[42px]">{t("title")}</h1>
                   <p className="mt-3 text-ivory-50/85 sm:text-[17px]">{t("lead")}</p>
@@ -115,8 +108,9 @@ export function GuidedChat({ mode, children }: { mode: GuidedMode; children?: Re
                       );
                     })}
                   </ul>
-                </section>
-                {children}
+                  </div>
+                </PageHero>
+                <div className={`${PAGE_WIDTH} pb-14 pt-4`}>{children}</div>
               </main>
             </m.div>
           ) : (

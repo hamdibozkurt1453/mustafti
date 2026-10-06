@@ -8,7 +8,7 @@ import {
   renameConversation,
   saveConversation,
 } from "@/lib/conversations/actions";
-import { toRows, type ConversationMode, type ConversationSummary, type UiMessage } from "@/lib/conversations/rules";
+import { toRows, UUID_RE, type ConversationMode, type ConversationSummary, type UiMessage } from "@/lib/conversations/rules";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { ChatMessage } from "./useChat";
@@ -125,6 +125,20 @@ export function useConversations(mode: ConversationMode, chat: Chat) {
     },
     [chat, setActive],
   );
+
+  // F5: ‎?c=المعرّف (من «محادثاتي» في /me): تُفتح تلك المحادثة بعد قراءة المحفوظ، ثم يُحذف المعامل من الرابط.
+  const linkOpened = useRef(false);
+  useEffect(() => {
+    if (!signedIn || !loaded || linkOpened.current) return;
+    linkOpened.current = true;
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("c");
+    if (!id || !UUID_RE.test(id)) return;
+    url.searchParams.delete("c");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- استجابة لرابط خارجي (‎?c=) مرة واحدة
+    void open(id);
+  }, [signedIn, loaded, open]);
 
   /** «محادثة جديدة»: المحادثة الحالية محفوظة أصلاً؛ تبدأ صفحة فارغة. */
   const startNew = useCallback(() => {

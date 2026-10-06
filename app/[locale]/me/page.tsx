@@ -9,6 +9,7 @@ import { ShareProfile } from "@/components/experts/ShareProfile";
 import { AccountForm } from "@/components/me/AccountForm";
 import { DeleteAccount } from "@/components/me/DeleteAccount";
 import { MyCases } from "@/components/me/MyCases";
+import { MyConversations } from "@/components/me/MyConversations";
 import { MyForum } from "@/components/me/MyForum";
 import { ProfileCardForm } from "@/components/me/ProfileCardForm";
 import { Link } from "@/i18n/navigation";
@@ -45,7 +46,7 @@ const card = "rounded-[24px] border border-sand-200 bg-white p-6 sm:p-8";
 
 /**
  * `/me` — «حسابي» (R2): «حسابي» و«ملفي الشخصي» في صفحة واحدة بتبويبات (?tab=):
- * الملف · مسائلي · مشاركاتي في الحوار · ملفي العام (للمختص المقبول فقط) · الإعدادات.
+ * الملف · محادثاتي (F5) · مسائلي · مشاركاتي في الحوار · ملفي العام (للمختص المقبول فقط) · الإعدادات.
  * كل قراءة بجلسة المستخدم (RLS)، وحالة المختص تُفحص من القاعدة لكل طلب (getAuthContext).
  */
 export default async function MePage({ params, searchParams }: Props) {
@@ -187,6 +188,12 @@ export default async function MePage({ params, searchParams }: Props) {
                 </p>
               )}
             </>
+          )}
+
+          {tab === "conversations" && (
+            <div className={card}>
+              <MyConversations />
+            </div>
           )}
 
           {tab === "cases" && (
