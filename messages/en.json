@@ -975,7 +975,7 @@
   "library": {
     "kicker": "IslamHouse",
     "title": "Library",
-    "lead": "Free books from IslamHouse in your language. Read or download them from their official link.",
+    "lead": "Free books in your language. Read them or download them from their official link.",
     "searchLabel": "Search the library",
     "placeholder": "Type a topic or a book title",
     "search": "Search",
@@ -996,7 +996,6 @@
     "limited": "Too many searches in a short time. Please wait a moment and try again.",
     "unavailable": "The library can't be reached right now. Please try again shortly.",
     "empty": "No books found. Try another word or one of the topics.",
-    "note": "Materials come from IslamHouse (islamhouse.com) and open from their official link. We host no files.",
     "types": {
       "books": "Book",
       "articles": "Article",
@@ -1008,7 +1007,6 @@
     },
     "latest": "Latest books",
     "downloadPdf": "Download PDF",
-    "islamhousePage": "Page on IslamHouse",
     "by": "By",
     "arabicToo": "Books in Arabic too",
     "ownLanguage": "Books in my language",

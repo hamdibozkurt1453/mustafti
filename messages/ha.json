@@ -428,7 +428,6 @@
     "limited": "Ka yi bincike da yawa cikin ɗan lokaci. Jira kaɗan sannan ka sake gwadawa.",
     "unavailable": "Ba a iya isa laburare yanzu ba. Sake gwadawa nan da ɗan lokaci.",
     "empty": "Ba a sami littafi ba. Gwada wata kalma ko wani batu.",
-    "note": "Kayan sun fito daga IslamHouse (islamhouse.com) kuma suna buɗewa daga mahaɗinsu na hukuma; ba ma adana kowane fayil.",
     "types": {
       "books": "Littafi",
       "articles": "Makala",
@@ -440,7 +439,6 @@
     },
     "latest": "Sababbin littattafai",
     "downloadPdf": "Sauke PDF",
-    "islamhousePage": "Shafi a IslamHouse",
     "by": "Na",
     "arabicToo": "Littattafan Larabci ma",
     "ownLanguage": "Littattafai da harshena",

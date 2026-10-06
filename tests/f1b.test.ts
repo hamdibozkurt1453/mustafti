@@ -255,17 +255,31 @@ describe("F1b · صفحة المكتبة", () => {
     assert.match(page, /className="mf-stagger mt-6 grid/);
   });
 
-  it("البطاقة: غلاف مولّد، و«تحميل PDF»، و«الصفحة في IslamHouse»", () => {
+  it("البطاقة: غلاف كتاب ثلاثي الأبعاد، و«تحميل PDF» وحده بعرض البطاقة، بلا رابط صفحة IslamHouse ولا سطر إسناد", () => {
     const card = src("components/library/BookCard.tsx");
     assert.match(card, /generated-cover/);
+    assert.match(card, /mf-book-spine/);
+    assert.match(card, /mf-book-pages/);
+    assert.match(card, /<GeometricPattern/);
+    assert.match(card, /book\.image \?/);
     assert.match(card, /book\.pdf\.url/);
-    assert.match(card, /book\.pageUrl/);
+    assert.match(card, /w-full/);
+    assert.doesNotMatch(card, /book\.pageUrl/);
+    const css = src("app/globals.css");
+    assert.match(css, /\[dir="rtl"\] \.mf-book \{ transform: rotateY\(-12deg\); \}/);
+    assert.match(css, /perspective:/);
+    assert.match(css, /prefers-reduced-motion[\s\S]*\.mf-book, \.mf-book-stage::after \{ transition: none; \}/);
+    assert.doesNotMatch(src("app/[locale]/library/page.tsx"), /t\("note"\)|islamhousePage/);
+    assert.doesNotMatch(src("components/explore/DiscoverBooks.tsx"), /islamhousePage/);
+    assert.equal(get(messages.ar, "library.kicker"), "IslamHouse · دار الإسلام");
+    assert.equal(get(messages.ar, "library.lead"), "كتب مجانية بلغتك، تقرؤها أو تحمّلها من رابطها الرسمي.");
     for (const l of locales) {
-      for (const k of ["latest", "downloadPdf", "islamhousePage", "arabicToo", "timeout", "unavailable"]) {
+      for (const k of ["latest", "downloadPdf", "arabicToo", "timeout", "unavailable"]) {
         assert.ok(String(get(messages[l], `library.${k}`) ?? get(messages.en, `library.${k}`) ?? "").trim(), `${l}: ${k}`);
       }
+      assert.equal(get(messages[l], "library.islamhousePage"), undefined, l);
     }
-    for (const k of ["latest", "downloadPdf", "islamhousePage", "arabicToo", "ownLanguage", "timeout", "by"]) assert.ok(get(messages.ar, `library.${k}`), k);
+    for (const k of ["latest", "downloadPdf", "arabicToo", "ownLanguage", "timeout", "by"]) assert.ok(get(messages.ar, `library.${k}`), k);
   });
 });
 

@@ -65,7 +65,7 @@ export default async function LibraryPage({ params, searchParams }: Props) {
   const heading = q ? t("resultsFor", { q }) : topic ? t(`topics.${topic}`) : t("latest");
   // روابط الصفحة تحفظ اختيار اللغة العربية.
   const withLang = (query: Record<string, string>) => (arabic ? { ...query, lang: "ar" } : query);
-  const cardLabels = { pdf: t("downloadPdf"), page: t("islamhousePage"), by: t("by") };
+  const cardLabels = { pdf: t("downloadPdf"), by: t("by") };
 
   return (
     <main className="flex-1">
@@ -154,7 +154,6 @@ export default async function LibraryPage({ params, searchParams }: Props) {
             />
           </>
         )}
-        <p className="mt-6 text-xs text-ink-600">{t("note")}</p>
       </section>
       </div>
     </main>
