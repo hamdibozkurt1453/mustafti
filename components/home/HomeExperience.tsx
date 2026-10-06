@@ -3,7 +3,9 @@
 import { AnimatePresence, LazyMotion, m, MotionConfig, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { consumeHomeRequest, setChatMode, useHomeRequests } from "@/lib/ui-store";
+import { ConversationSidebar } from "../chat/ConversationSidebar";
 import { useChat } from "../chat/useChat";
+import { useConversations } from "../chat/useConversations";
 import { ChatView } from "./ChatView";
 import { Hero, type Persona } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
@@ -26,7 +28,10 @@ export function HomeExperience({ adhkar, rtlMeaning }: { adhkar: Dhikr[]; rtlMea
   const reduced = useReducedMotion() ?? false;
   const [persona, setPersona] = useState<Persona | null>(null);
   const [text, setText] = useState("");
-  const { messages, send, retry, reset, busy, loaded, caseApi } = useChat();
+  const chat = useChat();
+  const { messages, send, retry, reset, busy, loaded, caseApi } = chat;
+  // F2: سجل المحادثات للمسجّل (الحفظ الآلي والشريط الجانبي)؛ الزائر على التخزين المحلي كما كان.
+  const history = useConversations("general", chat);
   const homeRequests = useHomeRequests();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatting = messages.length > 0;
@@ -74,7 +79,8 @@ export function HomeExperience({ adhkar, rtlMeaning }: { adhkar: Dhikr[]; rtlMea
   }
 
   function newChat() {
-    reset();
+    if (history.signedIn) history.startNew();
+    else reset();
     setText("");
   }
 
@@ -92,6 +98,8 @@ export function HomeExperience({ adhkar, rtlMeaning }: { adhkar: Dhikr[]; rtlMea
   return (
     <LazyMotion features={loadFeatures} strict>
       <MotionConfig reducedMotion="user">
+        {/* F2: زر «محادثاتي» قبل أول سؤال (خارج الحركة: العنصر الثابت لا يتبع عنصراً متحركاً). */}
+        {!chatting && <ConversationSidebar api={history} onNew={newChat} docked={false} />}
         <AnimatePresence mode="popLayout" initial={false}>
           {!chatting ? (
             <m.div
@@ -114,7 +122,7 @@ export function HomeExperience({ adhkar, rtlMeaning }: { adhkar: Dhikr[]; rtlMea
                 <div className="bg-ivory-50">
                   <div className="mx-auto grid max-w-6xl gap-5 px-4 py-10 sm:gap-6 sm:py-14">
                     <Reveal>
-                      <PrayerCard />
+                      <PrayerCard adhkar={adhkar} />
                     </Reveal>
                     {adhkar.length > 0 && (
                       <Reveal delay={0.05}>
@@ -146,6 +154,7 @@ export function HomeExperience({ adhkar, rtlMeaning }: { adhkar: Dhikr[]; rtlMea
                 busy={busy}
                 inputRef={inputRef}
                 reduced={reduced}
+                history={history}
               />
             </m.div>
           )}

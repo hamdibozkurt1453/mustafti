@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * «تنزيل بياناتي» (R2): ملف JSON بكل ما يخص المستخدم، بجلسته (RLS: صفوفه فقط).
- * الملف الشخصي، وطلب المختص إن وُجد (بلا مسارات الوثائق)، والمسائل بملفاتها ورسائلها والأجوبة عليها.
+ * الملف الشخصي، وطلب المختص إن وُجد (بلا مسارات الوثائق)، والمسائل بملفاتها ورسائلها والأجوبة عليها،
+ * وF2: سجل المحادثات برسائله (قبل migration ‏20261013_conversations.sql يُترك فارغاً بلا خطأ).
  */
 export async function GET() {
   const ctx = await getAuthContext();
@@ -27,6 +28,10 @@ export async function GET() {
       .eq("owner_id", ctx.userId)
       .order("created_at", { ascending: false }),
   ]);
+  const conversations = await supabase
+    .from("conversations")
+    .select("id, mode, title, created_at, updated_at, messages(seq, role, content, reply, created_at)")
+    .order("updated_at", { ascending: false });
   const failed = [profile, expert, cases].find((r) => r.error);
   if (failed?.error) {
     console.error("export:", failed.error.message);
@@ -35,7 +40,7 @@ export async function GET() {
 
   const now = new Date();
   const body = JSON.stringify(
-    { exported_at: now.toISOString(), source: "https://mustafti.com", account: { email: ctx.email, ...profile.data }, expert: expert.data, cases: cases.data },
+    { exported_at: now.toISOString(), source: "https://mustafti.com", account: { email: ctx.email, ...profile.data }, expert: expert.data, cases: cases.data, conversations: conversations.error ? [] : conversations.data },
     null,
     2,
   );

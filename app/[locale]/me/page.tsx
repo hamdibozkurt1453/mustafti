@@ -8,7 +8,6 @@ import { ProfileEditor } from "@/components/experts/ProfileEditor";
 import { ShareProfile } from "@/components/experts/ShareProfile";
 import { AccountForm } from "@/components/me/AccountForm";
 import { DeleteAccount } from "@/components/me/DeleteAccount";
-import { MePrayerSettings } from "@/components/me/MePrayerSettings";
 import { MyCases } from "@/components/me/MyCases";
 import { MyForum } from "@/components/me/MyForum";
 import { ProfileCardForm } from "@/components/me/ProfileCardForm";
@@ -19,7 +18,6 @@ import { getAuthContext, roleSatisfies } from "@/lib/auth/roles";
 import { countryOptions } from "@/lib/experts/countries";
 import { avatarUrl } from "@/lib/experts/types";
 import { ownExpertProfile } from "@/lib/experts/store";
-import { settingsFromProfile } from "@/lib/prayer/times";
 import { isAdminClientConfigured } from "@/lib/supabase/admin";
 import { SUPABASE_URL } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -131,7 +129,7 @@ export default async function MePage({ params, searchParams }: Props) {
           )}
           {tab === "profile" && (
             <>
-              {/* F1: «بياناتي» ثم «الصورة والنبذة» ثم المواقيت، عند الجميع (profileSections). */}
+              {/* F1: «بياناتي» ثم «الصورة والنبذة» عند الجميع (profileSections). F2: المواقيت آلية، فلا قسم لها هنا. */}
               {profileSections(Boolean(expert)).map((section) => {
                 if (section === "account")
                   return (
@@ -175,16 +173,6 @@ export default async function MePage({ params, searchParams }: Props) {
                             bio: extras?.bio ?? "",
                           }}
                         />
-                      </div>
-                    </section>
-                  );
-                if (section === "prayer")
-                  return (
-                    <section key={section} className={card}>
-                      <h2 className="text-lg font-bold text-green-900">{t("profile.prayerTitle")}</h2>
-                      <p className="mt-1 text-sm text-ink-600">{t("profile.prayerHint")}</p>
-                      <div className="mt-5">
-                        <MePrayerSettings initial={settingsFromProfile(profile)} />
                       </div>
                     </section>
                   );

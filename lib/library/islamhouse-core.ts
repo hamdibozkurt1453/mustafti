@@ -346,3 +346,47 @@ export function resolveTopicIds(tree: TreeNode[], defs: TopicDef[] = LIBRARY_TOP
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// F2: الترقيم — 6 كتب في البداية، و«اكتشف المزيد» يضيف 6 في كل ضغطة
+// ---------------------------------------------------------------------------
+
+export const LIBRARY_PAGE_SIZE = 6;
+/** حد الصفحات في الطلب الواحد (6 كتب في الصفحة، فحتى 50 ضغطة). */
+export const LIBRARY_MAX_PAGE = 50;
+
+/** رقم الصفحة من المدخل: عدد صحيح بين 1 و50، وإلا 1. */
+export function parsePage(raw: unknown): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1 && n <= LIBRARY_MAX_PAGE ? n : 1;
+}
+
+export type BookPage = { books: BookCard[]; hasMore: boolean; page: number };
+
+/** صفحة من قائمة جاهزة (البحث المحلي واحتياط التصنيف). */
+export function pageSlice(list: BookCard[], page: number, size = LIBRARY_PAGE_SIZE): BookPage {
+  const start = (page - 1) * size;
+  return { books: list.slice(start, start + size), hasMore: list.length > start + size, page };
+}
+
+/**
+ * صفحة من مصدر بصفحات الواجهة البرمجية (perPage عنصراً في كل طلب، مخزّنة 24 ساعة): تُجمع الكتب من
+ * صفحات المصدر بالترتيب حتى يكفي ما قبل الصفحة المطلوبة وما بعدها بكتاب (لمعرفة «المزيد»)، أو ينفد المصدر
+ * (صفحة أقل من perPage عنصراً). العناصر غير الكتب تُترك، فعدد الكتب في صفحة المصدر قد يقل عن perPage.
+ */
+export async function collectPage(
+  fetchPage: (sourcePage: number) => Promise<unknown>,
+  lang: string,
+  page: number,
+  { size = LIBRARY_PAGE_SIZE, perPage = 50, maxSourcePages = 8 }: { size?: number; perPage?: number; maxSourcePages?: number } = {},
+): Promise<BookPage> {
+  const need = page * size + 1;
+  const seen = new Set<number>();
+  const books: BookCard[] = [];
+  for (let p = 1; p <= maxSourcePages && books.length < need; p++) {
+    const json = await fetchPage(p);
+    for (const b of toBookCards(json, lang)) if (!seen.has(b.id) && seen.add(b.id)) books.push(b);
+    if (itemsOf(json).length < perPage) break;
+  }
+  return pageSlice(books, page, size);
+}

@@ -88,6 +88,13 @@ body {
   animation: mf-draw 2.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
 }
 
+/* F2: انجراف بطيء جداً للنقش (صفحة الدخول وقسم الأرقام). */
+@keyframes mf-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); }
+  50%      { transform: translate3d(-1.5%, 1%, 0) scale(1.08); }
+}
+.mf-drift { animation: mf-drift 40s ease-in-out infinite; will-change: transform; }
+
 /* تنفّس الفقاعة */
 @keyframes mf-breathe {
   0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgb(255 184 0 / 0)); }
@@ -194,7 +201,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .mf-word, .mf-rise { animation: none; opacity: 1; }
   .mf-draw { animation: none; stroke-dashoffset: 0; }
-  .mf-breathe, .mf-dot, .mf-caret { animation: none; }
+  .mf-breathe, .mf-dot, .mf-caret, .mf-drift { animation: none; }
   .mf-marquee { animation: none; }
   .mf-page, .mf-stagger > *, .mf-drop, .mf-fade { animation: none; opacity: 1; }
   .mf-lift, .mf-lift:hover, .mf-press, .mf-press:active { transform: none; transition: none; }

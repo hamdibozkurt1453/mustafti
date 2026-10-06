@@ -278,6 +278,25 @@
       "text": "Giriş yapmadığınız için sohbetiniz kaydedilmiyor. Sohbetlerinizi saklamak için giriş yapın.",
       "login": "Giriş yap",
       "close": "Kapat"
+    },
+    "history": {
+      "title": "Sohbetlerim",
+      "close": "Kapat",
+      "search": "Sohbetlerinde ara",
+      "empty": "Henüz kayıtlı sohbet yok. Bir soru sor; sohbetin burada otomatik olarak kaydedilir.",
+      "noResults": "Sonuç yok.",
+      "untitled": "Başlıksız sohbet",
+      "rename": "Yeniden adlandır",
+      "delete": "Sil",
+      "confirmDelete": "Sil",
+      "cancel": "Vazgeç",
+      "note": "Sohbetlerin hesabında saklanır, hesapla birlikte silinir ve Hesabım'dan indirilebilir.",
+      "groups": {
+        "today": "Bugün",
+        "yesterday": "Dün",
+        "week": "Son 7 gün",
+        "older": "Daha eski"
+      }
     }
   },
   "case": {
@@ -354,12 +373,35 @@
   },
   "prayer": {
     "change": "Şehri ve yöntemi değiştir",
-    "done": "Tamam"
+    "done": "Tamam",
+    "autoLocation": "Yaklaşık konum, otomatik"
   },
   "adhkar": {
     "title": "Zikirler",
     "prev": "Önceki zikir",
-    "next": "Sonraki zikir"
+    "next": "Sonraki zikir",
+    "now": "Şimdi zikir",
+    "openNow": "Zikirleri aç",
+    "all": "Tüm zikirler",
+    "kicker": "Hısnu'l-Müslim",
+    "pageLead": "Her vaktin sahih zikirleri; Sahihayn ve Sünenlerden, metni ve kaynağıyla.",
+    "pageNote": "Buradaki her zikir kaynağıyla (kitap ve hadis numarası) ve bağlantısıyla verilir. Sayaç bu tarayıcıda kalır ve her gün yeniden başlar.",
+    "moments": {
+      "morning": "Sabah zikirleri",
+      "evening": "Akşam zikirleri",
+      "before_prayer": "Namazdan önce",
+      "after_prayer": "Namazdan sonra",
+      "sleep": "Uyumadan önce",
+      "waking": "Uyanınca"
+    },
+    "tabs": {
+      "morning": "Sabah zikirleri",
+      "evening": "Akşam zikirleri",
+      "before_prayer": "Namazdan önce",
+      "after_prayer": "Namazdan sonra",
+      "sleep": "Uyumadan önce",
+      "waking": "Uyanınca"
+    }
   },
   "library": {
     "kicker": "IslamHouse",
@@ -401,7 +443,10 @@
     "by": "Yazar:",
     "arabicToo": "Arapça kitaplar da",
     "ownLanguage": "Kendi dilimdeki kitaplar",
-    "timeout": "Kütüphane 8 saniye içinde yanıt vermedi. Biraz sonra tekrar deneyin."
+    "timeout": "Kütüphane 8 saniye içinde yanıt vermedi. Biraz sonra tekrar deneyin.",
+    "more": "Daha fazlasını keşfet",
+    "loadingMore": "Bir dakika…",
+    "moreError": "Daha fazlası yüklenemedi. Tekrar dene."
   },
   "me": {
     "title": "Hesabım",
@@ -654,6 +699,8 @@
     "passwordUpdated": "Şifreniz güncellendi.",
     "errors": {
       "mismatch": "Şifreler eşleşmiyor."
-    }
+    },
+    "brandGreeting": "Esselâmu aleyküm",
+    "brandLine": "Mustafti seni kendi dilinde güvenilir kaynaklardaki bilgiye ulaştırır ve meselen için uzmanlarla buluşturur."
   }
 }

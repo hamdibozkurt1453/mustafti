@@ -38,12 +38,13 @@ export function exportFileName(date: Date): string {
 }
 
 /**
- * F1: ترتيب أقسام تبويب «الملف» عند الجميع: «بياناتي» ثم «الصورة والنبذة» ثم المواقيت.
+ * F1: ترتيب أقسام تبويب «الملف» عند الجميع: «بياناتي» ثم «الصورة والنبذة».
+ * F2: حُذف قسم «المدينة وطريقة حساب المواقيت» (الموقع والطريقة آليان في بطاقة المواقيت).
  * للمختص المقبول قسمه الكامل (الصورة والنبذة والبلد والتواصل في experts)، ولغيره صورة ونبذة في profiles.
  */
-export type ProfileSection = "account" | "expertCard" | "userCard" | "prayer";
+export type ProfileSection = "account" | "expertCard" | "userCard";
 export function profileSections(isApprovedExpert: boolean): ProfileSection[] {
-  return ["account", isApprovedExpert ? "expertCard" : "userCard", "prayer"];
+  return ["account", isApprovedExpert ? "expertCard" : "userCard"];
 }
 
 export const BIO_MAX = 300;

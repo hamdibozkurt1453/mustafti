@@ -7,7 +7,9 @@ import type { ChatMode } from "@/lib/brain/modes";
 import { setChatMode } from "@/lib/ui-store";
 import { ChatView } from "../home/ChatView";
 import { Composer } from "../home/Composer";
+import { ConversationSidebar } from "./ConversationSidebar";
 import { useChat } from "./useChat";
+import { useConversations } from "./useConversations";
 
 const loadFeatures = () => import("@/lib/motion-features").then((mod) => mod.default);
 
@@ -28,7 +30,10 @@ export function GuidedChat({ mode, children }: { mode: GuidedMode; children?: Re
   const tc = useTranslations("composer");
   const reduced = useReducedMotion() ?? false;
   const [text, setText] = useState("");
-  const { messages, send, retry, reset, busy, caseApi } = useChat(mode);
+  const chat = useChat(mode);
+  const { messages, send, retry, reset, busy, caseApi } = chat;
+  // F2: سجل المحادثات للمسجّل، لكل وضع سجله.
+  const history = useConversations(mode, chat);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatting = messages.length > 0;
 
@@ -47,6 +52,12 @@ export function GuidedChat({ mode, children }: { mode: GuidedMode; children?: Re
     return () => clearTimeout(id);
   }, []);
 
+  function newChat() {
+    if (history.signedIn) history.startNew();
+    else reset();
+    setText("");
+  }
+
   function ask(question: string) {
     const q = question.trim();
     if (!q || busy) return;
@@ -58,6 +69,8 @@ export function GuidedChat({ mode, children }: { mode: GuidedMode; children?: Re
   return (
     <LazyMotion features={loadFeatures} strict>
       <MotionConfig reducedMotion="user">
+        {/* F2: زر «محادثاتي» قبل أول سؤال (خارج الحركة: العنصر الثابت لا يتبع عنصراً متحركاً). */}
+        {!chatting && <ConversationSidebar api={history} onNew={newChat} docked={false} />}
         <AnimatePresence mode="popLayout" initial={false}>
           {!chatting ? (
             <m.div key="landing" exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.35 }} className="origin-top">
@@ -113,10 +126,7 @@ export function GuidedChat({ mode, children }: { mode: GuidedMode; children?: Re
                 text={text}
                 setText={setText}
                 onSubmit={() => ask(text)}
-                onReset={() => {
-                  reset();
-                  setText("");
-                }}
+                onReset={newChat}
                 onRetry={retry}
                 onAsk={ask}
                 caseApi={caseApi}
@@ -124,6 +134,7 @@ export function GuidedChat({ mode, children }: { mode: GuidedMode; children?: Re
                 inputRef={inputRef}
                 reduced={reduced}
                 title={t("title")}
+                history={history}
               />
             </m.div>
           )}

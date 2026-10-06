@@ -118,7 +118,8 @@ const MAX_STORED = 60;
 function newId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    : // F2: بصيغة UUID أيضاً، فتُحفظ الرسالة في سجل المحادثات.
+      "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (Number(c) ^ (Math.random() * 16) >> (Number(c) / 4)).toString(16));
 }
 
 type Stored = { messages: ChatMessage[]; flow: CaseFlow | null };
@@ -577,9 +578,20 @@ export function useChat(mode: ChatMode = "general") {
     setFlow(null);
   }, [setFlow]);
 
+  /** F2: يفتح محادثة محفوظة (من سجل المحادثات): يوقف أي جواب جارٍ ويعرض رسائلها كما حُفظت. */
+  const loadMessages = useCallback(
+    (next: ChatMessage[]) => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setMessages(next);
+      setFlow(null);
+    },
+    [setFlow],
+  );
+
   const busy = messages.some((m) => m.role === "bot" && (m.status === "pending" || m.status === "streaming"));
 
   const caseApi = { flow, start: startCase, answer: answerCase, cancel: cancelCase, submit: submitCase, retry: retryCase, mode };
 
-  return { messages, send, retry, reset, busy, loaded, caseApi };
+  return { messages, send, retry, reset, load: loadMessages, busy, loaded, caseApi };
 }
