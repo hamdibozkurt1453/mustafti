@@ -184,6 +184,8 @@ describe("لا امتناع جاف", () => {
     const q = "ما فضل النية في الأعمال؟";
     CLASS[q] = { level: "A", ar: ["النية في الأعمال"] };
     scoreOf = (_q, b) => (/إنما الأعمال/.test(b) ? 50 : 10);
+    // R5c: بلا نص بلغ 60 يُطلب الجواب من علم المساعد؛ هنا امتنع النموذج رغم الإعادة.
+    answerText = "لم أجد جواباً كافياً في المصادر المعتمدة.";
     // «ابحث واقرأ» قرأت صفحة الحديث، والاقتباس موجود فيها حرفياً.
     webReply = webResponse([
       {
@@ -214,6 +216,7 @@ describe("لا امتناع جاف", () => {
     const q = "ما اسم الجبل الذي في السؤال الغريب؟";
     CLASS[q] = { level: "A", ar: ["جبل غريب"] };
     scoreOf = () => 0;
+    answerText = "لم أجد جواباً كافياً في المصادر المعتمدة.";
     const r = await brain.respond(q);
     assert.equal(r.kind, "abstain");
     assert.equal(r.text, `${messages.message("abstain", "ar")} ${messages.message("suggestExpert", "ar")}`);

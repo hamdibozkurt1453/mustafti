@@ -82,7 +82,7 @@ a{color:var(--mid)}
 <div id="list"></div>
 <script>
 const CASES=${casesJson};
-const REASON={no_passages:"البحث لم يُرجع نصوصاً",no_relevant:"نصوص لكن لا شيء منها ذو صلة (درجة ≥2)",model_abstained:"النصوص موجودة لكن النموذج امتنع",no_citation:"جواب بلا إحالة [n] ولا اقتباس موثّق",guard:"اعترض الحارس"};
+const REASON={no_passages:"البحث لم يُرجع نصوصاً",no_relevant:"نصوص لكن لا شيء منها ذو صلة (درجة ≥2)",model_abstained:"النصوص موجودة لكن النموذج امتنع",no_citation:"جواب فارغ",guard:"اعترض الحارس"};
 const planText=p=>[p.quran&&p.quran.length?"آيات "+p.quran.map(v=>v.surah+":"+v.ayah+(v.through?"-"+v.through:"")).join("، "):"",p.surahInfo&&p.surahInfo.length?"سور "+p.surahInfo.join("، "):"",p.hadithQueries&&p.hadithQueries.length?"حديث «"+p.hadithQueries.join("»، «")+"»":"",p.bayyinatQueries&&p.bayyinatQueries.length?"بيّنات «"+p.bayyinatQueries.join("»، «")+"»":"",p.quranIndex?"فهرس المصحف":"",p.quranQueries&&p.quranQueries.length?"قرآن «"+p.quranQueries.join("»، «")+"»":""].filter(Boolean).join(" · ")||"فارغة";
 const PIN={ok:"وُجد",empty:"فارغ",error:"خطأ",timeout:"تجاوز المهلة"};
 const CAT={reference:"المرجعية",insistence:"إلحاح",urgent:"عاجل",out_of_scope:"خارج النطاق",identity:"هوية وتلاعب",general:"عام",ruling:"حكم عام أو حالة"};
