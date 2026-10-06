@@ -357,14 +357,6 @@
     "prev": "Dhikr iliyotangulia",
     "next": "Dhikr inayofuata"
   },
-  "intro": {
-    "forum": {
-      "kicker": "Mustafti",
-      "title": "Mjadala",
-      "lead": "Mahali tulivu pa watumiaji kujadili mambo yanayowahusu, kwa adabu na kanuni zilizo wazi. Panafunguliwa hivi karibuni; hadi hapo, muulize Mustafti kwenye mazungumzo.",
-      "cta": "Rudi kwenye mazungumzo"
-    }
-  },
   "library": {
     "kicker": "IslamHouse",
     "title": "Maktaba",
@@ -426,9 +418,12 @@
       "joinLink": "Jiunge kama mtaalamu"
     },
     "forum": {
-      "title": "Bado hakuna michango",
-      "empty": "Mjadala ukifunguliwa, machapisho na majibu yako yatakusanywa hapa.",
-      "cta": "Kuhusu mjadala"
+      "title": "Bado hakuna machapisho",
+      "empty": "Bado hujaandika chochote katika mjadala. Anzisha mada au jiunge kwa jibu.",
+      "cta": "Nenda kwenye mjadala",
+      "threadsTitle": "Mada zangu",
+      "postsTitle": "Majibu yangu",
+      "replyIn": "Jibu katika: {title}"
     },
     "settings": {
       "downloadTitle": "Pakua data yangu",
@@ -484,6 +479,145 @@
         "general": "Jumla",
         "new_muslim": "Muislamu mpya",
         "discover": "Ujue Uislamu"
+      }
+    }
+  },
+  "forum": {
+    "kicker": "Mustafti",
+    "title": "Mjadala",
+    "lead": "Mahali tulivu pa watumiaji kujadiliana kwa adabu na kwa kanuni zilizo wazi. Wataalamu waliothibitishwa hushiriki; wanachoandika washiriki ni maoni, si fatwa.",
+    "newThread": "Mada mpya",
+    "loginToPost": "Ingia ili kuanzisha mada",
+    "searchLabel": "Tafuta katika vichwa vya mada",
+    "searchPlaceholder": "Tafuta kwa kichwa…",
+    "searchButton": "Tafuta",
+    "allCategories": "Sehemu zote",
+    "categoryFilter": "Sehemu",
+    "categories": {
+      "aqeedah": "Itikadi",
+      "ibadat": "Ibada",
+      "muamalat": "Miamala",
+      "family": "Familia",
+      "new_muslim": "Muislamu mpya",
+      "general": "Jumla"
+    },
+    "pinned": "Imebandikwa",
+    "locked": "Imefungwa",
+    "replies": "Majibu: {count}",
+    "lastActivity": "Shughuli ya mwisho",
+    "anonymous": "Mshiriki",
+    "empty": "Bado hakuna mada. Kuwa wa kwanza kuanzisha mjadala.",
+    "emptySearch": "Hakuna mada inayolingana na utafutaji wako.",
+    "rulesTitle": "Adabu za mjadala",
+    "rules": "Matusi, takfiri, uchochezi, matangazo na viungo kutoka nje ya vyanzo rejea hukataliwa. Hakuna majibu yanayotengenezwa kiotomatiki yanayochapishwa hapa; kwa jibu, muulize Mustafti au mtaalamu.",
+    "thread": {
+      "back": "Mada zote",
+      "askMustafti": "Muulize Mustafti kuhusu hili",
+      "repliesTitle": "Majibu",
+      "noReplies": "Bado hakuna majibu.",
+      "replyTitle": "Ongeza jibu",
+      "replyPlaceholder": "Andika jibu lako kwa adabu…",
+      "send": "Chapisha jibu",
+      "sending": "Inachapisha…",
+      "loginToReply": "Ingia ili kujibu",
+      "lockedNote": "Mada hii imefungwa: inaweza kusomwa lakini haiwezi kujibiwa.",
+      "expertBadge": "Mtaalamu aliyethibitishwa",
+      "expertRoles": {
+        "mufti": "Mufti",
+        "daee": "Daiya",
+        "mentor": "Mlezi"
+      },
+      "viewProfile": "Wasifu wa umma",
+      "expertAnswer": "Jibu la mtaalamu",
+      "markExpert": "Weka alama ya “Jibu la mtaalamu”",
+      "unmarkExpert": "Ondoa alama ya “Jibu la mtaalamu”",
+      "markAsExpertOnPost": "Chapisha kama “Jibu la mtaalamu” (huonyeshwa kwanza)",
+      "rulingNotice": "Haya ni maoni ya mshiriki, si fatwa. Muulize Mustafti au mtaalamu.",
+      "askLink": "Muulize Mustafti"
+    },
+    "new": {
+      "title": "Mada mpya",
+      "lead": "Andika kichwa kilicho wazi na uchague sehemu. Kila unachoandika hukaguliwa kulingana na adabu za mjadala kabla ya kuchapishwa.",
+      "titleLabel": "Kichwa",
+      "categoryLabel": "Sehemu",
+      "bodyLabel": "Maandishi ya mada",
+      "bodyPlaceholder": "Eleza unachotaka kujadili…",
+      "submit": "Chapisha mada",
+      "submitting": "Inachapisha…",
+      "cancel": "Ghairi",
+      "counter": "{count} / {max}"
+    },
+    "report": {
+      "button": "Ripoti",
+      "title": "Ripoti chapisho",
+      "lead": "Ripoti huwafikia wasimamizi pekee, na jina lako halionyeshwi.",
+      "reasonLabel": "Sababu",
+      "reasons": {
+        "abuse": "Matusi au kashfa",
+        "takfir": "Takfiri",
+        "incitement": "Uchochezi",
+        "spam": "Tangazo au barua taka",
+        "fatwa": "Fatwa kutoka kwa asiye mtaalamu",
+        "other": "Nyingine"
+      },
+      "noteLabel": "Maelezo (si lazima)",
+      "submit": "Tuma ripoti",
+      "sending": "Inatuma…",
+      "cancel": "Ghairi",
+      "sent": "Ripoti yako imepokelewa. Asante.",
+      "loginToReport": "Ingia ili kuripoti"
+    },
+    "errors": {
+      "unauthorized": "Tafadhali ingia kwanza.",
+      "invalid": "Kagua sehemu: kichwa kiwe na herufi 5–160 na maandishi angalau herufi 10.",
+      "limited": "Umechapisha mengi kwa muda mfupi. Subiri dakika chache kisha ujaribu tena.",
+      "locked": "Mada hii imefungwa au haipatikani.",
+      "duplicate": "Tayari umeripoti chapisho hili.",
+      "generic": "Imeshindikana kutuma. Tafadhali jaribu tena.",
+      "rejected": {
+        "insult": "Haikuchapishwa: ina matusi au kashfa. Tafadhali dumisha adabu katika mjadala.",
+        "takfir": "Haikuchapishwa: ina takfiri. Hakuna anayetangazwa kafiri katika mjadala huu.",
+        "incitement": "Haikuchapishwa: ina uchochezi wa kudhuru.",
+        "ads": "Haikuchapishwa: inaonekana kama tangazo au mwaliko wa kuwasiliana nje ya jukwaa.",
+        "link": "Haikuchapishwa: ina kiungo kutoka nje ya vyanzo rejea."
+      }
+    }
+  },
+  "admin": {
+    "forum": {
+      "tab": "Mjadala",
+      "reportsTitle": "Ripoti zilizo wazi",
+      "noReports": "Hakuna ripoti zilizo wazi.",
+      "threadsTitle": "Mada za hivi karibuni",
+      "noThreads": "Hakuna mada.",
+      "target": {
+        "thread": "Mada",
+        "post": "Jibu"
+      },
+      "reason": "Sababu",
+      "note": "Maelezo",
+      "reportsCount": "Ripoti: {count}",
+      "missingTarget": "Maudhui yamefutwa.",
+      "openThread": "Fungua mada",
+      "status": {
+        "visible": "Inaonekana",
+        "hidden": "Imefichwa",
+        "locked": "Imefungwa"
+      },
+      "actions": {
+        "hide": "Ficha",
+        "show": "Onyesha",
+        "lock": "Funga",
+        "unlock": "Fungua",
+        "pin": "Bandika",
+        "unpin": "Bandua",
+        "resolve": "Shughulikia ripoti"
+      },
+      "errors": {
+        "forbidden": "Huna ruhusa ya kitendo hiki.",
+        "unauthorized": "Kipindi chako kimeisha. Tafadhali ingia tena.",
+        "invalid": "Ombi si sahihi.",
+        "generic": "Imeshindikana kukamilisha kitendo. Tafadhali jaribu tena."
       }
     }
   }

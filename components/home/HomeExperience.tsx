@@ -51,6 +51,19 @@ export function HomeExperience({ adhkar, rtlMeaning }: { adhkar: Dhikr[]; rtlMea
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ‎/?q= (من زر «اسأل مُستفتي عن هذا» في الحوار، R4): السؤال يصل إلى الخانة، ويرسله السائل بنفسه.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q")?.trim().slice(0, 2000);
+    if (!q) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setText(q);
+    const id = setTimeout(() => {
+      document.getElementById("ask")?.scrollIntoView({ behavior: "auto", block: "center" });
+      inputRef.current?.focus({ preventScroll: true });
+    }, 300);
+    return () => clearTimeout(id);
+  }, []);
+
   function ask(question: string) {
     const q = question.trim();
     if (!q || busy) return;

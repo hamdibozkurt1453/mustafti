@@ -10,6 +10,7 @@ import { AccountForm } from "@/components/me/AccountForm";
 import { DeleteAccount } from "@/components/me/DeleteAccount";
 import { MePrayerSettings } from "@/components/me/MePrayerSettings";
 import { MyCases } from "@/components/me/MyCases";
+import { MyForum } from "@/components/me/MyForum";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { ME_TABS, resolveTab, type MeTab } from "@/lib/account/rules";
@@ -162,12 +163,8 @@ export default async function MePage({ params, searchParams }: Props) {
           )}
 
           {tab === "forum" && (
-            <section className={`${card} text-center`}>
-              <p className="font-display text-2xl font-semibold text-green-900">{t("forum.title")}</p>
-              <p className="mx-auto mt-2 max-w-md text-ink-600">{t("forum.empty")}</p>
-              <Link href="/forum" className="mf-press mt-6 inline-block rounded-full bg-green-900 px-5 py-2.5 text-sm font-semibold text-ivory-50 hover:bg-green-600">
-                {t("forum.cta")}
-              </Link>
+            <section className={card}>
+              <MyForum userId={userId} />
             </section>
           )}
 

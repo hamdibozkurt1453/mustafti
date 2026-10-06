@@ -357,14 +357,6 @@
     "prev": "Invocation précédente",
     "next": "Invocation suivante"
   },
-  "intro": {
-    "forum": {
-      "kicker": "Mustafti",
-      "title": "Forum",
-      "lead": "Un espace serein où les utilisateurs échangent sur ce qui compte pour eux, avec courtoisie et des règles claires. Ouverture prochaine ; d'ici là, posez vos questions à Mustafti dans la conversation.",
-      "cta": "Retour à la conversation"
-    }
-  },
   "library": {
     "kicker": "IslamHouse",
     "title": "Bibliothèque",
@@ -426,9 +418,12 @@
       "joinLink": "Rejoindre en tant qu'expert"
     },
     "forum": {
-      "title": "Aucun message pour l'instant",
-      "empty": "À l'ouverture du forum, vos messages et réponses seront réunis ici.",
-      "cta": "À propos du forum"
+      "title": "Aucune publication pour l’instant",
+      "empty": "Vous n’avez encore rien écrit sur le forum. Lancez un sujet ou participez par une réponse.",
+      "cta": "Aller au forum",
+      "threadsTitle": "Mes sujets",
+      "postsTitle": "Mes réponses",
+      "replyIn": "Réponse dans : {title}"
     },
     "settings": {
       "downloadTitle": "Télécharger mes données",
@@ -484,6 +479,145 @@
         "general": "Général",
         "new_muslim": "Nouveau musulman",
         "discover": "Découvrir l'islam"
+      }
+    }
+  },
+  "forum": {
+    "kicker": "Mustafti",
+    "title": "Forum",
+    "lead": "Un espace serein où les utilisateurs échangent avec courtoisie, selon des règles claires. Des experts vérifiés y participent ; ce qu’écrivent les participants est un avis, pas une fatwa.",
+    "newThread": "Nouveau sujet",
+    "loginToPost": "Connectez-vous pour lancer un sujet",
+    "searchLabel": "Rechercher dans les titres",
+    "searchPlaceholder": "Rechercher par titre…",
+    "searchButton": "Rechercher",
+    "allCategories": "Toutes les rubriques",
+    "categoryFilter": "Rubriques",
+    "categories": {
+      "aqeedah": "Croyance",
+      "ibadat": "Adoration",
+      "muamalat": "Transactions",
+      "family": "Famille",
+      "new_muslim": "Nouveau musulman",
+      "general": "Général"
+    },
+    "pinned": "Épinglé",
+    "locked": "Verrouillé",
+    "replies": "Réponses : {count}",
+    "lastActivity": "Dernière activité",
+    "anonymous": "Participant",
+    "empty": "Aucun sujet pour l’instant. Soyez le premier à lancer une discussion.",
+    "emptySearch": "Aucun sujet ne correspond à votre recherche.",
+    "rulesTitle": "Règles de bienséance",
+    "rules": "Les insultes, le takfir, l’incitation, la publicité et les liens extérieurs aux sources de référence sont refusés. Aucune réponse générée automatiquement n’est publiée ici ; pour obtenir une réponse, interrogez Mustafti ou un expert.",
+    "thread": {
+      "back": "Tous les sujets",
+      "askMustafti": "Interroger Mustafti à ce sujet",
+      "repliesTitle": "Réponses",
+      "noReplies": "Aucune réponse pour l’instant.",
+      "replyTitle": "Ajouter une réponse",
+      "replyPlaceholder": "Rédigez votre réponse avec courtoisie…",
+      "send": "Publier la réponse",
+      "sending": "Publication…",
+      "loginToReply": "Connectez-vous pour répondre",
+      "lockedNote": "Ce sujet est verrouillé : il peut être lu mais pas recevoir de réponses.",
+      "expertBadge": "Expert vérifié",
+      "expertRoles": {
+        "mufti": "Mufti",
+        "daee": "Prédicateur",
+        "mentor": "Accompagnateur"
+      },
+      "viewProfile": "Profil public",
+      "expertAnswer": "Réponse d’expert",
+      "markExpert": "Marquer comme « Réponse d’expert »",
+      "unmarkExpert": "Retirer « Réponse d’expert »",
+      "markAsExpertOnPost": "Publier comme « Réponse d’expert » (affichée en premier)",
+      "rulingNotice": "Ceci est l’avis d’un participant, pas une fatwa. Interrogez Mustafti ou un expert.",
+      "askLink": "Interroger Mustafti"
+    },
+    "new": {
+      "title": "Nouveau sujet",
+      "lead": "Rédigez un titre clair et choisissez une rubrique. Tout ce que vous écrivez est vérifié selon les règles de bienséance avant publication.",
+      "titleLabel": "Titre",
+      "categoryLabel": "Rubrique",
+      "bodyLabel": "Texte du sujet",
+      "bodyPlaceholder": "Expliquez ce dont vous souhaitez discuter…",
+      "submit": "Publier le sujet",
+      "submitting": "Publication…",
+      "cancel": "Annuler",
+      "counter": "{count} / {max}"
+    },
+    "report": {
+      "button": "Signaler",
+      "title": "Signaler un message",
+      "lead": "Les signalements ne parviennent qu’aux modérateurs, et votre nom n’est pas affiché.",
+      "reasonLabel": "Motif",
+      "reasons": {
+        "abuse": "Insulte ou injure",
+        "takfir": "Takfir",
+        "incitement": "Incitation",
+        "spam": "Publicité ou spam",
+        "fatwa": "Fatwa d’un non-spécialiste",
+        "other": "Autre"
+      },
+      "noteLabel": "Détails (facultatif)",
+      "submit": "Envoyer le signalement",
+      "sending": "Envoi…",
+      "cancel": "Annuler",
+      "sent": "Votre signalement a bien été reçu. Merci.",
+      "loginToReport": "Connectez-vous pour signaler"
+    },
+    "errors": {
+      "unauthorized": "Veuillez d’abord vous connecter.",
+      "invalid": "Vérifiez les champs : le titre fait 5 à 160 caractères et le texte au moins 10 caractères.",
+      "limited": "Vous avez beaucoup publié en peu de temps. Patientez quelques minutes puis réessayez.",
+      "locked": "Ce sujet est verrouillé ou indisponible.",
+      "duplicate": "Vous avez déjà signalé ce message.",
+      "generic": "Échec de l’envoi. Veuillez réessayer.",
+      "rejected": {
+        "insult": "Non publié : le message contient des insultes ou des injures. Merci de rester courtois.",
+        "takfir": "Non publié : le message contient du takfir. Personne n’est déclaré mécréant sur ce forum.",
+        "incitement": "Non publié : le message contient une incitation à nuire.",
+        "ads": "Non publié : il ressemble à une publicité ou à une invitation à communiquer hors de la plateforme.",
+        "link": "Non publié : il contient un lien extérieur aux sources de référence."
+      }
+    }
+  },
+  "admin": {
+    "forum": {
+      "tab": "Forum",
+      "reportsTitle": "Signalements ouverts",
+      "noReports": "Aucun signalement ouvert.",
+      "threadsTitle": "Derniers sujets",
+      "noThreads": "Aucun sujet.",
+      "target": {
+        "thread": "Sujet",
+        "post": "Réponse"
+      },
+      "reason": "Motif",
+      "note": "Détails",
+      "reportsCount": "Signalements : {count}",
+      "missingTarget": "Le contenu a été supprimé.",
+      "openThread": "Ouvrir le sujet",
+      "status": {
+        "visible": "Visible",
+        "hidden": "Masqué",
+        "locked": "Verrouillé"
+      },
+      "actions": {
+        "hide": "Masquer",
+        "show": "Afficher",
+        "lock": "Verrouiller",
+        "unlock": "Déverrouiller",
+        "pin": "Épingler",
+        "unpin": "Désépingler",
+        "resolve": "Clore le signalement"
+      },
+      "errors": {
+        "forbidden": "Vous n’avez pas l’autorisation d’effectuer cette action.",
+        "unauthorized": "Votre session a expiré. Veuillez vous reconnecter.",
+        "invalid": "Requête invalide.",
+        "generic": "L’action n’a pas pu aboutir. Veuillez réessayer."
       }
     }
   }

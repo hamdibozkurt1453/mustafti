@@ -414,7 +414,43 @@
       },
       "note": "Today is in Riyadh time. Answer time runs from case creation to the first expert answer."
     },
-    "demoBanner": "Demo account"
+    "demoBanner": "Demo account",
+    "forum": {
+      "tab": "Forum",
+      "reportsTitle": "Open reports",
+      "noReports": "No open reports.",
+      "threadsTitle": "Latest topics",
+      "noThreads": "No topics.",
+      "target": {
+        "thread": "Topic",
+        "post": "Reply"
+      },
+      "reason": "Reason",
+      "note": "Details",
+      "reportsCount": "Reports: {count}",
+      "missingTarget": "The content was deleted.",
+      "openThread": "Open topic",
+      "status": {
+        "visible": "Visible",
+        "hidden": "Hidden",
+        "locked": "Locked"
+      },
+      "actions": {
+        "hide": "Hide",
+        "show": "Show",
+        "lock": "Lock",
+        "unlock": "Unlock",
+        "pin": "Pin",
+        "unpin": "Unpin",
+        "resolve": "Resolve report"
+      },
+      "errors": {
+        "forbidden": "You do not have permission for this action.",
+        "unauthorized": "Your session ended. Please sign in again.",
+        "invalid": "Invalid request.",
+        "generic": "Could not complete the action. Please try again."
+      }
+    }
   },
   "case": {
     "start": "Start",
@@ -822,14 +858,6 @@
     "prayerLink": "Prayer times",
     "adhkarLink": "Remembrances"
   },
-  "intro": {
-    "forum": {
-      "kicker": "Mustafti",
-      "title": "Forum",
-      "lead": "A calm space for users to discuss what matters to them, with courtesy and clear guidelines. It opens soon; until then, ask Mustafti in the chat.",
-      "cta": "Back to the chat"
-    }
-  },
   "library": {
     "kicker": "IslamHouse",
     "title": "Library",
@@ -892,8 +920,11 @@
     },
     "forum": {
       "title": "No posts yet",
-      "empty": "Once the forum opens, your posts and replies will be gathered here.",
-      "cta": "About the forum"
+      "empty": "You have not written in the forum yet. Start a topic or join with a reply.",
+      "cta": "Go to the forum",
+      "threadsTitle": "My topics",
+      "postsTitle": "My replies",
+      "replyIn": "Reply in: {title}"
     },
     "settings": {
       "downloadTitle": "Download my data",
@@ -939,6 +970,107 @@
       "q1": "What do Muslims believe?",
       "q2": "Who is the Prophet Muhammad ﷺ?",
       "q3": "What does Islam say about Jesus?"
+    }
+  },
+  "forum": {
+    "kicker": "Mustafti",
+    "title": "Forum",
+    "lead": "A calm space for users to discuss with courtesy and clear guidelines. Verified experts take part; what participants write is opinion, not a fatwa.",
+    "newThread": "New topic",
+    "loginToPost": "Sign in to start a topic",
+    "searchLabel": "Search topic titles",
+    "searchPlaceholder": "Search by title…",
+    "searchButton": "Search",
+    "allCategories": "All sections",
+    "categoryFilter": "Sections",
+    "categories": {
+      "aqeedah": "Creed",
+      "ibadat": "Worship",
+      "muamalat": "Transactions",
+      "family": "Family",
+      "new_muslim": "New Muslim",
+      "general": "General"
+    },
+    "pinned": "Pinned",
+    "locked": "Locked",
+    "replies": "Replies: {count}",
+    "lastActivity": "Last activity",
+    "anonymous": "Participant",
+    "empty": "No topics yet. Be the first to start a discussion.",
+    "emptySearch": "No topics match your search.",
+    "rulesTitle": "Forum etiquette",
+    "rules": "Insults, takfir, incitement, ads and links from outside the reference sources are rejected. No automatically generated answers are posted here; for an answer, ask Mustafti or an expert.",
+    "thread": {
+      "back": "All topics",
+      "askMustafti": "Ask Mustafti about this",
+      "repliesTitle": "Replies",
+      "noReplies": "No replies yet.",
+      "replyTitle": "Add a reply",
+      "replyPlaceholder": "Write your reply courteously…",
+      "send": "Post reply",
+      "sending": "Posting…",
+      "loginToReply": "Sign in to reply",
+      "lockedNote": "This topic is locked: it can be read but not replied to.",
+      "expertBadge": "Verified expert",
+      "expertRoles": {
+        "mufti": "Mufti",
+        "daee": "Daee",
+        "mentor": "Mentor"
+      },
+      "viewProfile": "Public profile",
+      "expertAnswer": "Expert answer",
+      "markExpert": "Mark as “Expert answer”",
+      "unmarkExpert": "Unmark “Expert answer”",
+      "markAsExpertOnPost": "Post as “Expert answer” (shown first)",
+      "rulingNotice": "This is a participant's opinion, not a fatwa. Ask Mustafti or an expert.",
+      "askLink": "Ask Mustafti"
+    },
+    "new": {
+      "title": "New topic",
+      "lead": "Write a clear title and choose a section. Everything you write is checked against the forum etiquette before it is posted.",
+      "titleLabel": "Title",
+      "categoryLabel": "Section",
+      "bodyLabel": "Topic text",
+      "bodyPlaceholder": "Explain what you would like to discuss…",
+      "submit": "Post topic",
+      "submitting": "Posting…",
+      "cancel": "Cancel",
+      "counter": "{count} / {max}"
+    },
+    "report": {
+      "button": "Report",
+      "title": "Report a post",
+      "lead": "Reports reach the moderators only, and your name is not shown.",
+      "reasonLabel": "Reason",
+      "reasons": {
+        "abuse": "Insult or abuse",
+        "takfir": "Takfir",
+        "incitement": "Incitement",
+        "spam": "Ad or spam",
+        "fatwa": "Fatwa from a non-expert",
+        "other": "Other"
+      },
+      "noteLabel": "Details (optional)",
+      "submit": "Send report",
+      "sending": "Sending…",
+      "cancel": "Cancel",
+      "sent": "Your report was received. Thank you.",
+      "loginToReport": "Sign in to report"
+    },
+    "errors": {
+      "unauthorized": "Please sign in first.",
+      "invalid": "Check the fields: the title is 5–160 characters and the text at least 10 characters.",
+      "limited": "You have posted a lot in a short time. Wait a few minutes and try again.",
+      "locked": "This topic is locked or unavailable.",
+      "duplicate": "You have already reported this post.",
+      "generic": "Could not send. Please try again.",
+      "rejected": {
+        "insult": "Not posted: it contains insults or abuse. Please keep the discussion courteous.",
+        "takfir": "Not posted: it contains takfir. No one is declared a disbeliever in the forum.",
+        "incitement": "Not posted: it contains incitement to harm.",
+        "ads": "Not posted: it looks like an ad or an invitation to contact outside the platform.",
+        "link": "Not posted: it contains a link from outside the reference sources."
+      }
     }
   }
 }

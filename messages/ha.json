@@ -357,14 +357,6 @@
     "prev": "Zikirin baya",
     "next": "Zikiri na gaba"
   },
-  "intro": {
-    "forum": {
-      "kicker": "Mustafti",
-      "title": "Tattaunawa",
-      "lead": "Wuri mai natsuwa don masu amfani su tattauna abin da ke da muhimmanci a gare su, cikin ladabi da ka'idoji bayyanannu. Za a buɗe shi nan ba da daɗewa ba; kafin nan, tambayi Mustafti a hira.",
-      "cta": "Koma zuwa hira"
-    }
-  },
   "library": {
     "kicker": "IslamHouse",
     "title": "Laburare",
@@ -426,9 +418,12 @@
       "joinLink": "Shiga a matsayin ƙwararre"
     },
     "forum": {
-      "title": "Babu gudummawa tukuna",
-      "empty": "Idan aka buɗe tattaunawa, rubuce-rubucenka da amsoshinka za su taru a nan.",
-      "cta": "Game da tattaunawa"
+      "title": "Babu rubutu tukuna",
+      "empty": "Ba ka rubuta komai a tattaunawa ba tukuna. Fara batu ko ka shiga da amsa.",
+      "cta": "Je zuwa tattaunawa",
+      "threadsTitle": "Batutuwana",
+      "postsTitle": "Amsoshina",
+      "replyIn": "Amsa a cikin: {title}"
     },
     "settings": {
       "downloadTitle": "Sauke bayanaina",
@@ -484,6 +479,145 @@
         "general": "Gabaɗaya",
         "new_muslim": "Sabon Musulmi",
         "discover": "Ka san Musulunci"
+      }
+    }
+  },
+  "forum": {
+    "kicker": "Mustafti",
+    "title": "Tattaunawa",
+    "lead": "Wuri mai natsuwa don masu amfani su tattauna cikin ladabi da ƙa'idoji bayyanannu. Ƙwararrun da aka tabbatar suna shiga; abin da mahalarta suka rubuta ra'ayi ne, ba fatawa ba.",
+    "newThread": "Sabon batu",
+    "loginToPost": "Shiga don fara batu",
+    "searchLabel": "Bincika taken batutuwa",
+    "searchPlaceholder": "Bincika da take…",
+    "searchButton": "Bincika",
+    "allCategories": "Duk sassa",
+    "categoryFilter": "Sassa",
+    "categories": {
+      "aqeedah": "Aƙida",
+      "ibadat": "Ibada",
+      "muamalat": "Mu'amala",
+      "family": "Iyali",
+      "new_muslim": "Sabon Musulmi",
+      "general": "Gabaɗaya"
+    },
+    "pinned": "An maƙala",
+    "locked": "An kulle",
+    "replies": "Amsoshi: {count}",
+    "lastActivity": "Aiki na ƙarshe",
+    "anonymous": "Mahalarci",
+    "empty": "Babu batu tukuna. Ka zama na farko da zai fara tattaunawa.",
+    "emptySearch": "Babu batun da ya dace da bincikenka.",
+    "rulesTitle": "Ladubban tattaunawa",
+    "rules": "Ana ƙin zagi, kafirta mutane, tunzura, talla da hanyoyin haɗi daga wajen madogaran tushe. Ba a wallafa amsoshin da aka samar kai tsaye a nan; don samun amsa, tambayi Mustafti ko ƙwararre.",
+    "thread": {
+      "back": "Duk batutuwa",
+      "askMustafti": "Tambayi Mustafti game da wannan",
+      "repliesTitle": "Amsoshi",
+      "noReplies": "Babu amsa tukuna.",
+      "replyTitle": "Ƙara amsa",
+      "replyPlaceholder": "Rubuta amsarka cikin ladabi…",
+      "send": "Wallafa amsa",
+      "sending": "Ana wallafawa…",
+      "loginToReply": "Shiga don ba da amsa",
+      "lockedNote": "An kulle wannan batu: ana iya karanta shi amma ba a iya ba da amsa.",
+      "expertBadge": "Ƙwararre da aka tabbatar",
+      "expertRoles": {
+        "mufti": "Mufti",
+        "daee": "Mai da'awa",
+        "mentor": "Jagora"
+      },
+      "viewProfile": "Bayanan jama'a",
+      "expertAnswer": "Amsar ƙwararre",
+      "markExpert": "Yi alama a matsayin “Amsar ƙwararre”",
+      "unmarkExpert": "Cire alamar “Amsar ƙwararre”",
+      "markAsExpertOnPost": "Wallafa a matsayin “Amsar ƙwararre” (za a nuna ta da farko)",
+      "rulingNotice": "Wannan ra'ayin mahalarci ne, ba fatawa ba. Tambayi Mustafti ko ƙwararre.",
+      "askLink": "Tambayi Mustafti"
+    },
+    "new": {
+      "title": "Sabon batu",
+      "lead": "Rubuta take bayyananne kuma zaɓi sashe. Ana duba duk abin da ka rubuta bisa ladubban tattaunawa kafin a wallafa shi.",
+      "titleLabel": "Take",
+      "categoryLabel": "Sashe",
+      "bodyLabel": "Rubutun batu",
+      "bodyPlaceholder": "Bayyana abin da kake son a tattauna…",
+      "submit": "Wallafa batu",
+      "submitting": "Ana wallafawa…",
+      "cancel": "Soke",
+      "counter": "{count} / {max}"
+    },
+    "report": {
+      "button": "Kai ƙara",
+      "title": "Kai ƙarar rubutu",
+      "lead": "Ƙorafe-ƙorafe suna isa ga masu kula kawai, kuma ba a nuna sunanka.",
+      "reasonLabel": "Dalili",
+      "reasons": {
+        "abuse": "Zagi ko cin mutunci",
+        "takfir": "Kafirta mutane",
+        "incitement": "Tunzura",
+        "spam": "Talla ko saƙon banza",
+        "fatwa": "Fatawa daga wanda ba ƙwararre ba",
+        "other": "Wani"
+      },
+      "noteLabel": "Cikakken bayani (na zaɓi)",
+      "submit": "Aika ƙara",
+      "sending": "Ana aikawa…",
+      "cancel": "Soke",
+      "sent": "An karɓi ƙararka. Mun gode.",
+      "loginToReport": "Shiga don kai ƙara"
+    },
+    "errors": {
+      "unauthorized": "Da fatan za ka fara shiga.",
+      "invalid": "Duba filayen: take ya kasance haruffa 5–160, rubutu kuma aƙalla haruffa 10.",
+      "limited": "Ka wallafa abubuwa da yawa cikin ɗan lokaci. Jira 'yan mintuna sannan ka sake gwadawa.",
+      "locked": "An kulle wannan batu ko babu shi.",
+      "duplicate": "Ka riga ka kai ƙarar wannan rubutu.",
+      "generic": "Ba a iya aikawa ba. Da fatan za ka sake gwadawa.",
+      "rejected": {
+        "insult": "Ba a wallafa ba: yana ɗauke da zagi ko cin mutunci. Da fatan a kiyaye ladabi a tattaunawa.",
+        "takfir": "Ba a wallafa ba: yana ɗauke da kafirta mutane. Ba a kafirta kowa a wannan tattaunawa.",
+        "incitement": "Ba a wallafa ba: yana ɗauke da tunzura zuwa cutarwa.",
+        "ads": "Ba a wallafa ba: yana kama da talla ko gayyatar tuntuɓa a wajen dandalin.",
+        "link": "Ba a wallafa ba: yana ɗauke da hanyar haɗi daga wajen madogaran tushe."
+      }
+    }
+  },
+  "admin": {
+    "forum": {
+      "tab": "Tattaunawa",
+      "reportsTitle": "Ƙararrakin da ke buɗe",
+      "noReports": "Babu ƙarar da ke buɗe.",
+      "threadsTitle": "Sababbin batutuwa",
+      "noThreads": "Babu batutuwa.",
+      "target": {
+        "thread": "Batu",
+        "post": "Amsa"
+      },
+      "reason": "Dalili",
+      "note": "Cikakken bayani",
+      "reportsCount": "Ƙararraki: {count}",
+      "missingTarget": "An goge abin.",
+      "openThread": "Buɗe batu",
+      "status": {
+        "visible": "A bayyane",
+        "hidden": "A ɓoye",
+        "locked": "An kulle"
+      },
+      "actions": {
+        "hide": "Ɓoye",
+        "show": "Nuna",
+        "lock": "Kulle",
+        "unlock": "Buɗe",
+        "pin": "Maƙala",
+        "unpin": "Cire maƙalawa",
+        "resolve": "Warware ƙara"
+      },
+      "errors": {
+        "forbidden": "Ba ka da izinin wannan aiki.",
+        "unauthorized": "Zamanka ya ƙare. Da fatan za ka sake shiga.",
+        "invalid": "Buƙata mara inganci.",
+        "generic": "Ba a iya kammala aikin ba. Da fatan za ka sake gwadawa."
       }
     }
   }

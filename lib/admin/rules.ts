@@ -10,13 +10,15 @@ export type CaseStatus = (typeof CASE_STATUSES)[number];
 
 export const EXPERT_STATUSES = ["pending", "approved", "rejected"] as const;
 
-export type AdminTab = "home" | "experts" | "cases" | "stats";
+export type AdminTab = "home" | "experts" | "cases" | "forum" | "stats";
 
 /** التبويبات الظاهرة لكل دور. viewer يرى الكل للاطلاع فقط. */
 export function tabsFor(role: AdminRole): AdminTab[] {
   const tabs: AdminTab[] = ["home"];
   if (role === "super_admin" || role === "reviewer" || role === "viewer") tabs.push("experts");
   if (role === "super_admin" || role === "moderator" || role === "viewer") tabs.push("cases");
+  // R4: «الحوار» للمشرفين عليه (moderator فأعلى)، وviewer للاطلاع.
+  if (role === "super_admin" || role === "moderator" || role === "viewer") tabs.push("forum");
   tabs.push("stats");
   return tabs;
 }
