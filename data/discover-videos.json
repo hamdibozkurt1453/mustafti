@@ -1,17 +1,121 @@
 {
-  "_note": "F3: محاضرات تعريفية ومناظرات (محتوى خارجي). المعرّفات من نتائج البحث (يوتيوب محجوب من بيئة البناء)، وتُفحص من متصفح قبل العرض.",
+  "_note": "F3: محاضرات تعريفية ومناظرات (محتوى خارجي). F4: تُعرض بلغة الواجهة فقط (lang)، وإلا الإنجليزية. المعرّفات من نتائج البحث (يوتيوب محجوب من بيئة البناء)، وتُفحص من متصفح قبل العرض.",
   "lectures": [
-    { "id": "OsmYQl3xy_Y", "title": "What's Islam? Islam in Brief - Yusuf Estes", "channel": "Digital Mimbar", "lang": "en" },
-    { "id": "BhWzwX9Xqo8", "title": "التعريف بالإسلام لغير المسلمين - الشيخ عبدالعزيز بن باز", "channel": "مشروع كبار العلماء", "lang": "ar" },
-    { "id": "RhcVO6n8G1A", "title": "A Closer look into Islam (Urdu)", "channel": "Towards Eternity - Urdu", "lang": "ur" },
-    { "id": "kxNBg1a11Sc", "title": "Mengenal Agama Islam dengan Dalil - Ustadz Jamaludin, Lc.", "channel": "Yufid.TV", "lang": "id" },
-    { "id": "oqniiQO1jeQ", "title": "İslam'ı Öğrenmeye Nereden Ve Nasıl Başlamalıyım?", "channel": "Mehmed Yıldız", "lang": "tr" },
-    { "id": "Fa6rRGeHcHk", "title": "Uislamu ni nini? - Sheikh Ramadhan Mwangi", "channel": "", "lang": "sw" }
+    {
+      "id": "OsmYQl3xy_Y",
+      "title": "What's Islam? Islam in Brief - Yusuf Estes",
+      "channel": "Digital Mimbar",
+      "lang": "en"
+    },
+    {
+      "id": "BhWzwX9Xqo8",
+      "title": "التعريف بالإسلام لغير المسلمين - الشيخ عبدالعزيز بن باز",
+      "channel": "مشروع كبار العلماء",
+      "lang": "ar"
+    },
+    {
+      "id": "gvq3M1n1G2U",
+      "title": "التعريف بالإسلام لغير المسلمين - د. سالم بن مبارك الرواحي",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "rcuM1xQOepw",
+      "title": "محاضرة لغير المسلمين عن الإسلام (مترجم) - All What You Need to Know about Islam",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "9IyzbJbUF2U",
+      "title": "محاضرة التعريف بالإسلام (مترجم) - All what you need to know about Islam",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "A2zBwxNlW6A",
+      "title": "التعريف بالإسلام في نصف ساعة - الجزء الأول - د. أحمد عبده",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "pvG1w30DYLU",
+      "title": "مدخل إلى التعريف بالإسلام - الجزء الأول - الشيخ د. عبدالله محمد يحيى",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "RhcVO6n8G1A",
+      "title": "A Closer look into Islam (Urdu)",
+      "channel": "Towards Eternity - Urdu",
+      "lang": "ur"
+    },
+    {
+      "id": "kxNBg1a11Sc",
+      "title": "Mengenal Agama Islam dengan Dalil - Ustadz Jamaludin, Lc.",
+      "channel": "Yufid.TV",
+      "lang": "id"
+    },
+    {
+      "id": "oqniiQO1jeQ",
+      "title": "İslam'ı Öğrenmeye Nereden Ve Nasıl Başlamalıyım?",
+      "channel": "Mehmed Yıldız",
+      "lang": "tr"
+    },
+    {
+      "id": "Fa6rRGeHcHk",
+      "title": "Uislamu ni nini? - Sheikh Ramadhan Mwangi",
+      "channel": "",
+      "lang": "sw"
+    }
   ],
   "debates": [
-    { "id": "uSwJuOPG4FI", "title": "Lawrence Krauss vs Hamza Tzortzis — Islam or Atheism", "channel": "Sapience Institute", "lang": "en" },
-    { "id": "iZNleSuS8lg", "title": "Islam or Atheism - You Decide! Hamza Andreas Tzortzis & Dr Ed Buckner", "channel": "", "lang": "en" },
-    { "id": "dm46FPgRGbQ", "title": "Mohammed Hijab vs Edward Tabash — Does God Exist?", "channel": "SALAM", "lang": "en" },
-    { "id": "ZQwgZXY37DQ", "title": "\"Delilini Nötrleyebilirim!\" Diyen Ateist İle Müslüman Gencin Tartışması!", "channel": "Sözler Köşkü", "lang": "tr" }
+    {
+      "id": "uSwJuOPG4FI",
+      "title": "Lawrence Krauss vs Hamza Tzortzis — Islam or Atheism",
+      "channel": "Sapience Institute",
+      "lang": "en"
+    },
+    {
+      "id": "iZNleSuS8lg",
+      "title": "Islam or Atheism - You Decide! Hamza Andreas Tzortzis & Dr Ed Buckner",
+      "channel": "",
+      "lang": "en"
+    },
+    {
+      "id": "dm46FPgRGbQ",
+      "title": "Mohammed Hijab vs Edward Tabash — Does God Exist?",
+      "channel": "SALAM",
+      "lang": "en"
+    },
+    {
+      "id": "2TODfGXY-p4",
+      "title": "مناظرة الإسلام أم الإلحاد مترجمة كاملة - حمزة تزورتزس ولورنس كراوس (الجزء 1)",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "7A1nEEVfjP4",
+      "title": "مناظرة: هل أثبتت الفيزياء عدم وجود الله؟ - محمد بن شمس الدين مع فيزيائي ملحد",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "j50LDprAJD0",
+      "title": "مناظرة: هل المسيح هو الله؟ - الشيخ أحمد ديدات (مترجم)",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "C-CPUeiu8t8",
+      "title": "مناظرة الشيخ أحمد ديدات مع القس د. روبرت دوجلاس (مدبلجة)",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "ZQwgZXY37DQ",
+      "title": "\"Delilini Nötrleyebilirim!\" Diyen Ateist İle Müslüman Gencin Tartışması!",
+      "channel": "Sözler Köşkü",
+      "lang": "tr"
+    }
   ]
 }

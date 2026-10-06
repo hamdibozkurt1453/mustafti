@@ -50,7 +50,8 @@ describe("R2 · التحويلات", () => {
     assert.equal(find("/prayer")?.destination, "/:locale#prayer");
     assert.equal(find("/adhkar"), undefined);
     assert.equal(find("/expert/profile")?.destination, "/:locale/me");
-    for (const r of rules) for (const l of locales) assert.ok(r.source.includes(l), `${r.source}: ${l}`);
+    // قواعد R2 بكل اللغات (F4: وقواعد تحويل اللغات المعطّلة إلى /en منفصلة).
+    for (const r of rules.filter((x) => x.source.startsWith("/:locale"))) for (const l of locales) assert.ok(r.source.includes(l), `${r.source}: ${l}`);
   });
 });
 

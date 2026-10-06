@@ -313,9 +313,11 @@ describe("F3 — migrations على Postgres (PGlite)", () => {
 
 describe("F3 — الفيديوهات والكتب والترجمات", () => {
   it("أعداد الأقسام كما طُلبت، والمعرّفات صالحة بلا تكرار، ولغات متعددة", () => {
-    assert.ok(NEW_MUSLIM_STORIES.length >= 6 && NEW_MUSLIM_STORIES.length <= 9);
-    assert.equal(DISCOVER_LECTURES.length, 6);
-    assert.ok(DISCOVER_DEBATES.length >= 4 && DISCOVER_DEBATES.length <= 6);
+    // F4: العدد بلغة الواجهة (العربية: 6 قصص، و6 محاضرات، و4 مناظرات)، وتُعرض لغة الواجهة وحدها.
+    const ar = (list: { lang: string }[]) => list.filter((v) => v.lang === "ar").length;
+    assert.equal(ar(NEW_MUSLIM_STORIES), 6);
+    assert.equal(ar(DISCOVER_LECTURES), 6);
+    assert.equal(ar(DISCOVER_DEBATES), 4);
     assert.ok(new Set(NEW_MUSLIM_STORIES.map((v) => v.lang)).size >= 5);
     assert.ok(new Set(DISCOVER_LECTURES.map((v) => v.lang)).size >= 5);
     const ids = [...NEW_MUSLIM_STORIES, ...DISCOVER_LECTURES, ...DISCOVER_DEBATES].map((v) => v.id);

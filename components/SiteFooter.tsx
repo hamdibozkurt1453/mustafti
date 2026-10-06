@@ -62,6 +62,8 @@ export function SiteFooter() {
                 {t("footer.tagline")}
               </p>
               <p className="mt-4 max-w-md text-sm text-ivory-50/70">{t("disclosure.text")}</p>
+              {/* F4: لغات الواجهة المفعّلة. */}
+              <p className="mt-2 max-w-md text-xs text-ivory-50/55">{t("footer.languages")}</p>
             </div>
 
             <nav aria-label={t("footer.links")} className="grid grid-cols-2 gap-8">

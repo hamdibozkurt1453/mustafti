@@ -1,13 +1,83 @@
 {
-  "_note": "F3: قصص من أسلموا حديثاً. يوتيوب محجوب من بيئة البناء، فالمعرّفات من نتائج البحث (روابط youtube.com/watch?v=) لا من oEmbed؛ تُفحص من متصفح قبل العرض. العنوان كما نُشر، واللغة رمز ISO.",
+  "_note": "F3: قصص من أسلموا حديثاً. F4: الفيديوهات تُعرض بلغة الواجهة فقط (lang)، وإن لم يوجد لها شيء فالإنجليزية. يوتيوب محجوب من بيئة البناء، فالمعرّفات من نتائج البحث (روابط youtube.com/watch?v=) لا من oEmbed؛ تُفحص من متصفح قبل العرض. العنوان كما نُشر، واللغة رمز ISO.",
   "videos": [
-    { "id": "Ertxy9kMB7M", "title": "“I Was Struggling to Stay Alive” - Ex-Sikh’s Brave Journey to Islam!", "channel": "Towards Eternity", "lang": "en" },
-    { "id": "vTtV9WP79-I", "title": "Roman Catholic Convert to Islam", "channel": "The Deen Show", "lang": "en" },
-    { "id": "ThzNhjumH4o", "title": "\"شريكي في الجريمة قادني إلى الإسلام!\" - قصة تحول لا تصدق لمسيحي سابق!", "channel": "Towards Eternity - العربية", "lang": "ar" },
-    { "id": "zeg-fSHkPMI", "title": "Kisah mualaf Inggris: 'Saya menemukan Al-Qur'an di stadion Manchester United'", "channel": "BBC News Indonesia", "lang": "id" },
-    { "id": "zQBiTnV8b8g", "title": "\"Aku Menangis Saat Azan Berkumandang.\" - Kisah Mualaf Mantan Pemimpin Gangster", "channel": "Towards Eternity - Indonesia", "lang": "id" },
-    { "id": "8JcKbq06HRM", "title": "Futur Prêtre se Convertit à L’islam ! « J’ai Défié le Coran »", "channel": "Towards Eternity - Français", "lang": "fr" },
-    { "id": "9l8PA-mULK4", "title": "Eski Ateist Doktora Sorduk! - Altay Cem Meriç'in Müslüman Olma Yolculuğu", "channel": "Sözler Köşkü", "lang": "tr" },
-    { "id": "sh4Y62nmBYA", "title": "\"Я Заключил Сделку С Богом!\" - Эмоциональная История Об Обращении В Ислам Рахима Джунга", "channel": "Towards Eternity - Русский", "lang": "ru" }
+    {
+      "id": "Ertxy9kMB7M",
+      "title": "“I Was Struggling to Stay Alive” - Ex-Sikh’s Brave Journey to Islam!",
+      "channel": "Towards Eternity",
+      "lang": "en"
+    },
+    {
+      "id": "vTtV9WP79-I",
+      "title": "Roman Catholic Convert to Islam",
+      "channel": "The Deen Show",
+      "lang": "en"
+    },
+    {
+      "id": "ThzNhjumH4o",
+      "title": "\"شريكي في الجريمة قادني إلى الإسلام!\" - قصة تحول لا تصدق لمسيحي سابق!",
+      "channel": "Towards Eternity - العربية",
+      "lang": "ar"
+    },
+    {
+      "id": "O12XRdaTlJc",
+      "title": "\"المسيح لم يبشر بالمسيحية بل بالإسلام!\" - مسيحي سابق يعتنق الإسلام",
+      "channel": "Towards Eternity - العربية",
+      "lang": "ar"
+    },
+    {
+      "id": "XfpUKBu9SKY",
+      "title": "شاب هولندي أسلم فتبعته أمه وشقيقتاه! قصة إسلام جوليان هويبل",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "B9s-rV6FDNk",
+      "title": "قصة الدخول في الإسلام مع دريد إبراهيم الموصلي",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "ygjKn7hu7y4",
+      "title": "قصة إسلام يوسف إستس",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "hk40dwiUtV8",
+      "title": "لماذا توقفتُ عن مصافحة النساء؟ قصة شاب اعتنق الإسلام ستفاجئك",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "zeg-fSHkPMI",
+      "title": "Kisah mualaf Inggris: 'Saya menemukan Al-Qur'an di stadion Manchester United'",
+      "channel": "BBC News Indonesia",
+      "lang": "id"
+    },
+    {
+      "id": "zQBiTnV8b8g",
+      "title": "\"Aku Menangis Saat Azan Berkumandang.\" - Kisah Mualaf Mantan Pemimpin Gangster",
+      "channel": "Towards Eternity - Indonesia",
+      "lang": "id"
+    },
+    {
+      "id": "8JcKbq06HRM",
+      "title": "Futur Prêtre se Convertit à L’islam ! « J’ai Défié le Coran »",
+      "channel": "Towards Eternity - Français",
+      "lang": "fr"
+    },
+    {
+      "id": "9l8PA-mULK4",
+      "title": "Eski Ateist Doktora Sorduk! - Altay Cem Meriç'in Müslüman Olma Yolculuğu",
+      "channel": "Sözler Köşkü",
+      "lang": "tr"
+    },
+    {
+      "id": "sh4Y62nmBYA",
+      "title": "\"Я Заключил Сделку С Богом!\" - Эмоциональная История Об Обращении В Ислам Рахима Джунга",
+      "channel": "Towards Eternity - Русский",
+      "lang": "ru"
+    }
   ]
 }

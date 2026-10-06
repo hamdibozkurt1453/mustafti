@@ -30,11 +30,12 @@ const ar: Record<Exclude<InfoPage, "privacy">, PageContent> = {
         paras: [
           "مُستفتي منصة تفهم سؤالك الديني وتستوضحه، ثم تجيبك عن الأسئلة العامة بعلم مسلم متزن، وتقوّي الجواب بالدليل من المصادر المعتمدة برقم [n] يفتح النص ورابطه الأصلي.",
           "مُستفتي لا يُفتي: لا يُصدر حكماً شرعياً في حالتك الشخصية. إن كان سؤالك واقعة تخصك يختلف حكمها بتفاصيلها، استوضح أركانها وأعدّ لك «ملف مسألة» بلا هوية، وأحاله إلى مختص.",
+          "الواجهة بالعربية والإنجليزية، وعشر لغات قيد الإكمال، والمحادثة تجيب بأي لغة تكتب بها.",
         ],
       },
       {
         title: "لمن؟",
-        paras: ["لكل سائل، بلا تسجيل: المسلم، ومن أسلم حديثاً، ومن يريد أن يتعرّف على الإسلام. وبإثنتي عشرة لغة."],
+        paras: ["لكل سائل، بلا تسجيل: المسلم، ومن أسلم حديثاً، ومن يريد أن يتعرّف على الإسلام. الواجهة بالعربية والإنجليزية، وعشر لغات قيد الإكمال، والمحادثة تجيب بأي لغة تكتب بها."],
       },
       {
         title: "ثلاثة مسارات",
@@ -76,6 +77,7 @@ const ar: Record<Exclude<InfoPage, "privacy">, PageContent> = {
           "المصادر: يُبحث عن النصوص ذات الصلة في المرجعية المعتمدة وحدها (خادم المحتوى الرسمي، والمواقع المعتمدة، والفتاوى المنشورة).",
           "الدليل [n]: المساعد يجيب بعلمه كاملاً، ويستشهد بالمصادر برقم [n] حيث تنطبق. كل رقم يفتح بطاقة النص بحروفه ورابطه الأصلي.",
           "الحارس: يفحص كل جملة قبل أن تصلك، ويتدخل في ثلاث حالات فقط: (1) نص منسوب (آية أو حديث أو قول عالم) لا يطابق مصدراً مسترجعاً: يُصحَّح إلى نص المصدر، أو يُذكر معناه بلا نسبة؛ (2) فتوى شخصية لحالة فردية: تُمنع ويُحال السائل؛ (3) ذكر اسم النموذج أو الشركة المزوّدة، أو محتوى مسيء: تُحذف جملته.",
+          "اللغات: الواجهة بالعربية والإنجليزية، وعشر لغات قيد الإكمال؛ والمحادثة تجيب بلغة السائل أياً كانت.",
           "الإحالة: الحالة الشخصية تُستوضح أركانها، ثم تُعرض الفتوى المنشورة القريبة للاطلاع فقط بمقتطفها ورابطها، ويُعدّ ملف مسألة بلا هوية يُحال إلى مختص. والحالة العاجلة توجَّه فوراً إلى جهة مختصة.",
         ],
       },
@@ -108,11 +110,12 @@ const en: Record<Exclude<InfoPage, "privacy">, PageContent> = {
         paras: [
           "Mustafti understands your religious question and clarifies it, then answers general questions with balanced Muslim knowledge, strengthened by evidence from approved sources: each [n] opens the quoted text and its original link.",
           "Mustafti does not issue fatwas: it never rules on your personal case. If your question is a personal matter whose ruling depends on its details, it clarifies the key facts, prepares an anonymous case file, and refers it to a qualified specialist.",
+          "The interface is in Arabic and English, with ten more languages in progress, and the chat answers in whatever language you write in.",
         ],
       },
       {
         title: "Who is it for?",
-        paras: ["Anyone, with no sign-up needed: Muslims, new Muslims, and anyone curious about Islam, in twelve languages."],
+        paras: ["Anyone, with no sign-up needed: Muslims, new Muslims, and anyone curious about Islam. The interface is in Arabic and English, with ten more languages in progress, and the chat answers in whatever language you write in."],
       },
       {
         title: "Three paths",
@@ -154,6 +157,7 @@ const en: Record<Exclude<InfoPage, "privacy">, PageContent> = {
           "Sources: relevant texts are retrieved from the approved references only (the official content server, approved sites and published fatwas).",
           "Evidence [n]: the assistant answers fully from its knowledge and cites sources with [n] where they apply. Each number opens a card with the exact text and its original link.",
           "The guard checks every sentence before it reaches you and acts in three cases only: (1) an attributed text (verse, hadith or scholar's words) that does not match a retrieved source is corrected to the source text, or given by meaning without attribution; (2) a personal fatwa on an individual case is blocked and the asker is referred; (3) a mention of the model's name or its provider, or offensive content, is removed.",
+          "Languages: the interface is in Arabic and English, with ten more languages in progress; the chat answers in the asker's language, whatever it is.",
           "Referral: for a personal case, the key facts are clarified, a closely related published fatwa may be shown for reference only (verbatim excerpt and link), and an anonymous case file is referred to a specialist. Urgent cases are directed to the right authority at once.",
         ],
       },
