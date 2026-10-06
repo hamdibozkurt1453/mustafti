@@ -5,6 +5,7 @@ import { createAdminClient, isAdminClientConfigured } from "@/lib/supabase/admin
 import { availableCasesCount, pendingApplicationsCount } from "./store";
 import { SUPABASE_URL } from "@/lib/supabase/env";
 import { avatarUrl, type ExpertRole } from "./types";
+import { CONVERSATIONS_ITEM, type AccountMenuItem } from "./menu-rules";
 
 /**
  * قائمة «حسابي» وإشعاراتها داخل الموقع (بلا بريد ولا خدمة جديدة).
@@ -13,11 +14,7 @@ import { avatarUrl, type ExpertRole } from "./types";
  */
 
 /** R2: القائمة «حسابي · لوحة المختص (للمختص) · لوحة المشرف (للمشرف) · خروج»؛ «حسابي» و«خروج» ثابتان في الزر. */
-export type AccountMenuItem = {
-  key: "expertDashboard" | "adminPanel";
-  href: string;
-  count?: number;
-};
+export type { AccountMenuItem } from "./menu-rules";
 
 /** F1: avatarUrl صورة الحساب (profiles، وإلا صورة المختص) لزر «حسابي»، وname لحرفه الأول إن لم تكن صورة. */
 export type AccountMenu = { signedIn: boolean; items: AccountMenuItem[]; total: number; avatarUrl?: string | null; name?: string };
@@ -40,9 +37,9 @@ async function accountAvatar(userId: string, expert: boolean): Promise<{ avatarU
 export async function getAccountMenu(): Promise<AccountMenu> {
   const ctx = await getAuthContext();
   if (!ctx.userId) return { signedIn: false, items: [], total: 0 };
-  if (!isAdminClientConfigured()) return { signedIn: true, items: [], total: 0 };
+  if (!isAdminClientConfigured()) return { signedIn: true, items: [CONVERSATIONS_ITEM], total: 0 };
 
-  const items: AccountMenuItem[] = [];
+  const items: AccountMenuItem[] = [CONVERSATIONS_ITEM];
   let avatar: { avatarUrl: string | null; name: string } = { avatarUrl: null, name: "" };
   try {
     avatar = await accountAvatar(ctx.userId, ctx.expertStatus === "approved");

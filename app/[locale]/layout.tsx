@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { ReactNode } from "react";
+import { DemoLogin } from "@/components/DemoLogin";
 import { DisclosureBar } from "@/components/DisclosureBar";
+import { demoLoginEnabled } from "@/lib/demo/rules";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getDirection } from "@/i18n/locales";
@@ -100,6 +102,8 @@ export default async function LocaleLayout({ children, params }: Props) {
           <DisclosureBar />
           <div className="flex flex-1 flex-col">{children}</div>
           <SiteFooter />
+          {/* F5: دخول تجريبي للتحكيم — للعرض فقط، ويُحذف بعد المسابقة. */}
+          {demoLoginEnabled() && <DemoLogin />}
         </NextIntlClientProvider>
       </body>
     </html>

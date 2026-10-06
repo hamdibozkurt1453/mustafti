@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AuthorLine } from "@/components/forum/ForumBits";
 import { Link } from "@/i18n/navigation";
+import { PAGE_WIDTH, PageHero } from "@/components/PageHero";
 import { localeNames, type Locale } from "@/i18n/locales";
 import { getAuthContext } from "@/lib/auth/roles";
 import { shortDateTime } from "@/lib/experts/format";
@@ -50,13 +51,9 @@ export default async function ForumPage({ params, searchParams }: Props) {
   const filterHref = (c: string | null) => ({ pathname: "/forum" as const, query: { ...(c ? { cat: c } : {}), ...(q ? { q } : {}) } });
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:py-14">
-      <section className="mf-stagger relative isolate overflow-hidden rounded-[32px] bg-green-900 p-6 text-ivory-50 sm:p-10">
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-10"
-          style={{ background: "radial-gradient(60% 80% at 85% 10%, rgb(255 184 0 / 0.14), transparent 70%), radial-gradient(80% 70% at 0% 100%, rgb(10 107 69 / 0.7), transparent 70%)" }}
-        />
+    <main className="flex-1">
+      {/* F5: هيرو بعرض الشاشة بنقش /about، والمحتوى تحته بعرض 1200px. */}
+      <PageHero>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">{t("kicker")}</p>
@@ -108,7 +105,9 @@ export default async function ForumPage({ params, searchParams }: Props) {
             ))}
           </ul>
         </nav>
-      </section>
+      </PageHero>
+
+      <div className={`${PAGE_WIDTH} pb-14 pt-2`}>
 
       <p className="mt-6 rounded-2xl border border-sand-200 bg-white px-5 py-3 text-sm text-ink-600">
         <strong className="text-green-900">{t("rulesTitle")}: </strong>
@@ -149,6 +148,7 @@ export default async function ForumPage({ params, searchParams }: Props) {
           ))}
         </ul>
       )}
+      </div>
     </main>
   );
 }

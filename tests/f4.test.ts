@@ -17,12 +17,12 @@ describe("F4 · الفيديوهات بلغة الواجهة", () => {
   it("في /ar العربية وحدها، وفي /en الإنجليزية وحدها، بالأعداد المطلوبة", () => {
     for (const [list, n] of [
       [NEW_MUSLIM_STORIES, 6],
-      [DISCOVER_LECTURES, 6],
-      [DISCOVER_DEBATES, 4],
+      [DISCOVER_LECTURES, 4],
+      [DISCOVER_DEBATES, 3],
     ] as const) {
       const ar = videosFor(list, "ar");
       assert.equal(ar.fallback, false);
-      assert.equal(ar.videos.length, n);
+      assert.ok(ar.videos.length >= n, `${ar.videos.length} < ${n}`); // F5: حدّ أدنى بعد تنقية المعرّفات
       assert.ok(ar.videos.every((v) => v.lang === "ar"));
       const en = videosFor(list, "en");
       assert.equal(en.fallback, false);

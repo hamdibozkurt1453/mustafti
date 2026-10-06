@@ -3,7 +3,6 @@
 import { AnimatePresence, LazyMotion, m, MotionConfig, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { consumeHomeRequest, setChatMode, useHomeRequests } from "@/lib/ui-store";
-import { ConversationSidebar } from "../chat/ConversationSidebar";
 import { useChat } from "../chat/useChat";
 import { useConversations } from "../chat/useConversations";
 import { ChatView } from "./ChatView";
@@ -97,8 +96,7 @@ export function HomeExperience({ adhkar }: { adhkar: Dhikr[] }) {
   return (
     <LazyMotion features={loadFeatures} strict>
       <MotionConfig reducedMotion="user">
-        {/* F2: زر «محادثاتي» قبل أول سؤال (خارج الحركة: العنصر الثابت لا يتبع عنصراً متحركاً). */}
-        {!chatting && <ConversationSidebar api={history} onNew={newChat} docked={false} />}
+        {/* F5: لا زر «محادثاتي» عائم قبل أول سؤال؛ السجل في قائمة «حسابي» وفي /me، والشريط الجانبي في المحادثة. */}
         <AnimatePresence mode="popLayout" initial={false}>
           {!chatting ? (
             <m.div

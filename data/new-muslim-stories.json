@@ -1,16 +1,10 @@
 {
-  "_note": "F3: قصص من أسلموا حديثاً. F4: الفيديوهات تُعرض بلغة الواجهة فقط (lang)، وإن لم يوجد لها شيء فالإنجليزية. يوتيوب محجوب من بيئة البناء، فالمعرّفات من نتائج البحث (روابط youtube.com/watch?v=) لا من oEmbed؛ تُفحص من متصفح قبل العرض. العنوان كما نُشر، واللغة رمز ISO.",
+  "_note": "F3: قصص من أسلموا حديثاً. F4: الفيديوهات تُعرض بلغة الواجهة فقط (lang)، وإن لم يوجد لها شيء فالإنجليزية. يوتيوب محجوب من بيئة البناء، فالمعرّفات من نتائج البحث (روابط youtube.com/watch?v=) لا من oEmbed؛ تُفحص من متصفح قبل العرض. العنوان كما نُشر، واللغة رمز ISO. F5: حُذفت المعرّفات التي لم تثبت، وأُضيفت قصص عربية بديلة؛ والبطاقة التي لا تُحمَّل صورتها تُخفى في الواجهة.",
   "videos": [
     {
       "id": "Ertxy9kMB7M",
       "title": "“I Was Struggling to Stay Alive” - Ex-Sikh’s Brave Journey to Islam!",
       "channel": "Towards Eternity",
-      "lang": "en"
-    },
-    {
-      "id": "vTtV9WP79-I",
-      "title": "Roman Catholic Convert to Islam",
-      "channel": "The Deen Show",
       "lang": "en"
     },
     {
@@ -38,28 +32,10 @@
       "lang": "ar"
     },
     {
-      "id": "ygjKn7hu7y4",
-      "title": "قصة إسلام يوسف إستس",
-      "channel": "",
-      "lang": "ar"
-    },
-    {
       "id": "hk40dwiUtV8",
       "title": "لماذا توقفتُ عن مصافحة النساء؟ قصة شاب اعتنق الإسلام ستفاجئك",
       "channel": "",
       "lang": "ar"
-    },
-    {
-      "id": "zeg-fSHkPMI",
-      "title": "Kisah mualaf Inggris: 'Saya menemukan Al-Qur'an di stadion Manchester United'",
-      "channel": "BBC News Indonesia",
-      "lang": "id"
-    },
-    {
-      "id": "zQBiTnV8b8g",
-      "title": "\"Aku Menangis Saat Azan Berkumandang.\" - Kisah Mualaf Mantan Pemimpin Gangster",
-      "channel": "Towards Eternity - Indonesia",
-      "lang": "id"
     },
     {
       "id": "8JcKbq06HRM",
@@ -68,16 +44,28 @@
       "lang": "fr"
     },
     {
-      "id": "9l8PA-mULK4",
-      "title": "Eski Ateist Doktora Sorduk! - Altay Cem Meriç'in Müslüman Olma Yolculuğu",
-      "channel": "Sözler Köşkü",
-      "lang": "tr"
+      "id": "U-yiyR3EwHI",
+      "title": "غنيتُ في الكنائس... حتى اكتشفتُ الإسلام - قصة اعتناق مغنية مسيحية من نيويورك الإسلام",
+      "channel": "",
+      "lang": "ar"
     },
     {
-      "id": "sh4Y62nmBYA",
-      "title": "\"Я Заключил Сделку С Богом!\" - Эмоциональная История Об Обращении В Ислам Рахима Джунга",
-      "channel": "Towards Eternity - Русский",
-      "lang": "ru"
+      "id": "ZDeWmqzOxKo",
+      "title": "أمريكي يعتنق الإسلام بعد كلمتين من رجل مُسلم",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "oY3Dul609z0",
+      "title": "قصة إسلام كاميروني مسيحي في السعودية وأسلم على يده ١٢٠٠ شخص",
+      "channel": "",
+      "lang": "ar"
+    },
+    {
+      "id": "YaHp39Lis6g",
+      "title": "قصة أمريكي قدم إلى السعودية ثم اعتنق الإسلام وصار داعية (مترجم)",
+      "channel": "",
+      "lang": "ar"
     }
   ]
 }

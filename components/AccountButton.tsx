@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { signOut } from "@/lib/auth/actions";
 import { getAccountMenu, type AccountMenu } from "@/lib/experts/menu";
+import { CONVERSATIONS_ITEM } from "@/lib/experts/menu-rules";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -85,7 +86,8 @@ export function AccountButton() {
     );
   }
 
-  const items = menu?.items ?? [];
+  // F5: «محادثاتي» ظاهرة لكل مسجّل حتى قبل وصول القائمة من الخادم.
+  const items = menu?.items ?? [CONVERSATIONS_ITEM];
   const total = menu?.total ?? 0;
 
   return (

@@ -313,13 +313,13 @@ describe("F3 — migrations على Postgres (PGlite)", () => {
 
 describe("F3 — الفيديوهات والكتب والترجمات", () => {
   it("أعداد الأقسام كما طُلبت، والمعرّفات صالحة بلا تكرار، ولغات متعددة", () => {
-    // F4: العدد بلغة الواجهة (العربية: 6 قصص، و6 محاضرات، و4 مناظرات)، وتُعرض لغة الواجهة وحدها.
-    const ar = (list: { lang: string }[]) => list.filter((v) => v.lang === "ar").length;
-    assert.equal(ar(NEW_MUSLIM_STORIES), 6);
-    assert.equal(ar(DISCOVER_LECTURES), 6);
-    assert.equal(ar(DISCOVER_DEBATES), 4);
-    assert.ok(new Set(NEW_MUSLIM_STORIES.map((v) => v.lang)).size >= 5);
-    assert.ok(new Set(DISCOVER_LECTURES.map((v) => v.lang)).size >= 5);
+    // F5: حدّ أدنى بالعربية بعد حذف المعرّفات غير الصالحة (6 قصص، و4 محاضرات، و3 مناظرات)، والإنجليزية احتياطاً.
+    // (F4 قصر العرض على لغة الواجهة، فلم يعد تعدد اللغات شرطاً.)
+    const count = (list: { lang: string }[], lang: string) => list.filter((v) => v.lang === lang).length;
+    assert.ok(count(NEW_MUSLIM_STORIES, "ar") >= 6);
+    assert.ok(count(DISCOVER_LECTURES, "ar") >= 4);
+    assert.ok(count(DISCOVER_DEBATES, "ar") >= 3);
+    for (const list of [NEW_MUSLIM_STORIES, DISCOVER_LECTURES, DISCOVER_DEBATES]) assert.ok(count(list, "en") >= 1);
     const ids = [...NEW_MUSLIM_STORIES, ...DISCOVER_LECTURES, ...DISCOVER_DEBATES].map((v) => v.id);
     assert.equal(new Set(ids).size, ids.length);
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { CloseIcon } from "@/components/icons";
 import { embedUrl, getActiveVideo, openVideo, subscribeVideo, thumbUrl, watchUrl, type Video } from "@/lib/explore/videos";
@@ -39,6 +39,9 @@ export function VideoGrid({ videos, labels, langNames }: { videos: Video[]; labe
 }
 
 function VideoCard({ video, labels, langName, index }: { video: Video; labels: Labels; langName: string; index: number }) {
+  // F5: معرّف لا فيديو له يرجع صورة يوتيوب البديلة (120×90) أو خطأ، فتُخفى البطاقة بدل مربع فارغ.
+  const [missing, setMissing] = useState(false);
+  if (missing) return null;
   return (
     <li
       className="mf-lift group flex flex-col overflow-hidden rounded-[24px] border border-sand-200 bg-white hover:border-green-600/40"
@@ -55,7 +58,13 @@ function VideoCard({ video, labels, langName, index }: { video: Video; labels: L
         >
           {/* الصورة المصغرة من خادم صور يوتيوب (نطاق خارجي)، فلا next/image. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={thumbUrl(video.id)} alt="" loading="lazy" className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-[1.03] group-hover:opacity-100" />
+          <img
+            src={thumbUrl(video.id)}
+            alt=""
+            loading="lazy"
+            onError={() => setMissing(true)}
+            onLoad={(e) => e.currentTarget.naturalWidth <= 120 && setMissing(true)}
+            className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-[1.03] group-hover:opacity-100" />
           <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-green-900/70 via-green-900/10 to-transparent" />
           <span
             aria-hidden

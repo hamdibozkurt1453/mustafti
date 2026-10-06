@@ -4,7 +4,7 @@ import { locales } from "@/i18n/locales";
  * قواعد صفحة «حسابي» (R2) الصرفة، للاختبار: تبويبات /me، والتحقق من الملف، وعبارة تأكيد الحذف.
  */
 
-export const ME_TABS = ["profile", "cases", "forum", "public", "settings"] as const;
+export const ME_TABS = ["profile", "conversations", "cases", "forum", "public", "settings"] as const;
 export type MeTab = (typeof ME_TABS)[number];
 
 /** التبويب المطلوب (?tab=)، و«ملفي العام» للمختص المقبول فقط؛ وإلا «الملف». */
