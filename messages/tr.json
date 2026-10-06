@@ -251,6 +251,7 @@
     "fatwaBy": "Müftü veya kurum",
     "viewFatwa": "Fetvayı görüntüle",
     "sendCase": "Meselemi bir uzmana gönder",
+    "sendCaseAnon": "Dosyan kimliğin olmadan onaylı bir uzmana ulaşır",
     "relatedTitle": "İlgili metinler",
     "suggestTitle": "Cevaplayabileceğim yakın sorular",
     "linksTitle": "Onaylı kaynaklardan bağlantılar",
