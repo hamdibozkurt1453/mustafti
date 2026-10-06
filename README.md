@@ -41,7 +41,7 @@
 | الاستضافة | Vercel (HTTPS) |
 | النصوص الشرعية | خادم MCP الرسمي للجمعية `https://mcp.islamiccontent.org/mcp` (بلا مفتاح) |
 | المكتبة | IslamHouse API الرسمية |
-| النموذج اللغوي | عبر `lib/llm.ts`، والنموذج من متغير البيئة `LLM_MODEL` (قابل للتبديل) |
+| النموذج اللغوي | المزوّد **OpenRouter** عبر `lib/llm.ts`. النموذج الأساسي `openai/gpt-6-luna`، والاحتياطي `google/gemma-4-31b-it`، وأي نموذج على OpenRouter يعمل بتغيير `LLM_MODEL`. التفاصيل الكاملة ومصادر كل مفتاح في [docs/SETUP.md](docs/SETUP.md) |
 
 ## المصادر
 
@@ -180,7 +180,9 @@ admin dashboard on a secret path with MFA and server-side role checks.
 
 ### Architecture
 Next.js (App Router) + TypeScript + Tailwind · Supabase (Auth, Postgres, RLS) · Vercel (HTTPS) · official MCP
-server `mcp.islamiccontent.org/mcp` · IslamHouse API · a swappable language model behind `lib/llm.ts` (`LLM_MODEL`).
+server `mcp.islamiccontent.org/mcp` · IslamHouse API · language model via the **OpenRouter** provider behind `lib/llm.ts`: primary `openai/gpt-6-luna`,
+fallback `google/gemma-4-31b-it`; any OpenRouter model works by changing `LLM_MODEL`. Full details and the source of
+every key in [docs/SETUP.md](docs/SETUP.md#english).
 
 ### Sources
 MCP first, then public APIs, then polite on-site search respecting robots.txt — no general web search. Full
