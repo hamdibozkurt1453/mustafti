@@ -122,7 +122,7 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
   const flow = caseApi.flow;
   const started = flow && flow.sourceId === msg.id && flow.step !== "cancelled";
   const withExpert = (msg.kind === "abstain" || msg.kind === "referral" || msg.kind === "refused") && !started;
-  // الحالة الشخصية مع فتاوى منشورة: البطاقات أولاً، ثم «الأفضل لحالتك أن يراها مختص» والزر.
+  // الحالة الشخصية مع فتاوى منشورة: التمهيد، ثم «الأفضل لحالتك أن يراها مختص» والزر، ثم البطاقات.
   const caseFatwas = msg.kind === "referral" && Boolean(msg.fatwas?.length);
   const hadithFallback = Boolean(msg.hadithCheck?.fallback);
   const hadithNone = hadithFallback && dorarCount === 0;
@@ -152,6 +152,31 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
           <StartCaseButton label={msg.kind === "referral" ? tc("start") : t(askKey)} onStart={() => caseApi.start(msg.id)} />
         )}
       </div>
+
+      {/* الحالة D: بطاقة الإحالة مباشرة تحت التمهيد، قبل الفتاوى المنشورة، كي لا تضيع إن كثرت المصادر. */}
+      {caseFatwas && done && (
+        <div
+          dir={msg.dir}
+          className="mf-rise rounded-[22px] border border-gold-500/60 bg-gold-50 px-4 py-4 text-[15px] leading-relaxed text-green-900"
+        >
+          {msg.note && <p className="font-semibold">{msg.note}</p>}
+          {!started && (
+            <>
+              <button
+                type="button"
+                onClick={() => caseApi.start(msg.id)}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gold-500 px-6 py-3 text-base font-bold text-green-900 shadow-sm transition hover:brightness-105 active:scale-95 sm:w-auto sm:min-w-[18rem]"
+              >
+                {t("sendCase")}
+                <span aria-hidden className="rtl:-scale-x-100">
+                  →
+                </span>
+              </button>
+              <p className="mt-2 text-xs text-ink-600">{t("sendCaseAnon")}</p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* R5: المصادر تظهر حين تجهز، قبل اكتمال الجواب. */}
       {(answer || abstained) && (done || live) && msg.sources.length > 0 && (
@@ -200,13 +225,6 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
             ))}
           </ul>
         </section>
-      )}
-
-      {caseFatwas && done && (
-        <div dir={msg.dir} className="rounded-[22px] border border-sand-200 bg-white px-4 py-3 text-[15px] leading-relaxed text-green-900">
-          {msg.note && <p>{msg.note}</p>}
-          {!started && <StartCaseButton label={t("sendCase")} onStart={() => caseApi.start(msg.id)} />}
-        </div>
       )}
 
       {(abstained || msg.kind === "chitchat") && done && msg.suggestions && msg.suggestions.length > 0 && (
