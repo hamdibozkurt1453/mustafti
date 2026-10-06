@@ -1,0 +1,21 @@
+Copyright (c) 2026 Hamdi Bozkurt. All rights reserved.
+
+This repository is public for evaluation only. It is NOT open source and no
+open-source license is granted.
+
+The judging committee of the "AI in the Service of Islamic Content" challenge
+(تحدي الذكاء الاصطناعي في خدمة المحتوى الإسلامي) may clone, install, run and
+evaluate this code for the purpose of judging the challenge.
+
+Any other copying, modification, distribution, hosting or use, in whole or in
+part, requires prior written permission from the copyright holder.
+
+Third-party libraries, fonts and datasets used by this project remain under
+their own licenses; see THIRD_PARTY_LICENSES.md, THIRD_PARTY_NOTICES.md and
+SOURCES.md.
+
+---
+
+جميع الحقوق محفوظة © حمدي بوزكورت 2026. يُسمح للجنة تحكيم تحدي الذكاء الاصطناعي
+في خدمة المحتوى الإسلامي بتشغيل الكود وتقييمه، ولا يُسمح بنسخه أو استعماله لغير
+ذلك دون إذن كتابي.

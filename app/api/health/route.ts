@@ -39,7 +39,9 @@ export async function GET(request: Request) {
   // اسم النموذج لا يظهر إلا للمشرف الأعلى (الخطة 0.5: لا يُذكر للمستخدم).
   const ctx = await getAuthContext();
   const viewerIsAdmin = ctx.role === "super_admin";
-  const full: HealthReport = { ...report, viewerIsAdmin, model: viewerIsAdmin ? llmModel() || null : null };
+  // S13: نص خطأ النموذج الداخلي (قد يذكر اسم المتغير أو المزوّد) للمشرف الأعلى وحده.
+  const llm = viewerIsAdmin ? report.llm : { ...report.llm, error: undefined };
+  const full: HealthReport = { ...report, llm, viewerIsAdmin, model: viewerIsAdmin ? llmModel() || null : null };
 
   let debug: HealthReport["debug"];
   let quranSamples: HealthReport["quranSamples"];
