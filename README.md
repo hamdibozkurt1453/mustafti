@@ -1,6 +1,6 @@
-<p align="center">
-  <img src="brand/logo-stacked-on-light.svg" alt="مُستفتي · Mustafti" width="320">
-</p>
+![مُستفتي — Mustafti](brand/social/x-header-3000x1000.png)
+
+[![www.mustafti.com](https://img.shields.io/badge/www.mustafti.com-04301F?style=flat)](https://www.mustafti.com)
 
 # مُستفتي · Mustafti
 
@@ -8,7 +8,7 @@
 خادم MCP الرسمي للجمعية والمصادر المعتمدة في المرجعية مع روابطها. وإن كان السؤال عن حالة شخصية، يستوضحه ثم
 يحيله ملفاً بلا هوية إلى مختص موثَّق.
 
-🔗 **https://mustafti.com** · مشاركة في **تحدي الذكاء الاصطناعي في خدمة المحتوى الإسلامي 2026** —
+🔗 **[www.mustafti.com](https://www.mustafti.com)** · مشاركة في **تحدي الذكاء الاصطناعي في خدمة المحتوى الإسلامي 2026** —
 **المسار 01: الحوار المعرفي والإجابات الموثوقة**.
 
 > [English version below](#english)
@@ -124,7 +124,7 @@ npm run build                # بناء الإنتاج
 | مختص | `specialized@mustafti.com` |
 | مشرف | `admin@mustafti.com` |
 
-الحالة الحية للمنصة والمصادر: [mustafti.com/api/health](https://mustafti.com/api/health). الأمن: [docs/security.md](docs/security.md).
+الحالة الحية للمنصة والمصادر: [www.mustafti.com/api/health](https://www.mustafti.com/api/health). الأمن: [docs/security.md](docs/security.md).
 
 ## بنية المستودع
 
@@ -163,7 +163,7 @@ npm run build                # بناء الإنتاج
 in any language, backed by the official association MCP server and the approved reference sources, with links.
 Personal cases are clarified, then referred as an anonymous, structured file to a verified specialist.
 
-🔗 **https://mustafti.com** · Entry to the **AI in the Service of Islamic Content Challenge 2026** — **Track 01:
+🔗 **[www.mustafti.com](https://www.mustafti.com)** · Entry to the **AI in the Service of Islamic Content Challenge 2026** — **Track 01:
 Knowledge Dialogue & Trustworthy Answers**.
 
 ### Three paths
