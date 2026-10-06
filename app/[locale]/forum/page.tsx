@@ -5,7 +5,9 @@ import { Link } from "@/i18n/navigation";
 import { localeNames, type Locale } from "@/i18n/locales";
 import { getAuthContext } from "@/lib/auth/roles";
 import { shortDateTime } from "@/lib/experts/format";
-import { FORUM_CATEGORIES, isForumCategory } from "@/lib/forum/rules";
+import { activeCategories, categoryName } from "@/lib/forum/category-rules";
+import { listCategories } from "@/lib/forum/categories";
+import { isForumCategory } from "@/lib/forum/rules";
 import { listThreads } from "@/lib/forum/store";
 
 type Props = {
@@ -31,10 +33,13 @@ export default async function ForumPage({ params, searchParams }: Props) {
   setRequestLocale(locale as Locale); // اللغة متحقق منها في layout
   const t = await getTranslations("forum");
   const sp = await searchParams;
-  const cat = isForumCategory(one(sp.cat)) ? (one(sp.cat) as (typeof FORUM_CATEGORIES)[number]) : null;
+  const cat = isForumCategory(one(sp.cat)) ? one(sp.cat) : null;
   const q = one(sp.q).trim().slice(0, 100);
 
-  const [ctx, threads] = await Promise.all([getAuthContext(), listThreads({ category: cat, q })]);
+  const [ctx, threads, categories] = await Promise.all([getAuthContext(), listThreads({ category: cat, q }), listCategories()]);
+  // F3: الأبواب من جدول forum_categories (المفعّلة في الفلتر، وأسماء كل الأبواب لشارات المواضيع القديمة).
+  const bySlug = new Map(categories.map((c) => [c.slug, c]));
+  const catName = (slug: string) => categoryName(bySlug.get(slug), locale, slug);
   const signedIn = Boolean(ctx.userId);
   const newHref = signedIn ? `/${locale}/forum/new` : `/${locale}/login?next=${encodeURIComponent(`/${locale}/forum/new`)}`;
 
@@ -94,10 +99,10 @@ export default async function ForumPage({ params, searchParams }: Props) {
                 {t("allCategories")}
               </Link>
             </li>
-            {FORUM_CATEGORIES.map((c) => (
+            {activeCategories(categories).map(({ slug: c }) => (
               <li key={c}>
                 <Link href={filterHref(c)} aria-current={cat === c ? "true" : undefined} className={chip(cat === c)}>
-                  {t(`categories.${c}`)}
+                  {catName(c)}
                 </Link>
               </li>
             ))}
@@ -120,7 +125,7 @@ export default async function ForumPage({ params, searchParams }: Props) {
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
                   {th.pinned && <span className="rounded-full bg-gold-500 px-2.5 py-1 text-green-900">📌 {t("pinned")}</span>}
                   {th.status === "locked" && <span className="rounded-full bg-green-900 px-2.5 py-1 text-ivory-50">🔒 {t("locked")}</span>}
-                  <span className="rounded-full bg-green-900/[0.06] px-2.5 py-1 text-green-600">{t(`categories.${th.category}`)}</span>
+                  <span className="rounded-full bg-green-900/[0.06] px-2.5 py-1 text-green-600">{catName(th.category)}</span>
                   {th.lang !== locale && localeNames[th.lang as Locale] && (
                     <span className="rounded-full bg-gold-50 px-2.5 py-1 text-green-900">{localeNames[th.lang as Locale]}</span>
                   )}

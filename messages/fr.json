@@ -655,5 +655,84 @@
     "errors": {
       "mismatch": "Les mots de passe ne correspondent pas."
     }
+  },
+  "explore": {
+    "play": "Lire la vidéo",
+    "watchOn": "Sur YouTube",
+    "langLabel": "Langue",
+    "storiesKicker": "Parcours réels",
+    "storiesTitle": "Récits de nouveaux musulmans",
+    "storiesLead": "Des nouveaux musulmans de pays et de langues différents racontent leur chemin vers l'islam. La vidéo ne se charge qu'au clic.",
+    "stepsKicker": "Commencez ici",
+    "stepsTitle": "Vos premiers pas",
+    "stepsLead": "Six cartes pour vos premiers jours. Touchez une carte pour interroger le guide.",
+    "askCta": "Demander au guide",
+    "steps": {
+      "shahada": {
+        "title": "La Chahada",
+        "body": "Le sens de « Il n'y a de dieu qu'Allah, Muhammad est Son messager » et comment la prononcer.",
+        "q": "Que signifie la Chahada et comment la prononcer ?"
+      },
+      "purity": {
+        "title": "La purification",
+        "body": "Le ghusl et les ablutions, étape par étape, avant votre première prière.",
+        "q": "Comment faire le ghusl et les ablutions pour la première fois ?"
+      },
+      "prayer": {
+        "title": "La prière",
+        "body": "Les cinq prières, et comment prier pendant que vous apprenez.",
+        "q": "Comment accomplir les cinq prières quand on est nouveau musulman ?"
+      },
+      "fasting": {
+        "title": "Le jeûne",
+        "body": "Le jeûne du Ramadan, qui en est dispensé, et comment commencer doucement.",
+        "q": "Comment jeûner le Ramadan pour la première fois ?"
+      },
+      "quran": {
+        "title": "Le Coran",
+        "body": "Par où commencer la lecture, et des sourates courtes pour la prière.",
+        "q": "Par où commencer la lecture du Coran, et quelles sourates apprendre d'abord ?"
+      },
+      "character": {
+        "title": "Le comportement",
+        "body": "Sincérité, miséricorde et bienveillance envers votre famille et votre entourage.",
+        "q": "Comment me comporter selon l'éthique de l'islam avec ma famille non musulmane ?"
+      }
+    },
+    "lecturesKicker": "Découvrir sereinement",
+    "lecturesTitle": "Conférences d'introduction à l'islam",
+    "lecturesLead": "De courtes conférences en plusieurs langues sur ce qu'est l'islam et ce que croient les musulmans.",
+    "debatesKicker": "Grandes questions",
+    "debatesTitle": "Débats et dialogues",
+    "debatesLead": "Des dialogues connus entre musulmans et athées ou agnostiques sur l'existence de Dieu et le sens de la vie.",
+    "externalNote": "Contenu externe YouTube, présenté à titre informatif. Les avis des intervenants n'engagent qu'eux.",
+    "booksKicker": "D'IslamHouse",
+    "booksTitle": "Livres sur les grandes questions",
+    "booksLead": "Des livres gratuits dans votre langue : pourquoi l'islam ? Qui est le Créateur ? Quel est le but de la vie ?",
+    "booksEmpty": "Les livres sont inaccessibles pour le moment. Parcourez-les dans la bibliothèque.",
+    "booksMore": "Plus dans la bibliothèque"
+  },
+  "newsletter": {
+    "title": "Lettre d'information",
+    "hint": "Les nouveautés de Mustafti une fois par mois. Sans spam.",
+    "label": "Votre e-mail",
+    "placeholder": "vous@exemple.com",
+    "submit": "S'abonner",
+    "sending": "…",
+    "success": "Abonnement confirmé. Merci !",
+    "already": "Cet e-mail est déjà abonné.",
+    "invalid": "Saisissez une adresse e-mail valide.",
+    "limited": "Trop de tentatives. Réessayez dans un instant.",
+    "error": "Abonnement impossible pour le moment. Réessayez plus tard."
+  },
+  "aboutPage": {
+    "kicker": "À propos",
+    "pathsKicker": "Pour qui est Mustafti ?",
+    "sourcesTitle": "Sources agréées",
+    "sourcesLead": "Tout texte cité et attribué (verset, hadith, parole de savant, fatwa publiée) vient uniquement de ces sources, avec son lien d'origine.",
+    "teamTitle": "Équipe et concours",
+    "teamBody": "Mustafti est un projet individuel conçu par Hamdi Bozkurt pour le Défi de l'IA au service du contenu islamique 2026, sur les références et le corpus scientifique du défi, avec la relecture des règles de fatwa par la mentore du concours.",
+    "teamChallenge": "Défi de l'IA au service du contenu islamique 2026",
+    "start": "Posez votre question"
   }
 }

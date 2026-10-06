@@ -655,5 +655,84 @@
     "errors": {
       "mismatch": "Kata sandi tidak cocok."
     }
+  },
+  "explore": {
+    "play": "Putar video",
+    "watchOn": "Di YouTube",
+    "langLabel": "Bahasa",
+    "storiesKicker": "Kisah nyata",
+    "storiesTitle": "Kisah para mualaf",
+    "storiesLead": "Mualaf dari berbagai negara dan bahasa bercerita bagaimana mereka menemukan Islam. Video dimuat hanya saat Anda menekannya.",
+    "stepsKicker": "Mulai di sini",
+    "stepsTitle": "Langkah pertama Anda",
+    "stepsLead": "Enam kartu untuk hari-hari pertama Anda. Ketuk kartu untuk bertanya kepada pembimbing.",
+    "askCta": "Tanya pembimbing",
+    "steps": {
+      "shahada": {
+        "title": "Dua kalimat syahadat",
+        "body": "Makna “Tiada tuhan selain Allah, Muhammad utusan Allah” dan cara mengucapkannya.",
+        "q": "Apa makna dua kalimat syahadat dan bagaimana mengucapkannya?"
+      },
+      "purity": {
+        "title": "Bersuci",
+        "body": "Mandi wajib dan wudu, langkah demi langkah, sebelum salat pertama.",
+        "q": "Bagaimana cara mandi wajib dan berwudu untuk pertama kali?"
+      },
+      "prayer": {
+        "title": "Salat",
+        "body": "Salat lima waktu, dan cara salat selagi masih belajar.",
+        "q": "Bagaimana mualaf melaksanakan salat lima waktu?"
+      },
+      "fasting": {
+        "title": "Puasa",
+        "body": "Puasa Ramadan, siapa yang mendapat keringanan, dan cara memulai dengan tenang.",
+        "q": "Bagaimana berpuasa Ramadan untuk pertama kali?"
+      },
+      "quran": {
+        "title": "Al-Qur'an",
+        "body": "Dari mana mulai membaca, dan surah pendek untuk salat.",
+        "q": "Dari mana saya mulai membaca Al-Qur'an, dan surah apa yang dihafal lebih dulu?"
+      },
+      "character": {
+        "title": "Akhlak",
+        "body": "Jujur, kasih sayang, dan berbuat baik kepada keluarga dan sekitar.",
+        "q": "Bagaimana berakhlak Islami kepada keluarga saya yang bukan Muslim?"
+      }
+    },
+    "lecturesKicker": "Kenali dengan tenang",
+    "lecturesTitle": "Ceramah pengenalan Islam",
+    "lecturesLead": "Ceramah singkat dalam berbagai bahasa tentang apa itu Islam dan apa yang diyakini umat Islam.",
+    "debatesKicker": "Pertanyaan besar",
+    "debatesTitle": "Debat dan dialog",
+    "debatesLead": "Dialog terkenal antara Muslim dan ateis atau agnostik tentang keberadaan Tuhan dan makna hidup.",
+    "externalNote": "Konten eksternal dari YouTube, ditampilkan sebagai referensi. Pendapat pembicara adalah milik mereka.",
+    "booksKicker": "Dari IslamHouse",
+    "booksTitle": "Buku tentang pertanyaan besar",
+    "booksLead": "Buku gratis dalam bahasa Anda: Mengapa Islam? Siapa Sang Pencipta? Apa tujuan hidup?",
+    "booksEmpty": "Buku tidak dapat diakses saat ini. Jelajahi di perpustakaan.",
+    "booksMore": "Lainnya di perpustakaan"
+  },
+  "newsletter": {
+    "title": "Buletin",
+    "hint": "Kabar Mustafti sebulan sekali. Tanpa spam.",
+    "label": "Email Anda",
+    "placeholder": "anda@contoh.com",
+    "submit": "Berlangganan",
+    "sending": "…",
+    "success": "Berhasil berlangganan. Terima kasih!",
+    "already": "Email ini sudah berlangganan.",
+    "invalid": "Masukkan alamat email yang valid.",
+    "limited": "Terlalu banyak percobaan. Coba lagi sebentar.",
+    "error": "Gagal berlangganan saat ini. Coba lagi nanti."
+  },
+  "aboutPage": {
+    "kicker": "Tentang platform",
+    "pathsKicker": "Untuk siapa Mustafti?",
+    "sourcesTitle": "Sumber yang diakui",
+    "sourcesLead": "Teks yang dikutip dan dinisbatkan (ayat, hadis, perkataan ulama, fatwa yang diterbitkan) hanya berasal dari sumber-sumber ini, dengan tautan aslinya.",
+    "teamTitle": "Tim dan kompetisi",
+    "teamBody": "Mustafti adalah proyek perorangan yang dibangun oleh Hamdi Bozkurt untuk Tantangan AI dalam Melayani Konten Islam 2026, berdasarkan rujukan dan paket ilmiah tantangan, dengan peninjauan aturan fatwa oleh mentor kompetisi.",
+    "teamChallenge": "Tantangan AI dalam Melayani Konten Islam 2026",
+    "start": "Ajukan pertanyaan"
   }
 }

@@ -186,7 +186,9 @@ describe("6) صفحات المعلومات بمحتوى حقيقي", () => {
   it("الصفحات الثلاث تعرض المحتوى لا هيكل «قيد البناء»", () => {
     for (const page of pages) {
       const file = src(`app/[locale]/${page}/page.tsx`);
-      assert.match(file, new RegExp(`<InfoPage page="${page}"`));
+      // F3: /about بتصميمها الخاص، ومحتواها من pageContent نفسه.
+      if (page === "about") assert.match(file, /pageContent\(locale, "about"\)/);
+      else assert.match(file, new RegExp(`<InfoPage page="${page}"`));
       assert.doesNotMatch(file, /<PagePlaceholder/);
     }
   });

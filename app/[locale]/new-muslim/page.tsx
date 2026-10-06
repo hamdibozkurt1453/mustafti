@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { GuidedChat } from "@/components/chat/GuidedChat";
+import { StepCards } from "@/components/explore/StepCards";
+import { VideoSection } from "@/components/explore/VideoSection";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { FEATURE_EXTRAS } from "@/lib/config";
+import { NEW_MUSLIM_STORIES } from "@/lib/explore/videos";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -18,6 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * `/new-muslim` — محادثة «المرشد» (R3): واجهة المحادثة نفسها بوضع new_muslim (نبرة ترحيبية بسيطة،
  * ومصادر المبتدئين أولاً، والإحالة إلى مرشد بدور mentor). تحتها ثلاث نقاط عن الخصوصية والمصادر
  * والمختص، وروابط المواقيت والأذكار. لا نص ديني هنا: الأجوبة من المحادثة ومصادرها.
+ * F3: ثم «خطواتك الأولى» (ست بطاقات تفتح المحادثة بسؤالها) و«قصص من أسلموا حديثاً» (يوتيوب عند الضغط).
  */
 export default async function Page({ params }: Props) {
   const { locale } = await params;
@@ -42,6 +46,9 @@ export default async function Page({ params }: Props) {
         {" · "}
         <Link href={{ pathname: "/", hash: "adhkar" }} className="font-semibold text-green-600 underline underline-offset-4">{t("adhkarLink")}</Link>
       </p>
+
+      <StepCards />
+      <VideoSection id="stories" ns="stories" videos={NEW_MUSLIM_STORIES} />
     </GuidedChat>
   );
 }

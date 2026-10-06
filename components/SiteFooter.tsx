@@ -4,9 +4,10 @@ import { Link } from "@/i18n/navigation";
 import { getDirection } from "@/i18n/locales";
 import { isEnabledHref } from "@/lib/config";
 import { FooterShell } from "./FooterShell";
+import { NewsletterForm } from "./NewsletterForm";
 import { footerProjectLinks } from "./nav-items";
 
-/** التذييل: عبارة الهوية، والروابط، و«انضم كمختص»، وسطر المشاركة في التحدي. */
+/** التذييل: عبارة الهوية، والروابط، و«انضم كمختص»، والنشرة البريدية (F3)، وسطر المشاركة في التحدي. */
 export function SiteFooter() {
   const t = useTranslations();
   const arabicLogo = getDirection(useLocale()) === "rtl";
@@ -96,7 +97,12 @@ export function SiteFooter() {
             </Link>
           </div>
 
-          <div className="mt-12 flex flex-col gap-2 border-t border-ivory-50/10 pt-6 text-xs text-ivory-50/60 sm:flex-row sm:items-center sm:justify-between">
+          {/* F3: النشرة البريدية في صف واحد فوق سطر الحقوق */}
+          <div className="mt-12 border-t border-ivory-50/10 pt-8">
+            <NewsletterForm />
+          </div>
+
+          <div className="mt-6 flex flex-col gap-2 border-t border-ivory-50/10 pt-6 text-xs text-ivory-50/60 sm:flex-row sm:items-center sm:justify-between">
             <p>{t("footer.challenge")}</p>
             <p>
               {t("footer.rights")} ·{" "}

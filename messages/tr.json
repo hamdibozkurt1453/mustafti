@@ -655,5 +655,84 @@
     "errors": {
       "mismatch": "Şifreler eşleşmiyor."
     }
+  },
+  "explore": {
+    "play": "Videoyu oynat",
+    "watchOn": "YouTube'da",
+    "langLabel": "Dil",
+    "storiesKicker": "Gerçek hikâyeler",
+    "storiesTitle": "Yeni Müslümanların hikâyeleri",
+    "storiesLead": "Farklı ülke ve dillerden yeni Müslümanlar İslam'a nasıl ulaştıklarını anlatıyor. Video yalnızca tıkladığınızda yüklenir.",
+    "stepsKicker": "Buradan başlayın",
+    "stepsTitle": "İlk adımlarınız",
+    "stepsLead": "İlk günleriniz için altı kart. Rehbere sormak için bir karta dokunun.",
+    "askCta": "Rehbere sor",
+    "steps": {
+      "shahada": {
+        "title": "Kelime-i şehadet",
+        "body": "“Allah'tan başka ilah yoktur, Muhammed O'nun elçisidir” sözünün anlamı ve nasıl söyleneceği.",
+        "q": "Kelime-i şehadetin anlamı nedir ve nasıl söylenir?"
+      },
+      "purity": {
+        "title": "Temizlik",
+        "body": "İlk namazınızdan önce adım adım gusül ve abdest.",
+        "q": "İlk kez nasıl gusül ve abdest alırım?"
+      },
+      "prayer": {
+        "title": "Namaz",
+        "body": "Beş vakit namaz ve öğrenirken nasıl kılınacağı.",
+        "q": "Yeni Müslüman olarak beş vakit namazı nasıl kılarım?"
+      },
+      "fasting": {
+        "title": "Oruç",
+        "body": "Ramazan orucu, kimlerin muaf olduğu ve sakin bir başlangıç.",
+        "q": "İlk kez Ramazan orucunu nasıl tutarım?"
+      },
+      "quran": {
+        "title": "Kur'an",
+        "body": "Okumaya nereden başlanır ve namaz için kısa sureler.",
+        "q": "Kur'an okumaya nereden başlamalıyım, önce hangi sureleri ezberlemeliyim?"
+      },
+      "character": {
+        "title": "Ahlak",
+        "body": "Ailenize ve çevrenize karşı doğruluk, merhamet ve iyilik.",
+        "q": "Müslüman olmayan aileme İslam ahlakıyla nasıl davranırım?"
+      }
+    },
+    "lecturesKicker": "Sakince tanıyın",
+    "lecturesTitle": "İslam'a giriş konferansları",
+    "lecturesLead": "İslam'ın ne olduğunu ve Müslümanların neye inandığını anlatan farklı dillerde kısa konuşmalar.",
+    "debatesKicker": "Büyük sorular",
+    "debatesTitle": "Münazaralar ve sohbetler",
+    "debatesLead": "Allah'ın varlığı ve hayatın anlamı üzerine Müslümanlarla ateist veya agnostikler arasında bilinen sohbetler.",
+    "externalNote": "YouTube'dan harici içerik, bilgi amaçlı gösterilir. Konuşmacıların görüşleri kendilerine aittir.",
+    "booksKicker": "IslamHouse'tan",
+    "booksTitle": "Büyük sorulara cevap veren kitaplar",
+    "booksLead": "Kendi dilinizde ücretsiz kitaplar: Neden İslam? Yaratıcı kim? Hayatın amacı ne?",
+    "booksEmpty": "Kitaplara şu anda ulaşılamıyor. Kütüphanede göz atın.",
+    "booksMore": "Kütüphanede daha fazlası"
+  },
+  "newsletter": {
+    "title": "Bülten",
+    "hint": "Ayda bir Mustafti haberleri. Spam yok.",
+    "label": "E-postanız",
+    "placeholder": "siz@ornek.com",
+    "submit": "Abone ol",
+    "sending": "…",
+    "success": "Abone oldunuz. Teşekkürler!",
+    "already": "Bu e-posta zaten abone.",
+    "invalid": "Geçerli bir e-posta adresi yazın.",
+    "limited": "Çok fazla deneme. Biraz sonra tekrar deneyin.",
+    "error": "Şu anda abone olunamadı. Daha sonra deneyin."
+  },
+  "aboutPage": {
+    "kicker": "Platform hakkında",
+    "pathsKicker": "Mustafti kimin için?",
+    "sourcesTitle": "Onaylı kaynaklar",
+    "sourcesLead": "Alıntılanan ve nispet edilen metin (ayet, hadis, âlim sözü, yayımlanmış fetva) yalnızca bu kaynaklardan, orijinal bağlantısıyla gelir.",
+    "teamTitle": "Ekip ve yarışma",
+    "teamBody": "Mustafti, Hamdi Bozkurt'un İslami İçeriğin Hizmetinde Yapay Zekâ Yarışması 2026 için yarışmanın kaynakları ve ilmî paketi üzerine kurduğu bireysel bir projedir; fetva kuralları yarışma mentoru tarafından gözden geçirilmiştir.",
+    "teamChallenge": "İslami İçeriğin Hizmetinde Yapay Zekâ Yarışması 2026",
+    "start": "Sorunuzu sorun"
   }
 }
