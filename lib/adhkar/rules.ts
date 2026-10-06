@@ -3,7 +3,8 @@
  * لا توليد: الدرجة كما كتبها المصدر، والعدد كما ورد في لفظ الحديث، والوقت من لفظه أيضاً.
  */
 
-export const OCCASIONS = ["morning", "evening", "after_prayer"] as const;
+/** F2: ست فئات: الصباح، والمساء، وقبل الصلاة، وبعد الصلاة، والنوم، والاستيقاظ. */
+export const OCCASIONS = ["morning", "evening", "before_prayer", "after_prayer", "sleep", "waking"] as const;
 export type Occasion = (typeof OCCASIONS)[number];
 
 /** صف في جدول adhkar (لغة واحدة لذكر واحد). */
@@ -18,6 +19,10 @@ export type DhikrRow = {
   grade: string;
   repeat_count: number | null;
   source_url: string;
+  /** F2: النطق بالحروف اللاتينية، والمعنى بالإنجليزية، والتخريج (الكتاب ورقم الحديث). قد تغيب في صفوف الموسوعة. */
+  transliteration?: string | null;
+  meaning_en?: string | null;
+  reference?: string | null;
 };
 
 const strip = (s: string) => s.normalize("NFC").replace(/[\u064B-\u0652\u0670\u0640]/g, "");

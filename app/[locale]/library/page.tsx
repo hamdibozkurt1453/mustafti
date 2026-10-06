@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { BookCard } from "@/components/library/BookCard";
+import { LoadMoreBooks } from "@/components/library/LoadMoreBooks";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { latestBooks, searchBooks, topicBooks } from "@/lib/library/islamhouse";
@@ -27,8 +28,9 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 /**
  * `/library` — «المكتبة» (F1b): كتب IslamHouse المجانية من واجهته البرمجية الرسمية، بلغة الواجهة
- * (أو بالعربية بزر «كتب بالعربية أيضاً»: ?lang=ar). قبل أي بحث: أحدث 12 كتاباً. التصنيفات (?topic=)
- * مربوطة بشجرة تصنيفات IslamHouse، والبحث (?q=) فلترة محلية لأحدث 200 كتاب. كل طلب بمهلة 8 ثوانٍ.
+ * (أو بالعربية بزر «كتب بالعربية أيضاً»: ?lang=ar). التصنيفات (?topic=) مربوطة بشجرة تصنيفات IslamHouse،
+ * والبحث (?q=) فلترة محلية لأحدث 200 كتاب. كل طلب بمهلة 8 ثوانٍ.
+ * F2: 6 كتب فقط في البداية (القائمة الافتراضية والتصنيف والبحث)، و«اكتشف المزيد» يضيف 6 في كل ضغطة (/api/library).
  */
 export default async function LibraryPage({ params, searchParams }: Props) {
   const { locale } = await params;
@@ -42,16 +44,17 @@ export default async function LibraryPage({ params, searchParams }: Props) {
   const lang = arabic ? "ar" : locale;
 
   let books: Book[] = [];
+  let hasMore = false;
   let error: "limited" | "timeout" | "unavailable" | null = null;
   try {
     if (q) {
       const rate = await checkRateLimit("library", await headers(), LIBRARY_LIMIT_PER_HOUR, 3600);
-      if (rate.ok) books = await searchBooks(q, lang);
+      if (rate.ok) ({ books, hasMore } = await searchBooks(q, lang));
       else error = "limited";
     } else if (topic) {
-      books = await topicBooks(topic, lang);
+      ({ books, hasMore } = await topicBooks(topic, lang));
     } else {
-      books = await latestBooks(lang, 12);
+      ({ books, hasMore } = await latestBooks(lang));
     }
   } catch (e) {
     console.error("library:", e instanceof Error ? e.message : e);
@@ -137,11 +140,20 @@ export default async function LibraryPage({ params, searchParams }: Props) {
         ) : books.length === 0 ? (
           <p className="mt-6 rounded-2xl border border-dashed border-sand-200 bg-white p-6 text-center text-ink-600">{t("empty")}</p>
         ) : (
-          <ul className="mf-stagger mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {books.map((book) => (
-              <BookCard key={book.id} book={book} labels={cardLabels} />
-            ))}
-          </ul>
+          <>
+            <ul className="mf-stagger mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {books.map((book) => (
+                <BookCard key={book.id} book={book} labels={cardLabels} />
+              ))}
+            </ul>
+            <LoadMoreBooks
+              key={`${lang}|${topic ?? ""}|${q}`}
+              initialHasMore={hasMore}
+              query={{ lang, ...(q ? { q } : topic ? { topic } : {}) }}
+              shownIds={books.map((b) => b.id)}
+              labels={{ ...cardLabels, more: t("more"), loading: t("loadingMore"), error: t("moreError") }}
+            />
+          </>
         )}
         <p className="mt-6 text-xs text-ink-600">{t("note")}</p>
       </section>

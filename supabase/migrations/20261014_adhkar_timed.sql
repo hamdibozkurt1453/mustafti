@@ -1,0 +1,227 @@
+-- =====================================================================
+-- مُستفتي — F2: الأذكار الموقوتة (ست فئات) وبذرة الأذكار المشهورة الثابتة بتخريجها.
+-- يُنفَّذ مرة واحدة في Supabase ← SQL Editor ← New query ← Run، بعد 20261005_adhkar.sql. آمن لإعادة التشغيل.
+--
+-- 1) الفئات الست: الصباح، والمساء، وقبل الصلاة، وبعد الصلاة، والنوم، والاستيقاظ.
+-- 2) أعمدة جديدة: النطق (transliteration)، والمعنى بالإنجليزية (meaning_en)، والتخريج (reference: الكتاب ورقم الحديث).
+-- 3) البذرة: بيئة التطوير محجوبة عن خادم MCP وعن IslamHouse API (سياسة الشبكة ترفض الاتصال)، فلم نجلب
+--    «حصن المسلم» حياً. كتبنا هنا الأذكار المشهورة الثابتة وحدها، كل ذكر بتخريجه من الصحيحين أو السنن
+--    (لا ذكر بلا مصدر): آية الكرسي، والمعوّذات، وسيد الاستغفار، وأذكار الصباح والمساء الأساسية،
+--    وأذكار الوضوء والأذان والمسجد والاستفتاح، والاستغفار ثلاثاً والتسبيحات 33 وتمام المائة،
+--    وأذكار النوم والاستيقاظ. المعنى الإنجليزي ترجمة معنى لا نص منسوب. المعرّفات تبدأ بـ seed-،
+--    ومسار المشرف /api/admin/build-adhkar لا يحذفها حين يعيد بناء أذكار الموسوعة.
+-- =====================================================================
+
+alter table public.adhkar add column if not exists transliteration text;
+alter table public.adhkar add column if not exists meaning_en text;
+alter table public.adhkar add column if not exists reference text;
+
+alter table public.adhkar drop constraint if exists adhkar_occasions_check;
+alter table public.adhkar add constraint adhkar_occasions_check
+  check (occasions <@ array['morning', 'evening', 'before_prayer', 'after_prayer', 'sleep', 'waking']::text[]);
+
+insert into public.adhkar
+  (hadith_id, lang, occasions, position, title, text, grade, repeat_count, source_url, transliteration, meaning_en, reference)
+values
+  ('seed-ayat-al-kursi', 'ar', array['morning','evening','after_prayer','sleep']::text[], 1000, 'آية الكرسي',
+   'اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ، لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ، لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ، مَنْ ذَا الَّذِي يَشْفَعُ عِنْدَهُ إِلَّا بِإِذْنِهِ، يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ، وَلَا يُحِيطُونَ بِشَيْءٍ مِنْ عِلْمِهِ إِلَّا بِمَا شَاءَ، وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ، وَلَا يَئُودُهُ حِفْظُهُمَا، وَهُوَ الْعَلِيُّ الْعَظِيمُ',
+   'آية من القرآن الكريم', 1, 'https://quranenc.com/ar/browse/arabic_moyassar/2#255',
+   'Allahu la ilaha illa huwal-hayyul-qayyum, la ta''khudhuhu sinatun wa la nawm, lahu ma fis-samawati wa ma fil-ard, man dhal-ladhi yashfa''u ''indahu illa bi-idhnih, ya''lamu ma bayna aydihim wa ma khalfahum, wa la yuhituna bi-shay''im-min ''ilmihi illa bima sha'', wasi''a kursiyyuhus-samawati wal-ard, wa la ya''uduhu hifzuhuma, wa huwal-''aliyyul-''azim.',
+   'Allah: there is no deity except Him, the Ever-Living, the Sustainer of all existence. Neither drowsiness overtakes Him nor sleep. To Him belongs whatever is in the heavens and whatever is on the earth. Who could intercede with Him except by His permission? He knows what is before them and what is behind them, and they encompass nothing of His knowledge except what He wills. His Kursi extends over the heavens and the earth, and preserving them does not tire Him. He is the Most High, the Most Great.',
+   'سورة البقرة: 255. وقراءتها عند النوم في صحيح البخاري (2311)، ودبر كل صلاة: النسائي في عمل اليوم والليلة (100) وصححه الألباني في السلسلة الصحيحة (972)، وفي الصباح والمساء: المستدرك للحاكم (1/562) وصححه الألباني في صحيح الترغيب والترهيب.'),
+  ('seed-muawwidhat', 'ar', array['morning','evening','sleep']::text[], 1001, 'سورة الإخلاص والمعوّذتان',
+   'قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ
+قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِنْ شَرِّ مَا خَلَقَ، وَمِنْ شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِنْ شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِنْ شَرِّ حَاسِدٍ إِذَا حَسَدَ
+قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَٰهِ النَّاسِ، مِنْ شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ',
+   'حسن', 3, 'https://dorar.net/hadith/search?q=%D9%82%D9%84%20%D9%87%D9%88%20%D8%A7%D9%84%D9%84%D9%87%20%D8%A3%D8%AD%D8%AF%20%D9%88%D8%A7%D9%84%D9%85%D8%B9%D9%88%D8%B0%D8%AA%D9%8A%D9%86%20%D8%AD%D9%8A%D9%86%20%D8%AA%D9%85%D8%B3%D9%8A%20%D9%88%D8%AD%D9%8A%D9%86%20%D8%AA%D8%B5%D8%A8%D8%AD%20%D8%AB%D9%84%D8%A7%D8%AB%20%D9%85%D8%B1%D8%A7%D8%AA',
+   'Qul huwal-lahu ahad, Allahus-samad, lam yalid wa lam yulad, wa lam yakul-lahu kufuwan ahad.
+Qul a''udhu bi-rabbil-falaq, min sharri ma khalaq, wa min sharri ghasiqin idha waqab, wa min sharrin-naffathati fil-''uqad, wa min sharri hasidin idha hasad.
+Qul a''udhu bi-rabbin-nas, malikin-nas, ilahin-nas, min sharril-waswasil-khannas, alladhi yuwaswisu fi sudurin-nas, minal-jinnati wan-nas.',
+   'Say: He is Allah, the One; Allah, the Eternal Refuge. He neither begets nor is born, and there is none comparable to Him.
+Say: I seek refuge in the Lord of daybreak, from the evil of what He created, from the evil of darkness when it settles, from the evil of those who blow on knots, and from the evil of an envier when he envies.
+Say: I seek refuge in the Lord of mankind, the King of mankind, the God of mankind, from the evil of the retreating whisperer who whispers into the breasts of mankind, from among the jinn and mankind.',
+   'الصباح والمساء: سنن أبي داود (5082)، وسنن الترمذي (3575) من حديث عبد الله بن خبيب رضي الله عنه. وعند النوم ثلاثاً مع النفث في الكفين: صحيح البخاري (5017).'),
+  ('seed-sayyid-al-istighfar', 'ar', array['morning','evening']::text[], 1002, 'سيد الاستغفار',
+   'اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ لَكَ بِذَنْبِي فَاغْفِرْ لِي، فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%B3%D9%8A%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D8%BA%D9%81%D8%A7%D8%B1%20%D8%A3%D9%86%20%D8%AA%D9%82%D9%88%D9%84%20%D8%A7%D9%84%D9%84%D9%87%D9%85%20%D8%A3%D9%86%D8%AA%20%D8%B1%D8%A8%D9%8A',
+   'Allahumma anta rabbi la ilaha illa ant, khalaqtani wa ana ''abduk, wa ana ''ala ''ahdika wa wa''dika mastata''t, a''udhu bika min sharri ma sana''t, abu''u laka bi-ni''matika ''alayya, wa abu''u laka bi-dhanbi faghfir li, fa-innahu la yaghfirudh-dhunuba illa ant.',
+   'O Allah, You are my Lord; there is no deity except You. You created me and I am Your servant, and I keep Your covenant and promise as much as I can. I seek refuge in You from the evil of what I have done. I acknowledge Your favour upon me and I acknowledge my sin, so forgive me, for none forgives sins except You.',
+   'صحيح البخاري (6306) من حديث شداد بن أوس رضي الله عنه.'),
+  ('seed-bismillah-la-yadurr', 'ar', array['morning','evening']::text[], 1003, 'بسم الله الذي لا يضر مع اسمه شيء',
+   'بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ، وَهُوَ السَّمِيعُ الْعَلِيمُ',
+   'صحيح', 3, 'https://dorar.net/hadith/search?q=%D8%A8%D8%B3%D9%85%20%D8%A7%D9%84%D9%84%D9%87%20%D8%A7%D9%84%D8%B0%D9%8A%20%D9%84%D8%A7%20%D9%8A%D8%B6%D8%B1%20%D9%85%D8%B9%20%D8%A7%D8%B3%D9%85%D9%87%20%D8%B4%D9%8A%D8%A1',
+   'Bismillahil-ladhi la yadurru ma''as-mihi shay''un fil-ardi wa la fis-sama'', wa huwas-sami''ul-''alim.',
+   'In the name of Allah, with whose name nothing on earth or in the heaven can cause harm, and He is the All-Hearing, the All-Knowing.',
+   'سنن أبي داود (5088)، وسنن الترمذي (3388) من حديث عثمان بن عفان رضي الله عنه.'),
+  ('seed-asbahna-wa-asbaha-al-mulk', 'ar', array['morning']::text[], 1004, 'أصبحنا وأصبح الملك لله',
+   'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذَا الْيَوْمِ وَخَيْرَ مَا بَعْدَهُ، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذَا الْيَوْمِ وَشَرِّ مَا بَعْدَهُ، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A3%D9%85%D8%B3%D9%8A%D9%86%D8%A7%20%D9%88%D8%A3%D9%85%D8%B3%D9%89%20%D8%A7%D9%84%D9%85%D9%84%D9%83%20%D9%84%D9%84%D9%87%20%D9%88%D8%A7%D9%84%D8%AD%D9%85%D8%AF%20%D9%84%D9%84%D9%87',
+   'Asbahna wa asbahal-mulku lillah, wal-hamdu lillah, la ilaha illallahu wahdahu la sharika lah, lahul-mulku wa lahul-hamdu wa huwa ''ala kulli shay''in qadir. Rabbi as''aluka khayra ma fi hadhal-yawmi wa khayra ma ba''dah, wa a''udhu bika min sharri ma fi hadhal-yawmi wa sharri ma ba''dah. Rabbi a''udhu bika minal-kasali wa su''il-kibar. Rabbi a''udhu bika min ''adhabin fin-nari wa ''adhabin fil-qabr.',
+   'We have entered the morning and the dominion belongs to Allah. Praise is for Allah. There is no deity except Allah, alone, without partner; His is the dominion and His is the praise, and He is over all things competent. My Lord, I ask You for the good of this day and the good of what follows it, and I seek refuge in You from the evil of this day and the evil of what follows it. My Lord, I seek refuge in You from laziness and the misery of old age. My Lord, I seek refuge in You from punishment in the Fire and punishment in the grave.',
+   'صحيح مسلم (2723) من حديث عبد الله بن مسعود رضي الله عنه.'),
+  ('seed-amsayna-wa-amsa-al-mulk', 'ar', array['evening']::text[], 1005, 'أمسينا وأمسى الملك لله',
+   'أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذِهِ اللَّيْلَةِ وَخَيْرَ مَا بَعْدَهَا، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذِهِ اللَّيْلَةِ وَشَرِّ مَا بَعْدَهَا، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A3%D9%85%D8%B3%D9%8A%D9%86%D8%A7%20%D9%88%D8%A3%D9%85%D8%B3%D9%89%20%D8%A7%D9%84%D9%85%D9%84%D9%83%20%D9%84%D9%84%D9%87%20%D9%88%D8%A7%D9%84%D8%AD%D9%85%D8%AF%20%D9%84%D9%84%D9%87',
+   'Amsayna wa amsal-mulku lillah, wal-hamdu lillah, la ilaha illallahu wahdahu la sharika lah, lahul-mulku wa lahul-hamdu wa huwa ''ala kulli shay''in qadir. Rabbi as''aluka khayra ma fi hadhihil-laylati wa khayra ma ba''daha, wa a''udhu bika min sharri ma fi hadhihil-laylati wa sharri ma ba''daha. Rabbi a''udhu bika minal-kasali wa su''il-kibar. Rabbi a''udhu bika min ''adhabin fin-nari wa ''adhabin fil-qabr.',
+   'We have entered the evening and the dominion belongs to Allah. Praise is for Allah. There is no deity except Allah, alone, without partner; His is the dominion and His is the praise, and He is over all things competent. My Lord, I ask You for the good of this night and the good of what follows it, and I seek refuge in You from the evil of this night and the evil of what follows it. My Lord, I seek refuge in You from laziness and the misery of old age. My Lord, I seek refuge in You from punishment in the Fire and punishment in the grave.',
+   'صحيح مسلم (2723) من حديث عبد الله بن مسعود رضي الله عنه.'),
+  ('seed-allahumma-bika-asbahna', 'ar', array['morning']::text[], 1006, 'اللهم بك أصبحنا',
+   'اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ النُّشُورُ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A7%D9%84%D9%84%D9%87%D9%85%20%D8%A8%D9%83%20%D8%A3%D8%B5%D8%A8%D8%AD%D9%86%D8%A7%20%D9%88%D8%A8%D9%83%20%D8%A3%D9%85%D8%B3%D9%8A%D9%86%D8%A7%20%D9%88%D8%A8%D9%83%20%D9%86%D8%AD%D9%8A%D8%A7',
+   'Allahumma bika asbahna, wa bika amsayna, wa bika nahya, wa bika namut, wa ilaykan-nushur.',
+   'O Allah, by You we enter the morning and by You we enter the evening, by You we live and by You we die, and to You is the resurrection.',
+   'سنن الترمذي (3391)، وسنن أبي داود (5068) من حديث أبي هريرة رضي الله عنه.'),
+  ('seed-allahumma-bika-amsayna', 'ar', array['evening']::text[], 1007, 'اللهم بك أمسينا',
+   'اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ الْمَصِيرُ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A7%D9%84%D9%84%D9%87%D9%85%20%D8%A8%D9%83%20%D8%A3%D9%85%D8%B3%D9%8A%D9%86%D8%A7%20%D9%88%D8%A8%D9%83%20%D8%A3%D8%B5%D8%A8%D8%AD%D9%86%D8%A7%20%D9%88%D8%A8%D9%83%20%D9%86%D8%AD%D9%8A%D8%A7',
+   'Allahumma bika amsayna, wa bika asbahna, wa bika nahya, wa bika namut, wa ilaykal-masir.',
+   'O Allah, by You we enter the evening and by You we enter the morning, by You we live and by You we die, and to You is the final return.',
+   'سنن الترمذي (3391) من حديث أبي هريرة رضي الله عنه.'),
+  ('seed-subhanallah-wa-bihamdihi', 'ar', array['morning','evening']::text[], 1008, 'سبحان الله وبحمده',
+   'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ',
+   'صحيح', 100, 'https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%A7%D9%84%20%D8%AD%D9%8A%D9%86%20%D9%8A%D8%B5%D8%A8%D8%AD%20%D9%88%D8%AD%D9%8A%D9%86%20%D9%8A%D9%85%D8%B3%D9%8A%20%D8%B3%D8%A8%D8%AD%D8%A7%D9%86%20%D8%A7%D9%84%D9%84%D9%87%20%D9%88%D8%A8%D8%AD%D9%85%D8%AF%D9%87%20%D9%85%D8%A7%D8%A6%D8%A9%20%D9%85%D8%B1%D8%A9',
+   'Subhanallahi wa bihamdih.',
+   'Glory be to Allah, and praise be to Him.',
+   'صحيح مسلم (2692) من حديث أبي هريرة رضي الله عنه: «من قال حين يصبح وحين يمسي…مائة مرة».'),
+  ('seed-tahlil-100', 'ar', array['morning']::text[], 1009, 'لا إله إلا الله وحده لا شريك له (مائة مرة في اليوم)',
+   'لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ',
+   'صحيح', 100, 'https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%A7%D9%84%20%D9%84%D8%A7%20%D8%A5%D9%84%D9%87%20%D8%A5%D9%84%D8%A7%20%D8%A7%D9%84%D9%84%D9%87%20%D9%88%D8%AD%D8%AF%D9%87%20%D9%84%D8%A7%20%D8%B4%D8%B1%D9%8A%D9%83%20%D9%84%D9%87%20%D9%81%D9%8A%20%D9%8A%D9%88%D9%85%20%D9%85%D8%A7%D8%A6%D8%A9%20%D9%85%D8%B1%D8%A9',
+   'La ilaha illallahu wahdahu la sharika lah, lahul-mulku wa lahul-hamd, wa huwa ''ala kulli shay''in qadir.',
+   'There is no deity except Allah, alone, without partner. His is the dominion and His is the praise, and He is over all things competent.',
+   'صحيح البخاري (3293)، وصحيح مسلم (2691) من حديث أبي هريرة رضي الله عنه: «في يوم مائة مرة».'),
+  ('seed-after-wudu', 'ar', array['before_prayer']::text[], 1010, 'بعد الوضوء',
+   'أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D9%85%D8%A7%20%D9%85%D9%86%D9%83%D9%85%20%D9%85%D9%86%20%D8%A3%D8%AD%D8%AF%20%D9%8A%D8%AA%D9%88%D8%B6%D8%A3%20%D9%81%D9%8A%D8%A8%D9%84%D8%BA%20%D8%A3%D9%88%20%D9%81%D9%8A%D8%B3%D8%A8%D8%BA%20%D8%A7%D9%84%D9%88%D8%B6%D9%88%D8%A1',
+   'Ash-hadu an la ilaha illallahu wahdahu la sharika lah, wa ash-hadu anna Muhammadan ''abduhu wa rasuluh.',
+   'I bear witness that there is no deity except Allah, alone, without partner, and I bear witness that Muhammad is His servant and Messenger.',
+   'صحيح مسلم (234) من حديث عمر بن الخطاب رضي الله عنه.'),
+  ('seed-after-adhan', 'ar', array['before_prayer']::text[], 1011, 'بعد الأذان',
+   'اللَّهُمَّ رَبَّ هَذِهِ الدَّعْوَةِ التَّامَّةِ، وَالصَّلَاةِ الْقَائِمَةِ، آتِ مُحَمَّدًا الْوَسِيلَةَ وَالْفَضِيلَةَ، وَابْعَثْهُ مَقَامًا مَحْمُودًا الَّذِي وَعَدْتَهُ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A7%D9%84%D9%84%D9%87%D9%85%20%D8%B1%D8%A8%20%D9%87%D8%B0%D9%87%20%D8%A7%D9%84%D8%AF%D8%B9%D9%88%D8%A9%20%D8%A7%D9%84%D8%AA%D8%A7%D9%85%D8%A9%20%D9%88%D8%A7%D9%84%D8%B5%D9%84%D8%A7%D8%A9%20%D8%A7%D9%84%D9%82%D8%A7%D8%A6%D9%85%D8%A9',
+   'Allahumma rabba hadhihid-da''watit-tammah, was-salatil-qa''imah, ati Muhammadanil-wasilata wal-fadilah, wab''ath-hu maqamam-mahmudanil-ladhi wa''adtah.',
+   'O Allah, Lord of this perfect call and the prayer about to be established, grant Muhammad the Wasilah and virtue, and raise him to the praised station that You have promised him.',
+   'صحيح البخاري (614) من حديث جابر بن عبد الله رضي الله عنهما.'),
+  ('seed-entering-mosque', 'ar', array['before_prayer']::text[], 1012, 'عند دخول المسجد',
+   'اللَّهُمَّ افْتَحْ لِي أَبْوَابَ رَحْمَتِكَ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A5%D8%B0%D8%A7%20%D8%AF%D8%AE%D9%84%20%D8%A3%D8%AD%D8%AF%D9%83%D9%85%20%D8%A7%D9%84%D9%85%D8%B3%D8%AC%D8%AF%20%D9%81%D9%84%D9%8A%D9%82%D9%84%20%D8%A7%D9%84%D9%84%D9%87%D9%85%20%D8%A7%D9%81%D8%AA%D8%AD%20%D9%84%D9%8A%20%D8%A3%D8%A8%D9%88%D8%A7%D8%A8%20%D8%B1%D8%AD%D9%85%D8%AA%D9%83',
+   'Allahummaf-tah li abwaba rahmatik.',
+   'O Allah, open for me the gates of Your mercy.',
+   'صحيح مسلم (713) من حديث أبي حميد أو أبي أسيد رضي الله عنهما.'),
+  ('seed-istiftah', 'ar', array['before_prayer']::text[], 1013, 'دعاء الاستفتاح',
+   'سُبْحَانَكَ اللَّهُمَّ وَبِحَمْدِكَ، وَتَبَارَكَ اسْمُكَ، وَتَعَالَى جَدُّكَ، وَلَا إِلَهَ غَيْرُكَ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%B3%D8%A8%D8%AD%D8%A7%D9%86%D9%83%20%D8%A7%D9%84%D9%84%D9%87%D9%85%20%D9%88%D8%A8%D8%AD%D9%85%D8%AF%D9%83%20%D9%88%D8%AA%D8%A8%D8%A7%D8%B1%D9%83%20%D8%A7%D8%B3%D9%85%D9%83%20%D9%88%D8%AA%D8%B9%D8%A7%D9%84%D9%89%20%D8%AC%D8%AF%D9%83',
+   'Subhanakallahumma wa bihamdik, wa tabarakas-muk, wa ta''ala jadduk, wa la ilaha ghayruk.',
+   'Glory be to You, O Allah, and praise. Blessed is Your name, exalted is Your majesty, and there is no deity other than You.',
+   'سنن أبي داود (775)، وسنن الترمذي (242) من حديث أبي سعيد الخدري رضي الله عنه.'),
+  ('seed-istighfar-3', 'ar', array['after_prayer']::text[], 1014, 'الاستغفار ثلاثاً',
+   'أَسْتَغْفِرُ اللَّهَ',
+   'صحيح', 3, 'https://dorar.net/hadith/search?q=%D9%83%D8%A7%D9%86%20%D8%A5%D8%B0%D8%A7%20%D8%A7%D9%86%D8%B5%D8%B1%D9%81%20%D9%85%D9%86%20%D8%B5%D9%84%D8%A7%D8%AA%D9%87%20%D8%A7%D8%B3%D8%AA%D8%BA%D9%81%D8%B1%20%D8%AB%D9%84%D8%A7%D8%AB%D8%A7',
+   'Astaghfirullah.',
+   'I seek Allah''s forgiveness.',
+   'صحيح مسلم (591) من حديث ثوبان رضي الله عنه: «إذا انصرف من صلاته استغفر ثلاثاً».'),
+  ('seed-anta-as-salam', 'ar', array['after_prayer']::text[], 1015, 'اللهم أنت السلام',
+   'اللَّهُمَّ أَنْتَ السَّلَامُ، وَمِنْكَ السَّلَامُ، تَبَارَكْتَ يَا ذَا الْجَلَالِ وَالْإِكْرَامِ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A7%D9%84%D9%84%D9%87%D9%85%20%D8%A3%D9%86%D8%AA%20%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D9%88%D9%85%D9%86%D9%83%20%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D8%AA%D8%A8%D8%A7%D8%B1%D9%83%D8%AA%20%D8%B0%D8%A7%20%D8%A7%D9%84%D8%AC%D9%84%D8%A7%D9%84%20%D9%88%D8%A7%D9%84%D8%A5%D9%83%D8%B1%D8%A7%D9%85',
+   'Allahumma antas-salam, wa minkas-salam, tabarakta ya dhal-jalali wal-ikram.',
+   'O Allah, You are Peace and from You comes peace. Blessed are You, Possessor of majesty and honour.',
+   'صحيح مسلم (591) من حديث ثوبان رضي الله عنه.'),
+  ('seed-la-mani-a', 'ar', array['after_prayer']::text[], 1016, 'لا مانع لما أعطيت',
+   'لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، اللَّهُمَّ لَا مَانِعَ لِمَا أَعْطَيْتَ، وَلَا مُعْطِيَ لِمَا مَنَعْتَ، وَلَا يَنْفَعُ ذَا الْجَدِّ مِنْكَ الْجَدُّ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A7%D9%84%D9%84%D9%87%D9%85%20%D9%84%D8%A7%20%D9%85%D8%A7%D9%86%D8%B9%20%D9%84%D9%85%D8%A7%20%D8%A3%D8%B9%D8%B7%D9%8A%D8%AA%20%D9%88%D9%84%D8%A7%20%D9%85%D8%B9%D8%B7%D9%8A%20%D9%84%D9%85%D8%A7%20%D9%85%D9%86%D8%B9%D8%AA',
+   'La ilaha illallahu wahdahu la sharika lah, lahul-mulku wa lahul-hamd, wa huwa ''ala kulli shay''in qadir. Allahumma la mani''a lima a''tayt, wa la mu''tiya lima mana''t, wa la yanfa''u dhal-jaddi minkal-jadd.',
+   'There is no deity except Allah, alone, without partner. His is the dominion and His is the praise, and He is over all things competent. O Allah, none can withhold what You give, none can give what You withhold, and the wealth of the wealthy cannot benefit him against You.',
+   'صحيح البخاري (844)، وصحيح مسلم (593) من حديث المغيرة بن شعبة رضي الله عنه.'),
+  ('seed-subhanallah-33', 'ar', array['after_prayer','sleep']::text[], 1017, 'التسبيح',
+   'سُبْحَانَ اللَّهِ',
+   'صحيح', 33, 'https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D8%B3%D8%A8%D8%AD%20%D8%A7%D9%84%D9%84%D9%87%20%D9%81%D9%8A%20%D8%AF%D8%A8%D8%B1%20%D9%83%D9%84%20%D8%B5%D9%84%D8%A7%D8%A9%20%D8%AB%D9%84%D8%A7%D8%AB%D8%A7%20%D9%88%D8%AB%D9%84%D8%A7%D8%AB%D9%8A%D9%86',
+   'Subhanallah.',
+   'Glory be to Allah.',
+   'بعد الصلاة: صحيح مسلم (597) من حديث أبي هريرة رضي الله عنه. وعند النوم: صحيح البخاري (6318)، وصحيح مسلم (2727) من حديث علي رضي الله عنه.'),
+  ('seed-alhamdulillah-33', 'ar', array['after_prayer','sleep']::text[], 1018, 'التحميد',
+   'الْحَمْدُ لِلَّهِ',
+   'صحيح', 33, 'https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D8%B3%D8%A8%D8%AD%20%D8%A7%D9%84%D9%84%D9%87%20%D9%81%D9%8A%20%D8%AF%D8%A8%D8%B1%20%D9%83%D9%84%20%D8%B5%D9%84%D8%A7%D8%A9%20%D8%AB%D9%84%D8%A7%D8%AB%D8%A7%20%D9%88%D8%AB%D9%84%D8%A7%D8%AB%D9%8A%D9%86',
+   'Alhamdulillah.',
+   'Praise be to Allah.',
+   'بعد الصلاة: صحيح مسلم (597). وعند النوم: صحيح البخاري (6318)، وصحيح مسلم (2727).'),
+  ('seed-allahu-akbar-33', 'ar', array['after_prayer']::text[], 1019, 'التكبير',
+   'اللَّهُ أَكْبَرُ',
+   'صحيح', 33, 'https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D8%B3%D8%A8%D8%AD%20%D8%A7%D9%84%D9%84%D9%87%20%D9%81%D9%8A%20%D8%AF%D8%A8%D8%B1%20%D9%83%D9%84%20%D8%B5%D9%84%D8%A7%D8%A9%20%D8%AB%D9%84%D8%A7%D8%AB%D8%A7%20%D9%88%D8%AB%D9%84%D8%A7%D8%AB%D9%8A%D9%86',
+   'Allahu akbar.',
+   'Allah is the Greatest.',
+   'صحيح مسلم (597) من حديث أبي هريرة رضي الله عنه.'),
+  ('seed-tamam-al-mi-ah', 'ar', array['after_prayer']::text[], 1020, 'تمام المائة',
+   'لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D9%88%D9%82%D8%A7%D9%84%20%D8%AA%D9%85%D8%A7%D9%85%20%D8%A7%D9%84%D9%85%D8%A7%D8%A6%D8%A9%20%D9%84%D8%A7%20%D8%A5%D9%84%D9%87%20%D8%A5%D9%84%D8%A7%20%D8%A7%D9%84%D9%84%D9%87%20%D9%88%D8%AD%D8%AF%D9%87%20%D9%84%D8%A7%20%D8%B4%D8%B1%D9%8A%D9%83%20%D9%84%D9%87',
+   'La ilaha illallahu wahdahu la sharika lah, lahul-mulku wa lahul-hamd, wa huwa ''ala kulli shay''in qadir.',
+   'There is no deity except Allah, alone, without partner. His is the dominion and His is the praise, and He is over all things competent.',
+   'صحيح مسلم (597) من حديث أبي هريرة رضي الله عنه: «وقال تمام المائة».'),
+  ('seed-muawwidhat-after-prayer', 'ar', array['after_prayer']::text[], 1021, 'المعوّذات دبر كل صلاة',
+   'قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ
+قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِنْ شَرِّ مَا خَلَقَ، وَمِنْ شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِنْ شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِنْ شَرِّ حَاسِدٍ إِذَا حَسَدَ
+قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَٰهِ النَّاسِ، مِنْ شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A3%D9%85%D8%B1%D9%86%D9%8A%20%D8%B1%D8%B3%D9%88%D9%84%20%D8%A7%D9%84%D9%84%D9%87%20%D8%A3%D9%86%20%D8%A3%D9%82%D8%B1%D8%A3%20%D8%A8%D8%A7%D9%84%D9%85%D8%B9%D9%88%D8%B0%D8%A7%D8%AA%20%D9%81%D9%8A%20%D8%AF%D8%A8%D8%B1%20%D9%83%D9%84%20%D8%B5%D9%84%D8%A7%D8%A9',
+   'Qul huwal-lahu ahad, Allahus-samad, lam yalid wa lam yulad, wa lam yakul-lahu kufuwan ahad.
+Qul a''udhu bi-rabbil-falaq, min sharri ma khalaq, wa min sharri ghasiqin idha waqab, wa min sharrin-naffathati fil-''uqad, wa min sharri hasidin idha hasad.
+Qul a''udhu bi-rabbin-nas, malikin-nas, ilahin-nas, min sharril-waswasil-khannas, alladhi yuwaswisu fi sudurin-nas, minal-jinnati wan-nas.',
+   'Say: He is Allah, the One; Allah, the Eternal Refuge. He neither begets nor is born, and there is none comparable to Him.
+Say: I seek refuge in the Lord of daybreak, from the evil of what He created, from the evil of darkness when it settles, from the evil of those who blow on knots, and from the evil of an envier when he envies.
+Say: I seek refuge in the Lord of mankind, the King of mankind, the God of mankind, from the evil of the retreating whisperer who whispers into the breasts of mankind, from among the jinn and mankind.',
+   'سنن أبي داود (1523)، وسنن الترمذي (2903) من حديث عقبة بن عامر رضي الله عنه.'),
+  ('seed-baqarah-last-two', 'ar', array['sleep']::text[], 1022, 'آخر آيتين من سورة البقرة',
+   'آمَنَ الرَّسُولُ بِمَا أُنْزِلَ إِلَيْهِ مِنْ رَبِّهِ وَالْمُؤْمِنُونَ، كُلٌّ آمَنَ بِاللَّهِ وَمَلَائِكَتِهِ وَكُتُبِهِ وَرُسُلِهِ، لَا نُفَرِّقُ بَيْنَ أَحَدٍ مِنْ رُسُلِهِ، وَقَالُوا سَمِعْنَا وَأَطَعْنَا، غُفْرَانَكَ رَبَّنَا وَإِلَيْكَ الْمَصِيرُ
+لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا، لَهَا مَا كَسَبَتْ وَعَلَيْهَا مَا اكْتَسَبَتْ، رَبَّنَا لَا تُؤَاخِذْنَا إِنْ نَسِينَا أَوْ أَخْطَأْنَا، رَبَّنَا وَلَا تَحْمِلْ عَلَيْنَا إِصْرًا كَمَا حَمَلْتَهُ عَلَى الَّذِينَ مِنْ قَبْلِنَا، رَبَّنَا وَلَا تُحَمِّلْنَا مَا لَا طَاقَةَ لَنَا بِهِ، وَاعْفُ عَنَّا وَاغْفِرْ لَنَا وَارْحَمْنَا، أَنْتَ مَوْلَانَا فَانْصُرْنَا عَلَى الْقَوْمِ الْكَافِرِينَ',
+   'آيتان من القرآن الكريم', 1, 'https://quranenc.com/ar/browse/arabic_moyassar/2#285',
+   'Amanar-rasulu bima unzila ilayhi mir-rabbihi wal-mu''minun, kullun amana billahi wa mala''ikatihi wa kutubihi wa rusulih, la nufarriqu bayna ahadim-mir-rusulih, wa qalu sami''na wa ata''na, ghufranaka rabbana wa ilaykal-masir.
+La yukallifullahu nafsan illa wus''aha, laha ma kasabat wa ''alayha maktasabat, rabbana la tu''akhidhna in nasina aw akhta''na, rabbana wa la tahmil ''alayna isran kama hamaltahu ''alal-ladhina min qablina, rabbana wa la tuhammilna ma la taqata lana bih, wa''fu ''anna waghfir lana warhamna, anta mawlana fansurna ''alal-qawmil-kafirin.',
+   'The Messenger has believed in what was revealed to him from his Lord, and so have the believers. All of them have believed in Allah, His angels, His books and His messengers, saying: We make no distinction between any of His messengers. And they say: We hear and we obey. Grant us Your forgiveness, our Lord; to You is the final destination.
+Allah does not burden a soul beyond its capacity. It will have what it has earned and bear what it has incurred. Our Lord, do not take us to task if we forget or make a mistake. Our Lord, do not place on us a burden like the one You placed on those before us. Our Lord, do not burden us with what we cannot bear. Pardon us, forgive us and have mercy on us. You are our Protector, so give us victory over the disbelieving people.',
+   'سورة البقرة: 285–286. وفضلهما في ليلة: صحيح البخاري (5009)، وصحيح مسلم (808) من حديث أبي مسعود رضي الله عنه.'),
+  ('seed-allahu-akbar-34-sleep', 'ar', array['sleep']::text[], 1023, 'التكبير عند النوم',
+   'اللَّهُ أَكْبَرُ',
+   'صحيح', 34, 'https://dorar.net/hadith/search?q=%D8%AA%D9%83%D8%A8%D8%B1%D8%A7%D9%86%20%D8%A3%D8%B1%D8%A8%D8%B9%D8%A7%20%D9%88%D8%AB%D9%84%D8%A7%D8%AB%D9%8A%D9%86%20%D9%88%D8%AA%D8%B3%D8%A8%D8%AD%D8%A7%D9%86%20%D8%AB%D9%84%D8%A7%D8%AB%D8%A7%20%D9%88%D8%AB%D9%84%D8%A7%D8%AB%D9%8A%D9%86',
+   'Allahu akbar.',
+   'Allah is the Greatest.',
+   'صحيح البخاري (6318)، وصحيح مسلم (2727) من حديث علي رضي الله عنه: «تكبّران أربعاً وثلاثين».'),
+  ('seed-bismika-amutu', 'ar', array['sleep']::text[], 1024, 'باسمك اللهم أموت وأحيا',
+   'بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A8%D8%A7%D8%B3%D9%85%D9%83%20%D8%A7%D9%84%D9%84%D9%87%D9%85%20%D8%A3%D9%85%D9%88%D8%AA%20%D9%88%D8%A3%D8%AD%D9%8A%D8%A7',
+   'Bismika Allahumma amutu wa ahya.',
+   'In Your name, O Allah, I die and I live.',
+   'صحيح البخاري (6324) من حديث حذيفة بن اليمان رضي الله عنه.'),
+  ('seed-qini-adhabak', 'ar', array['sleep']::text[], 1025, 'اللهم قني عذابك',
+   'اللَّهُمَّ قِنِي عَذَابَكَ يَوْمَ تَبْعَثُ عِبَادَكَ',
+   'صحيح', 3, 'https://dorar.net/hadith/search?q=%D8%A7%D9%84%D9%84%D9%87%D9%85%20%D9%82%D9%86%D9%8A%20%D8%B9%D8%B0%D8%A7%D8%A8%D9%83%20%D9%8A%D9%88%D9%85%20%D8%AA%D8%A8%D8%B9%D8%AB%20%D8%B9%D8%A8%D8%A7%D8%AF%D9%83',
+   'Allahumma qini ''adhabaka yawma tab''athu ''ibadak.',
+   'O Allah, protect me from Your punishment on the Day You resurrect Your servants.',
+   'سنن أبي داود (5045) من حديث حفصة رضي الله عنها: «ثلاث مرار».'),
+  ('seed-alhamdulillah-ahyana', 'ar', array['waking']::text[], 1026, 'عند الاستيقاظ',
+   'الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D8%A7%D9%84%D8%AD%D9%85%D8%AF%20%D9%84%D9%84%D9%87%20%D8%A7%D9%84%D8%B0%D9%8A%20%D8%A3%D8%AD%D9%8A%D8%A7%D9%86%D8%A7%20%D8%A8%D8%B9%D8%AF%20%D9%85%D8%A7%20%D8%A3%D9%85%D8%A7%D8%AA%D9%86%D8%A7%20%D9%88%D8%A5%D9%84%D9%8A%D9%87%20%D8%A7%D9%84%D9%86%D8%B4%D9%88%D8%B1',
+   'Alhamdu lillahil-ladhi ahyana ba''da ma amatana wa ilayhin-nushur.',
+   'Praise be to Allah who gave us life after He caused us to die, and to Him is the resurrection.',
+   'صحيح البخاري (6324) من حديث حذيفة بن اليمان رضي الله عنه.'),
+  ('seed-ta-arra-min-al-layl', 'ar', array['waking']::text[], 1027, 'من تعارّ من الليل',
+   'لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، الْحَمْدُ لِلَّهِ، وَسُبْحَانَ اللَّهِ، وَلَا إِلَهَ إِلَّا اللَّهُ، وَاللَّهُ أَكْبَرُ، وَلَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ، اللَّهُمَّ اغْفِرْ لِي',
+   'صحيح', 1, 'https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D8%AA%D8%B9%D8%A7%D8%B1%20%D9%85%D9%86%20%D8%A7%D9%84%D9%84%D9%8A%D9%84%20%D9%81%D9%82%D8%A7%D9%84%20%D9%84%D8%A7%20%D8%A5%D9%84%D9%87%20%D8%A5%D9%84%D8%A7%20%D8%A7%D9%84%D9%84%D9%87%20%D9%88%D8%AD%D8%AF%D9%87%20%D9%84%D8%A7%20%D8%B4%D8%B1%D9%8A%D9%83%20%D9%84%D9%87',
+   'La ilaha illallahu wahdahu la sharika lah, lahul-mulku wa lahul-hamd, wa huwa ''ala kulli shay''in qadir. Alhamdu lillah, wa subhanallah, wa la ilaha illallah, wallahu akbar, wa la hawla wa la quwwata illa billah. Allahummagh-fir li.',
+   'There is no deity except Allah, alone, without partner. His is the dominion and His is the praise, and He is over all things competent. Praise be to Allah, glory be to Allah, there is no deity except Allah, Allah is the Greatest, and there is no power and no strength except with Allah. O Allah, forgive me.',
+   'صحيح البخاري (1154) من حديث عبادة بن الصامت رضي الله عنه.'),
+  ('seed-alhamdulillah-afani', 'ar', array['waking']::text[], 1028, 'الحمد لله الذي عافاني في جسدي',
+   'الْحَمْدُ لِلَّهِ الَّذِي عَافَانِي فِي جَسَدِي، وَرَدَّ عَلَيَّ رُوحِي، وَأَذِنَ لِي بِذِكْرِهِ',
+   'حسن', 1, 'https://dorar.net/hadith/search?q=%D8%A7%D9%84%D8%AD%D9%85%D8%AF%20%D9%84%D9%84%D9%87%20%D8%A7%D9%84%D8%B0%D9%8A%20%D8%B9%D8%A7%D9%81%D8%A7%D9%86%D9%8A%20%D9%81%D9%8A%20%D8%AC%D8%B3%D8%AF%D9%8A%20%D9%88%D8%B1%D8%AF%20%D8%B9%D9%84%D9%8A%20%D8%B1%D9%88%D8%AD%D9%8A',
+   'Alhamdu lillahil-ladhi ''afani fi jasadi, wa radda ''alayya ruhi, wa adhina li bi-dhikrih.',
+   'Praise be to Allah who gave health to my body, returned my soul to me, and permitted me to remember Him.',
+   'سنن الترمذي (3401) من حديث أبي هريرة رضي الله عنه.')
+
+on conflict (hadith_id, lang) do update set
+  occasions = excluded.occasions,
+  position = excluded.position,
+  title = excluded.title,
+  text = excluded.text,
+  grade = excluded.grade,
+  repeat_count = excluded.repeat_count,
+  source_url = excluded.source_url,
+  transliteration = excluded.transliteration,
+  meaning_en = excluded.meaning_en,
+  reference = excluded.reference,
+  updated_at = now();

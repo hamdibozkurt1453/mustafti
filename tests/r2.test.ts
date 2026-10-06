@@ -44,11 +44,11 @@ describe("R2 · الرأس", () => {
 });
 
 describe("R2 · التحويلات", () => {
-  it("/prayer و/adhkar إلى الرئيسية، و/expert/profile إلى /me، بكل اللغات", async () => {
+  it("/prayer إلى الرئيسية، و/expert/profile إلى /me، بكل اللغات (F2: /adhkar صفحة كاملة)", async () => {
     const rules = await nextConfig.redirects!();
     const find = (p: string) => rules.find((r) => r.source.endsWith(p));
     assert.equal(find("/prayer")?.destination, "/:locale#prayer");
-    assert.equal(find("/adhkar")?.destination, "/:locale#adhkar");
+    assert.equal(find("/adhkar"), undefined);
     assert.equal(find("/expert/profile")?.destination, "/:locale/me");
     for (const r of rules) for (const l of locales) assert.ok(r.source.includes(l), `${r.source}: ${l}`);
   });

@@ -278,6 +278,25 @@
       "text": "Perbualan anda tidak disimpan kerana anda belum log masuk. Log masuk untuk menyimpan perbualan anda.",
       "login": "Log masuk",
       "close": "Tutup"
+    },
+    "history": {
+      "title": "Perbualan saya",
+      "close": "Tutup",
+      "search": "Cari perbualan anda",
+      "empty": "Belum ada perbualan disimpan. Tanya soalan, dan perbualan anda disimpan di sini secara automatik.",
+      "noResults": "Tiada hasil.",
+      "untitled": "Perbualan tanpa tajuk",
+      "rename": "Namakan semula",
+      "delete": "Padam",
+      "confirmDelete": "Padam",
+      "cancel": "Batal",
+      "note": "Perbualan anda disimpan dalam akaun, dipadam bersamanya, dan boleh dimuat turun dari Akaun saya.",
+      "groups": {
+        "today": "Hari ini",
+        "yesterday": "Semalam",
+        "week": "7 hari lalu",
+        "older": "Lebih lama"
+      }
     }
   },
   "case": {
@@ -354,12 +373,35 @@
   },
   "prayer": {
     "change": "Tukar bandar & kaedah",
-    "done": "Selesai"
+    "done": "Selesai",
+    "autoLocation": "Lokasi anggaran, automatik"
   },
   "adhkar": {
     "title": "Zikir",
     "prev": "Zikir sebelumnya",
-    "next": "Zikir seterusnya"
+    "next": "Zikir seterusnya",
+    "now": "Zikir sekarang",
+    "openNow": "Buka zikir",
+    "all": "Semua zikir",
+    "kicker": "Hisnul Muslim",
+    "pageLead": "Zikir-zikir sahih bagi setiap waktu, daripada Sahihain dan kitab Sunan, dengan teks dan rujukannya.",
+    "pageNote": "Setiap zikir di sini disertakan rujukan (kitab dan nombor hadis) dan pautan sumbernya. Pembilang kekal dalam pelayar ini dan bermula semula setiap hari.",
+    "moments": {
+      "morning": "Zikir pagi",
+      "evening": "Zikir petang",
+      "before_prayer": "Sebelum solat",
+      "after_prayer": "Selepas solat",
+      "sleep": "Sebelum tidur",
+      "waking": "Ketika bangun"
+    },
+    "tabs": {
+      "morning": "Zikir pagi",
+      "evening": "Zikir petang",
+      "before_prayer": "Sebelum solat",
+      "after_prayer": "Selepas solat",
+      "sleep": "Sebelum tidur",
+      "waking": "Ketika bangun"
+    }
   },
   "library": {
     "kicker": "IslamHouse",
@@ -401,7 +443,10 @@
     "by": "Oleh",
     "arabicToo": "Buku bahasa Arab juga",
     "ownLanguage": "Buku dalam bahasa saya",
-    "timeout": "Perpustakaan tidak membalas dalam 8 saat. Cuba lagi sebentar."
+    "timeout": "Perpustakaan tidak membalas dalam 8 saat. Cuba lagi sebentar.",
+    "more": "Terokai lagi",
+    "loadingMore": "Sebentar…",
+    "moreError": "Gagal memuatkan. Cuba lagi."
   },
   "me": {
     "title": "Akaun saya",
@@ -654,6 +699,8 @@
     "passwordUpdated": "Kata laluan anda telah dikemas kini.",
     "errors": {
       "mismatch": "Kata laluan tidak sepadan."
-    }
+    },
+    "brandGreeting": "Assalamualaikum",
+    "brandLine": "Mustafti membimbing anda kepada ilmu daripada sumber yang dipercayai dalam bahasa anda, dan menghubungkan anda dengan pakar untuk persoalan anda."
   }
 }

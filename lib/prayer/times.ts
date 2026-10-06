@@ -19,7 +19,7 @@ export const FIVE: PrayerKey[] = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
 /** الموقع: مدينة من القائمة، أو موقع المتصفح (يبقى في المتصفح فقط). */
 export type Place =
   | { kind: "city"; cityId: string }
-  | { kind: "geo"; lat: number; lng: number };
+  | { kind: "geo"; lat: number; lng: number; tz?: string };
 
 export type PrayerSettings = { place: Place; method: MethodKey; madhab: AsrMadhab };
 
@@ -37,7 +37,7 @@ export function isMethod(v: unknown): v is MethodKey {
 
 /** إحداثيات الموقع ومنطقته الزمنية (undefined = توقيت المتصفح). */
 export function resolvePlace(place: Place): { lat: number; lng: number; tz: string | undefined } {
-  if (place.kind === "geo") return { lat: place.lat, lng: place.lng, tz: undefined };
+  if (place.kind === "geo") return { lat: place.lat, lng: place.lng, tz: place.tz };
   const c = cityById(place.cityId) ?? cityById(DEFAULT_CITY_ID)!;
   return { lat: c.lat, lng: c.lng, tz: c.tz };
 }

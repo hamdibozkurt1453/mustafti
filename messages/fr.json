@@ -278,6 +278,25 @@
       "text": "Votre discussion n'est pas enregistrée car vous n'êtes pas connecté. Connectez-vous pour conserver vos discussions.",
       "login": "Se connecter",
       "close": "Fermer"
+    },
+    "history": {
+      "title": "Mes discussions",
+      "close": "Fermer",
+      "search": "Rechercher dans vos discussions",
+      "empty": "Aucune discussion enregistrée. Posez une question : votre discussion sera enregistrée ici automatiquement.",
+      "noResults": "Aucun résultat.",
+      "untitled": "Discussion sans titre",
+      "rename": "Renommer",
+      "delete": "Supprimer",
+      "confirmDelete": "Supprimer",
+      "cancel": "Annuler",
+      "note": "Vos discussions sont enregistrées dans votre compte, supprimées avec lui et téléchargeables depuis Mon compte.",
+      "groups": {
+        "today": "Aujourd'hui",
+        "yesterday": "Hier",
+        "week": "7 derniers jours",
+        "older": "Plus anciennes"
+      }
     }
   },
   "case": {
@@ -354,12 +373,35 @@
   },
   "prayer": {
     "change": "Changer la ville et la méthode",
-    "done": "Terminé"
+    "done": "Terminé",
+    "autoLocation": "Position approximative, détectée automatiquement"
   },
   "adhkar": {
     "title": "Invocations",
     "prev": "Invocation précédente",
-    "next": "Invocation suivante"
+    "next": "Invocation suivante",
+    "now": "Le dhikr du moment",
+    "openNow": "Ouvrir les adhkar",
+    "all": "Tous les adhkar",
+    "kicker": "La Citadelle du musulman",
+    "pageLead": "Les adhkar authentiques de chaque moment, tirés des deux Sahih et des Sunan, avec leur texte et leur référence.",
+    "pageNote": "Chaque dhikr porte sa référence (ouvrage et numéro du hadith) et un lien vers sa source. Le compteur reste dans ce navigateur et repart chaque jour.",
+    "moments": {
+      "morning": "Adhkar du matin",
+      "evening": "Adhkar du soir",
+      "before_prayer": "Avant la prière",
+      "after_prayer": "Après la prière",
+      "sleep": "Avant de dormir",
+      "waking": "Au réveil"
+    },
+    "tabs": {
+      "morning": "Adhkar du matin",
+      "evening": "Adhkar du soir",
+      "before_prayer": "Avant la prière",
+      "after_prayer": "Après la prière",
+      "sleep": "Avant de dormir",
+      "waking": "Au réveil"
+    }
   },
   "library": {
     "kicker": "IslamHouse",
@@ -401,7 +443,10 @@
     "by": "Par",
     "arabicToo": "Livres en arabe aussi",
     "ownLanguage": "Livres dans ma langue",
-    "timeout": "La bibliothèque n'a pas répondu en 8 secondes. Réessayez dans un instant."
+    "timeout": "La bibliothèque n'a pas répondu en 8 secondes. Réessayez dans un instant.",
+    "more": "Découvrir plus",
+    "loadingMore": "Un instant…",
+    "moreError": "Impossible de charger la suite. Réessayez."
   },
   "me": {
     "title": "Mon compte",
@@ -654,6 +699,8 @@
     "passwordUpdated": "Votre mot de passe a été mis à jour.",
     "errors": {
       "mismatch": "Les mots de passe ne correspondent pas."
-    }
+    },
+    "brandGreeting": "As-salâmu ʿalaykum",
+    "brandLine": "Mustafti vous guide vers le savoir issu de sources fiables, dans votre langue, et vous met en relation avec des spécialistes pour votre question."
   }
 }
