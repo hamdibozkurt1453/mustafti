@@ -209,9 +209,11 @@ export function BotReply({ msg, onTerm, onRetry, caseApi, onAsk }: Props) {
         </div>
       )}
 
-      {abstained && done && msg.suggestions && msg.suggestions.length > 0 && (
-        <section aria-label={t("suggestTitle")} className="mf-rise">
-          <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-600">{t("suggestTitle")}</h3>
+      {(abstained || msg.kind === "chitchat") && done && msg.suggestions && msg.suggestions.length > 0 && (
+        <section aria-label={t(abstained ? "suggestTitle" : "chitchatSuggest")} className="mf-rise">
+          <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.14em] text-green-600">
+            {t(abstained ? "suggestTitle" : "chitchatSuggest")}
+          </h3>
           <ul className="flex flex-wrap gap-2" dir={msg.dir}>
             {msg.suggestions.map((q) => (
               <li key={q}>

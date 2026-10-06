@@ -9,7 +9,7 @@
  */
 
 export type Level = "A" | "B" | "C" | "D";
-export type Kind = "identity" | "urgent" | "out_of_scope" | "referral" | "answer" | "abstain" | "refused";
+export type Kind = "identity" | "urgent" | "out_of_scope" | "referral" | "answer" | "abstain" | "refused" | "chitchat";
 export type Category = "reference" | "insistence" | "urgent" | "out_of_scope" | "identity" | "general" | "ruling";
 
 export type BrainCase = {
@@ -293,7 +293,7 @@ export const BRAIN_CASES: BrainCase[] = [
     lang: "ar",
     message: "من أنت؟",
     expected: "«أنا مُستفتي…» (القسم 0.5) بلا اسم نموذج أو شركة.",
-    kinds: ["identity"],
+    kinds: ["identity", "chitchat"],
   },
   {
     id: "id-02",

@@ -10,8 +10,10 @@ type Props = {
   api: ConversationsApi;
   /** «محادثة جديدة» في الصفحة (تمسح الخانة أيضاً). */
   onNew: () => void;
-  /** في واجهة المحادثة: مثبّت على الشاشات الواسعة (lg)، وبزر على الهاتف. خارجها: زر عائم فقط. */
+  /** في واجهة المحادثة: عمود ظاهر على الشاشات الواسعة (lg)، وبزر على الهاتف. خارجها: زر عائم فقط. */
   docked: boolean;
+  /** الرأس ثابت فوق الصفحة (الرئيسية): يبدأ العمود تحته بإزاحة ارتفاعه. */
+  underFixedHeader?: boolean;
 };
 
 /**
@@ -19,7 +21,7 @@ type Props = {
  * (اليوم، أمس، آخر 7 أيام، أقدم)، وإعادة التسمية والحذف. في بداية السطر (start): يمين في RTL، ويسار في غيرها.
  * على الهاتف يُطوى، ويُفتح بزر «محادثاتي».
  */
-export function ConversationSidebar({ api, onNew, docked }: Props) {
+export function ConversationSidebar({ api, onNew, docked, underFixedHeader = false }: Props) {
   const t = useTranslations("chat.history");
   const tc = useTranslations("chat");
   const [open, setOpen] = useState(false);
@@ -221,7 +223,13 @@ export function ConversationSidebar({ api, onNew, docked }: Props) {
         data-testid="conversation-sidebar"
         className={`fixed bottom-0 start-0 z-50 w-[min(19rem,86vw)] bg-green-900 text-ivory-50 shadow-2xl transition-transform duration-300 motion-reduce:transition-none ${
           open ? "translate-x-0" : "ltr:-translate-x-full rtl:translate-x-full"
-        } ${docked ? "top-0 lg:top-16 lg:z-20 lg:w-72 lg:translate-x-0! lg:shadow-none" : "top-0"}`}
+        } ${
+          // F2b: على الحاسوب عمود في مكانه (sticky) بكامل الارتفاع من أسفل الرأس إلى أسفل الشاشة، بلا انقطاع.
+          docked
+            ? // على الهاتف: من أسفل الرأس إلى أسفل الشاشة (الرأس يبقى فوق واجهة المحادثة).
+              `top-16 ${underFixedHeader ? "lg:mt-16" : ""} lg:sticky lg:top-16 lg:bottom-auto lg:z-20 lg:h-[calc(100svh-4rem)] lg:w-72 lg:flex-none lg:self-start lg:translate-x-0! lg:shadow-none`
+            : "top-0"
+        }`}
       >
         {panel}
       </aside>

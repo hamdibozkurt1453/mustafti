@@ -1,7 +1,8 @@
 import "server-only";
 
 import { cacheGet, cacheSet, DAY } from "@/lib/cache";
-import { chat, chatStream, LlmError, reasoningFor, type ChatMessage } from "@/lib/llm";
+import { z } from "zod";
+import { chat, chatJson, chatStream, LlmError, reasoningFor, type ChatMessage } from "@/lib/llm";
 import { classify, type Classification } from "./classify";
 import {
   checkAnswer,
@@ -17,7 +18,16 @@ import {
   type GuardFinding,
   type GuardResult,
 } from "./guard";
-import { personaIssues, stripPersonaPhrases } from "./personas";
+import { personaFor, personaIssues, stripPersonaPhrases } from "./personas";
+import { IDENTITY_PROMPT } from "./identity";
+import {
+  detectSmallTalk,
+  smallTalkFallback,
+  smallTalkInstruction,
+  smallTalkSuggestions,
+  validSmallTalkReply,
+  type SmallTalkKind,
+} from "./small-talk";
 import { looksCaseRuling, looksGeneralRuling, looksGuidance, looksPersonal, looksPersonalFacts, looksUrgent, referralKindOf } from "./heuristics";
 import { detectIdentityProbe, guessLang, identityReply, type IdentityProbe } from "./identity";
 import { normalizeCitations, stripAbstainSentence, unquoteReferenceOnly, validCitations } from "./format";
@@ -57,7 +67,7 @@ import { checklistBlock, checklistCoverage, mapChecklist, matchChecklist, type C
  * و diag للمشرف فقط (لتشخيص الامتناع: هل البحث فارغ، أم امتنع النموذج، أم رُفضت الصياغة).
  */
 
-export type ReplyKind = "identity" | "urgent" | "out_of_scope" | "referral" | "answer" | "abstain" | "refused";
+export type ReplyKind = "identity" | "urgent" | "out_of_scope" | "referral" | "answer" | "abstain" | "refused" | "chitchat";
 
 /** سبب الامتناع (للتشخيص). */
 export type AbstainReason = "no_passages" | "no_relevant" | "model_abstained" | "no_citation" | "guard";
@@ -448,6 +458,39 @@ export function suggestKey(mode: ChatMode): MessageKey {
   return mode === "new_muslim" ? "suggestMentor" : mode === "discover" ? "suggestDaee" : "suggestExpert";
 }
 
+/** مهلة رد الشخصية على المحادثة العادية؛ بعدها الرد الاحتياطي الثابت. */
+const SMALL_TALK_MS = 7_000;
+
+const SmallTalkSchema = z.object({ reply: z.string(), suggestions: z.array(z.string()).max(3) });
+
+/**
+ * F2b: المحادثة العادية (تحية، شكر، وداع، سؤال عن المنصة، كلام عادي): بلا تصنيف ولا استرجاع ولا حارس.
+ * شخصية الصفحة ترد رداً قصيراً دافئاً بلغة السائل مع 3 أسئلة مقترحة؛ وإن تعذّر ذلك أو ذكر الرد نموذجاً
+ * أو مزوّداً، فالرد الثابت بلغة السائل.
+ */
+async function smallTalk(question: string, kind: SmallTalkKind, mode: ChatMode, history: ChatMessage[] = []) {
+  const lang = guessLang(question);
+  const fallback = { text: smallTalkFallback(kind, mode, lang), suggestions: smallTalkSuggestions(mode, lang), costUsd: 0, lang };
+  try {
+    const persona = personaFor(mode);
+    const res = await chatJson(
+      [
+        { role: "system", content: `${IDENTITY_PROMPT}\n\n${persona.system}\n\n${smallTalkInstruction(kind)}` },
+        ...history.slice(-4).map((m) => ({ ...m, content: m.content.slice(0, 600) })),
+        { role: "user", content: question.slice(0, 300) },
+      ],
+      SmallTalkSchema,
+      { temperature: 0.6, schemaName: "small_talk", maxTokens: 400, timeoutMs: SMALL_TALK_MS },
+    );
+    const reply = res.data.reply.trim();
+    if (!validSmallTalkReply(reply)) return fallback;
+    const suggestions = res.data.suggestions.map((q) => q.trim()).filter((q) => q && q.length <= 140 && validSmallTalkReply(q));
+    return { text: reply, suggestions: suggestions.length === 3 ? suggestions : fallback.suggestions, costUsd: res.usage.costUsd ?? 0, lang };
+  } catch {
+    return fallback;
+  }
+}
+
 export async function respond(question: string, options: RespondOptions = {}): Promise<BrainReply> {
   const started = Date.now();
   const stage = (s: BrainStage) => {
@@ -478,6 +521,14 @@ export async function respond(question: string, options: RespondOptions = {}): P
       cacheSet(answerKey(question, chatMode), stored, DAY);
       return { ...stored, streamed: false, diag: { attempts: [] }, timings: { totalMs: Date.now() - started, cached: "db" } };
     }
+  }
+
+  // 0) F2b: المحادثة العادية إلى شخصية الصفحة مباشرة (لا مصنّف ولا استرجاع ولا حارس). سؤال النموذج والتلاعب لهما ردهما الثابت.
+  const talk = probe === "model" || probe === "manipulation" ? null : detectSmallTalk(question);
+  if (talk) {
+    const r = await smallTalk(question, talk, chatMode, options.history);
+    base.costUsd += r.costUsd;
+    return done({ kind: "chitchat", text: r.text, lang: r.lang, suggestions: r.suggestions });
   }
 
   // 1) «من أنت؟» و«ما النموذج؟»: رد ثابت بلا نموذج.

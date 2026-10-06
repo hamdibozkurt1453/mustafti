@@ -327,7 +327,8 @@
         "week": "Previous 7 days",
         "older": "Older"
       }
-    }
+    },
+    "chitchatSuggest": "You could ask me, for example"
   },
   "auth": {
     "loginTitle": "Sign in",

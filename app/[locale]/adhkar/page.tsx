@@ -4,6 +4,7 @@ import { AdhkarList } from "@/components/adhkar/AdhkarList";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
 import { OCCASIONS, type Occasion } from "@/lib/adhkar/rules";
+import { groupAdhkar } from "@/lib/adhkar/group";
 import { listAdhkar } from "@/lib/adhkar/store";
 
 type Props = {
@@ -22,7 +23,8 @@ const isOccasion = (v: unknown): v is Occasion => typeof v === "string" && (OCCA
 /**
  * `/adhkar` — F2: صفحة الأذكار كاملة بالفئات الست (?c=): الصباح، والمساء، وقبل الصلاة، وبعد الصلاة،
  * والنوم، والاستيقاظ. من جدول adhkar (بذرة الأذكار المشهورة بتخريجها، وأذكار الموسوعة إن بُنيت).
- * بطاقة «ذِكر الآن» في الرئيسية تفتح الفئة المناسبة للوقت.
+ * صفحة ثانوية (لا في القائمة ولا في التذييل): رابط «كل الأذكار» من الأذكار الموقوتة في بطاقة المواقيت
+ * يفتح الفئة المناسبة للوقت. F2b: الأذكار تُقرأ ولو رُفضت القراءة العامة (مفتاح الخادم احتياطاً).
  */
 export default async function AdhkarPage({ params, searchParams }: Props) {
   const { locale } = await params;
@@ -31,9 +33,10 @@ export default async function AdhkarPage({ params, searchParams }: Props) {
   const raw = (await searchParams).c;
   const c = Array.isArray(raw) ? raw[0] : raw;
   const items = await listAdhkar(locale);
-  const available = OCCASIONS.filter((o) => items.some((d) => d.occasions.includes(o)));
+  const groups = groupAdhkar(items);
+  const available = OCCASIONS.filter((o) => groups[o].length > 0);
   const occasion: Occasion = isOccasion(c) ? c : (available[0] ?? "morning");
-  const list = items.filter((d) => d.occasions.includes(occasion));
+  const list = groups[occasion];
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:py-14">

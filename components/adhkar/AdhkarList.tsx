@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import type { Dhikr } from "@/lib/adhkar/store";
+import type { Dhikr } from "@/lib/adhkar/group";
 import type { Occasion } from "@/lib/adhkar/rules";
 
 const KEY = "mustafti:adhkar:page";
