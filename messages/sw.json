@@ -702,5 +702,84 @@
     },
     "brandGreeting": "Assalamu alaykum",
     "brandLine": "Mustafti inakuongoza kwenye elimu kutoka vyanzo vya kuaminika kwa lugha yako, na kukuunganisha na wataalamu kwa suala lako."
+  },
+  "explore": {
+    "play": "Cheza video",
+    "watchOn": "Kwenye YouTube",
+    "langLabel": "Lugha",
+    "storiesKicker": "Safari za kweli",
+    "storiesTitle": "Hadithi za Waislamu wapya",
+    "storiesLead": "Waislamu wapya kutoka nchi na lugha mbalimbali wanasimulia jinsi walivyoufikia Uislamu. Video hupakiwa tu unapobonyeza.",
+    "stepsKicker": "Anza hapa",
+    "stepsTitle": "Hatua zako za kwanza",
+    "stepsLead": "Kadi sita kwa siku zako za kwanza. Gusa kadi kumuuliza mwongozaji.",
+    "askCta": "Muulize mwongozaji",
+    "steps": {
+      "shahada": {
+        "title": "Shahada mbili",
+        "body": "Maana ya “Hakuna mungu ila Allah, Muhammad ni Mtume wake” na jinsi ya kuzitamka.",
+        "q": "Shahada mbili zina maana gani na nazitamka vipi?"
+      },
+      "purity": {
+        "title": "Twahara",
+        "body": "Josho na udhu, hatua kwa hatua, kabla ya swala yako ya kwanza.",
+        "q": "Ninaogaje josho na kutawadha kwa mara ya kwanza?"
+      },
+      "prayer": {
+        "title": "Swala",
+        "body": "Swala tano, na jinsi ya kuswali ukiwa bado unajifunza.",
+        "q": "Muislamu mpya anaswali vipi swala tano za kila siku?"
+      },
+      "fasting": {
+        "title": "Funga",
+        "body": "Funga ya Ramadhani, nani ana udhuru, na jinsi ya kuanza kwa utulivu.",
+        "q": "Ninafungaje Ramadhani kwa mara ya kwanza?"
+      },
+      "quran": {
+        "title": "Qur'ani",
+        "body": "Wapi pa kuanzia kusoma, na sura fupi za swala.",
+        "q": "Nianzie wapi kusoma Qur'ani, na sura zipi nihifadhi kwanza?"
+      },
+      "character": {
+        "title": "Maadili",
+        "body": "Ukweli, huruma na wema kwa familia yako na walio karibu nawe.",
+        "q": "Ninaishi vipi kwa maadili ya Kiislamu na familia yangu isiyo ya Kiislamu?"
+      }
+    },
+    "lecturesKicker": "Jifunze kwa utulivu",
+    "lecturesTitle": "Mihadhara ya utangulizi wa Uislamu",
+    "lecturesLead": "Mihadhara mifupi kwa lugha mbalimbali inayoeleza Uislamu ni nini na Waislamu wanaamini nini.",
+    "debatesKicker": "Maswali makubwa",
+    "debatesTitle": "Midahalo na mazungumzo",
+    "debatesLead": "Mazungumzo maarufu kati ya Waislamu na wasioamini Mungu kuhusu kuwepo kwa Mungu na maana ya maisha.",
+    "externalNote": "Maudhui ya nje kutoka YouTube, yanaonyeshwa kwa marejeo. Maoni ya wazungumzaji ni yao.",
+    "booksKicker": "Kutoka IslamHouse",
+    "booksTitle": "Vitabu kuhusu maswali makubwa",
+    "booksLead": "Vitabu vya bure kwa lugha yako: Kwa nini Uislamu? Muumba ni nani? Lengo la maisha ni nini?",
+    "booksEmpty": "Vitabu havipatikani sasa. Vitazame maktabani.",
+    "booksMore": "Zaidi maktabani"
+  },
+  "newsletter": {
+    "title": "Jarida",
+    "hint": "Habari za Mustafti mara moja kwa mwezi. Bila barua taka.",
+    "label": "Barua pepe yako",
+    "placeholder": "wewe@mfano.com",
+    "submit": "Jiandikishe",
+    "sending": "…",
+    "success": "Umejiandikisha. Asante!",
+    "already": "Barua pepe hii tayari imejiandikisha.",
+    "invalid": "Andika barua pepe sahihi.",
+    "limited": "Majaribio mengi mno. Jaribu tena baadaye kidogo.",
+    "error": "Imeshindikana kujiandikisha sasa. Jaribu baadaye."
+  },
+  "aboutPage": {
+    "kicker": "Kuhusu jukwaa",
+    "pathsKicker": "Mustafti ni kwa ajili ya nani?",
+    "sourcesTitle": "Vyanzo vilivyoidhinishwa",
+    "sourcesLead": "Maandishi yanayonukuliwa na kunasibishwa (aya, hadithi, kauli ya mwanazuoni, fatwa iliyochapishwa) hutoka kwa vyanzo hivi pekee, pamoja na kiungo chake asili.",
+    "teamTitle": "Timu na shindano",
+    "teamBody": "Mustafti ni mradi wa mtu mmoja uliojengwa na Hamdi Bozkurt kwa Shindano la AI katika Kuhudumia Maudhui ya Kiislamu 2026, juu ya marejeo na kifurushi cha kielimu cha shindano, na kanuni za fatwa zimepitiwa na mshauri wa shindano.",
+    "teamChallenge": "Shindano la AI katika Kuhudumia Maudhui ya Kiislamu 2026",
+    "start": "Uliza swali lako"
   }
 }

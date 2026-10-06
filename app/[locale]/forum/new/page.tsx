@@ -4,6 +4,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { NewThreadForm } from "@/components/forum/ForumForms";
 import type { Locale } from "@/i18n/locales";
 import { getAuthContext } from "@/lib/auth/roles";
+import { listCategories } from "@/lib/forum/categories";
+import { activeCategories, categoryName } from "@/lib/forum/category-rules";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -31,7 +33,7 @@ export default async function NewThreadPage({ params }: Props) {
           <p className="mt-2 max-w-2xl text-ivory-50/80">{t("new.lead")}</p>
         </header>
         <section className="mt-8 rounded-[24px] border border-sand-200 bg-ivory-50 p-6 shadow-[0_24px_60px_-30px_rgb(4_48_31/0.45)] sm:p-8">
-          <NewThreadForm />
+          <NewThreadForm categories={activeCategories(await listCategories()).map((c) => ({ slug: c.slug, name: categoryName(c, locale) }))} />
           <p className="mt-6 border-t border-sand-200 pt-4 text-xs text-ink-600">
             <strong className="text-green-900">{t("rulesTitle")}: </strong>
             {t("rules")}

@@ -6,6 +6,7 @@ import { AdminStats } from "@/components/admin/AdminStats";
 import { MfaGate } from "@/components/admin/MfaGate";
 import { CountBadge } from "@/components/AccountButton";
 import { AdminForum } from "@/components/admin/AdminForum";
+import { AdminNewsletter } from "@/components/admin/AdminNewsletter";
 import { ExpertApplications } from "@/components/admin/ExpertApplications";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Link } from "@/i18n/navigation";
@@ -65,6 +66,7 @@ export default async function AdminPage({ params, searchParams }: Props) {
     experts: t("experts.review.tab"),
     cases: t("admin.cases.tab"),
     forum: t("admin.forum.tab"),
+    newsletter: t("admin.newsletter.tab"),
     stats: t("admin.stats.tab"),
   };
   const tabs = await Promise.all(
@@ -119,7 +121,9 @@ export default async function AdminPage({ params, searchParams }: Props) {
           ) : tab === "cases" ? (
             <AdminCases base={base} status={sp.status} track={sp.track} canAct={!readOnly} />
           ) : tab === "forum" ? (
-            <AdminForum canAct={!readOnly} />
+            <AdminForum canAct={!readOnly} role={role} />
+          ) : tab === "newsletter" ? (
+            <AdminNewsletter />
           ) : tab === "stats" ? (
             <AdminStats />
           ) : (

@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AuthorLine, PostBody, RulingNotice } from "@/components/forum/ForumBits";
 import { ExpertAnswerToggle, ReplyForm, ReportButton } from "@/components/forum/ForumForms";
 import { Link } from "@/i18n/navigation";
+import { categoryNamer } from "@/lib/forum/categories";
 import type { Locale } from "@/i18n/locales";
 import { getAuthContext } from "@/lib/auth/roles";
 import { shortDateTime } from "@/lib/experts/format";
@@ -54,7 +55,7 @@ export default async function ThreadPage({ params }: Props) {
             {thread.pinned && <span className="rounded-full bg-gold-500 px-2.5 py-1 text-green-900">📌 {t("pinned")}</span>}
             {thread.status === "locked" && <span className="rounded-full bg-green-900 px-2.5 py-1 text-ivory-50">🔒 {t("locked")}</span>}
             <Link href={{ pathname: "/forum", query: { cat: thread.category } }} className="rounded-full bg-green-900/[0.06] px-2.5 py-1 text-green-600 hover:bg-green-900/10">
-              {t(`categories.${thread.category}`)}
+              {(await categoryNamer(locale))(thread.category)}
             </Link>
           </div>
           <h1 dir="auto" className="mt-3 font-display text-[26px] font-semibold leading-snug text-green-900 sm:text-[32px]">

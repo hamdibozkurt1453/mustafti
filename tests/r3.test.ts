@@ -354,7 +354,7 @@ describe("R3 · migration المسار", () => {
 describe("R3 · الصفحتان والتمرير", () => {
   it("الصفحتان تستعملان المحادثة نفسها بوضعها", () => {
     assert.match(read("app/[locale]/new-muslim/page.tsx"), /<GuidedChat mode="new_muslim">/);
-    assert.match(read("app/[locale]/discover/page.tsx"), /<GuidedChat mode="discover" \/>/);
+    assert.match(read("app/[locale]/discover/page.tsx"), /<GuidedChat mode="discover"( \/)?>/);
     const guided = read("components/chat/GuidedChat.tsx");
     for (const c of ["useChat(mode)", "<ChatView", "<Composer", 'get("q")']) assert.ok(guided.includes(c), c);
   });

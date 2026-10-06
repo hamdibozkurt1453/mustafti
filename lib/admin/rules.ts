@@ -10,7 +10,7 @@ export type CaseStatus = (typeof CASE_STATUSES)[number];
 
 export const EXPERT_STATUSES = ["pending", "approved", "rejected"] as const;
 
-export type AdminTab = "home" | "experts" | "cases" | "forum" | "stats";
+export type AdminTab = "home" | "experts" | "cases" | "forum" | "newsletter" | "stats";
 
 /** التبويبات الظاهرة لكل دور. viewer يرى الكل للاطلاع فقط. */
 export function tabsFor(role: AdminRole): AdminTab[] {
@@ -19,6 +19,8 @@ export function tabsFor(role: AdminRole): AdminTab[] {
   if (role === "super_admin" || role === "moderator" || role === "viewer") tabs.push("cases");
   // R4: «الحوار» للمشرفين عليه (moderator فأعلى)، وviewer للاطلاع.
   if (role === "super_admin" || role === "moderator" || role === "viewer") tabs.push("forum");
+  // F3: «النشرة» (بريد المشتركين بيانات شخصية) للمشرف الأعلى وحده، ولا يراها حساب الاطلاع.
+  if (role === "super_admin") tabs.push("newsletter");
   tabs.push("stats");
   return tabs;
 }
