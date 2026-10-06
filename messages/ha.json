@@ -703,5 +703,84 @@
     },
     "brandGreeting": "Assalamu alaikum",
     "brandLine": "Mustafti yana jagorantar ka zuwa ilimi daga amintattun tushe da harshenka, kuma yana haɗa ka da masana a kan matsalarka."
+  },
+  "explore": {
+    "play": "Kunna bidiyo",
+    "watchOn": "A YouTube",
+    "langLabel": "Harshe",
+    "storiesKicker": "Labarai na gaskiya",
+    "storiesTitle": "Labaran sababbin Musulmi",
+    "storiesLead": "Sababbin Musulmi daga ƙasashe da harsuna daban-daban suna ba da labarin yadda suka sami Musulunci. Bidiyo yana lodi ne kawai idan ka danna.",
+    "stepsKicker": "Fara daga nan",
+    "stepsTitle": "Matakanka na farko",
+    "stepsLead": "Katuna shida don kwanakinka na farko. Danna kati don tambayar jagora.",
+    "askCta": "Tambayi jagora",
+    "steps": {
+      "shahada": {
+        "title": "Kalmar shahada",
+        "body": "Ma'anar “Babu abin bauta sai Allah, Muhammadu Manzon Allah ne” da yadda ake faɗar ta.",
+        "q": "Mene ne ma'anar kalmar shahada kuma yaya ake faɗar ta?"
+      },
+      "purity": {
+        "title": "Tsarki",
+        "body": "Wanka da alwala, mataki-mataki, kafin sallarka ta farko.",
+        "q": "Yaya zan yi wanka da alwala a karon farko?"
+      },
+      "prayer": {
+        "title": "Sallah",
+        "body": "Salloli biyar, da yadda za ka yi sallah yayin da kake koyo.",
+        "q": "Yaya sabon Musulmi zai yi salloli biyar na kowace rana?"
+      },
+      "fasting": {
+        "title": "Azumi",
+        "body": "Azumin Ramadan, wanda aka yi wa uzuri, da yadda za a fara a hankali.",
+        "q": "Yaya zan yi azumin Ramadan a karon farko?"
+      },
+      "quran": {
+        "title": "Alƙur'ani",
+        "body": "Inda za a fara karatu, da gajerun surori don sallah.",
+        "q": "A ina zan fara karatun Alƙur'ani, kuma waɗanne surori zan haddace da farko?"
+      },
+      "character": {
+        "title": "Ɗabi'u",
+        "body": "Gaskiya, tausayi da kyautatawa ga iyalinka da na kusa da kai.",
+        "q": "Yaya zan mu'amalanci iyalina waɗanda ba Musulmi ba da ɗabi'un Musulunci?"
+      }
+    },
+    "lecturesKicker": "Koya a hankali",
+    "lecturesTitle": "Laccoci na gabatar da Musulunci",
+    "lecturesLead": "Gajerun laccoci a harsuna daban-daban da ke bayyana mene ne Musulunci da abin da Musulmi suka yi imani da shi.",
+    "debatesKicker": "Manyan tambayoyi",
+    "debatesTitle": "Muhawara da tattaunawa",
+    "debatesLead": "Sanannun tattaunawa tsakanin Musulmi da waɗanda ba su yarda da Allah ba game da samuwar Allah da ma'anar rayuwa.",
+    "externalNote": "Abun waje daga YouTube, ana nuna shi don duba kawai. Ra'ayoyin masu magana nasu ne.",
+    "booksKicker": "Daga IslamHouse",
+    "booksTitle": "Littattafai kan manyan tambayoyi",
+    "booksLead": "Littattafai kyauta a harshenka: Me yasa Musulunci? Wane ne Mahalicci? Mene ne manufar rayuwa?",
+    "booksEmpty": "Ba a iya samun littattafan yanzu. Duba su a ɗakin karatu.",
+    "booksMore": "Ƙari a ɗakin karatu"
+  },
+  "newsletter": {
+    "title": "Wasiƙar labarai",
+    "hint": "Labaran Mustafti sau ɗaya a wata. Babu saƙon banza.",
+    "label": "Imel ɗinka",
+    "placeholder": "kai@misali.com",
+    "submit": "Yi rajista",
+    "sending": "…",
+    "success": "An yi maka rajista. Na gode!",
+    "already": "Wannan imel ɗin ya riga ya yi rajista.",
+    "invalid": "Rubuta ingantaccen adireshin imel.",
+    "limited": "Ƙoƙari ya yi yawa. Sake gwadawa nan ba da jimawa ba.",
+    "error": "Ba a iya yin rajista yanzu ba. Sake gwadawa daga baya."
+  },
+  "aboutPage": {
+    "kicker": "Game da dandalin",
+    "pathsKicker": "Mustafti na wane ne?",
+    "sourcesTitle": "Tushen da aka amince da su",
+    "sourcesLead": "Rubutun da aka ruwaito kuma aka danganta (aya, hadisi, maganar malami, fatawar da aka buga) yana fitowa ne daga waɗannan tushe kaɗai, tare da asalin mahaɗinsa.",
+    "teamTitle": "Ƙungiya da gasa",
+    "teamBody": "Mustafti aikin mutum ɗaya ne da Hamdi Bozkurt ya gina don Gasar AI a Hidimar Abun Musulunci 2026, bisa tushe da kunshin ilimi na gasar, kuma jagorar gasar ta duba ƙa'idojin fatawa.",
+    "teamChallenge": "Gasar AI a Hidimar Abun Musulunci 2026",
+    "start": "Yi tambayarka"
   }
 }

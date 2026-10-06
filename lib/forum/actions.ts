@@ -6,7 +6,8 @@ import { locales } from "@/i18n/locales";
 import { AuthzError, requireRole } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
 import { checkForumText, type ForumRejection } from "./guard";
-import { canMarkExpertAnswer, FORUM_CATEGORIES, isVerifiedExpert, LIMITS, REPORT_REASONS, spamAllowed } from "./rules";
+import { listCategories } from "./categories";
+import { CATEGORY_SLUG_RE, canMarkExpertAnswer, isVerifiedExpert, LIMITS, REPORT_REASONS, spamAllowed } from "./rules";
 import { recentPostingTimes, UUID_RE } from "./store";
 
 /**
@@ -26,7 +27,7 @@ const lang = z.enum(locales);
 const ThreadInput = z.object({
   title: z.string().trim().min(LIMITS.titleMin).max(LIMITS.titleMax),
   body: z.string().trim().min(LIMITS.threadBodyMin).max(LIMITS.bodyMax),
-  category: z.enum(FORUM_CATEGORIES),
+  category: z.string().regex(CATEGORY_SLUG_RE),
   lang,
 });
 
@@ -69,6 +70,8 @@ export async function createThread(input: unknown): Promise<ForumResult<{ id: st
     const parsed = ThreadInput.safeParse(input);
     if (!parsed.success) return { ok: false, error: "invalid" };
     const { title, body, category, lang } = parsed.data;
+    // F3: باب موجود ومفعّل (وRLS تفحص الشيء نفسه).
+    if (!(await listCategories()).some((c) => c.slug === category && c.active)) return { ok: false, error: "invalid" };
 
     const verdict = checkForumText(`${title}\n${body}`, { expert });
     if (!verdict.ok) return { ok: false, error: "rejected", reason: verdict.reason };

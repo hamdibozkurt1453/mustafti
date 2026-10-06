@@ -703,5 +703,84 @@
     },
     "brandGreeting": "Assalamualaikum",
     "brandLine": "Mustafti membimbing anda kepada ilmu daripada sumber yang dipercayai dalam bahasa anda, dan menghubungkan anda dengan pakar untuk persoalan anda."
+  },
+  "explore": {
+    "play": "Main video",
+    "watchOn": "Di YouTube",
+    "langLabel": "Bahasa",
+    "storiesKicker": "Kisah benar",
+    "storiesTitle": "Kisah saudara baru",
+    "storiesLead": "Saudara baru dari pelbagai negara dan bahasa menceritakan bagaimana mereka menemui Islam. Video dimuatkan hanya apabila anda menekannya.",
+    "stepsKicker": "Mula di sini",
+    "stepsTitle": "Langkah pertama anda",
+    "stepsLead": "Enam kad untuk hari-hari pertama anda. Ketik kad untuk bertanya kepada pembimbing.",
+    "askCta": "Tanya pembimbing",
+    "steps": {
+      "shahada": {
+        "title": "Dua kalimah syahadah",
+        "body": "Maksud “Tiada tuhan melainkan Allah, Muhammad pesuruh Allah” dan cara melafazkannya.",
+        "q": "Apakah maksud dua kalimah syahadah dan bagaimana melafazkannya?"
+      },
+      "purity": {
+        "title": "Bersuci",
+        "body": "Mandi wajib dan wuduk, langkah demi langkah, sebelum solat pertama.",
+        "q": "Bagaimana mandi wajib dan berwuduk buat kali pertama?"
+      },
+      "prayer": {
+        "title": "Solat",
+        "body": "Solat lima waktu, dan cara solat semasa masih belajar.",
+        "q": "Bagaimana saudara baru menunaikan solat lima waktu?"
+      },
+      "fasting": {
+        "title": "Puasa",
+        "body": "Puasa Ramadan, siapa yang diberi keringanan, dan cara bermula dengan tenang.",
+        "q": "Bagaimana berpuasa Ramadan buat kali pertama?"
+      },
+      "quran": {
+        "title": "Al-Quran",
+        "body": "Dari mana mula membaca, dan surah pendek untuk solat.",
+        "q": "Dari mana saya mula membaca al-Quran, dan surah apa yang dihafal dahulu?"
+      },
+      "character": {
+        "title": "Akhlak",
+        "body": "Jujur, belas kasihan dan berbuat baik kepada keluarga dan orang sekeliling.",
+        "q": "Bagaimana berakhlak Islam dengan keluarga saya yang bukan Islam?"
+      }
+    },
+    "lecturesKicker": "Kenali dengan tenang",
+    "lecturesTitle": "Ceramah pengenalan Islam",
+    "lecturesLead": "Ceramah ringkas dalam pelbagai bahasa tentang apa itu Islam dan apa yang dipercayai umat Islam.",
+    "debatesKicker": "Soalan besar",
+    "debatesTitle": "Debat dan dialog",
+    "debatesLead": "Dialog terkenal antara Muslim dan ateis atau agnostik tentang kewujudan Tuhan dan makna hidup.",
+    "externalNote": "Kandungan luar dari YouTube, dipaparkan sebagai rujukan. Pandangan penceramah adalah milik mereka.",
+    "booksKicker": "Dari IslamHouse",
+    "booksTitle": "Buku tentang soalan besar",
+    "booksLead": "Buku percuma dalam bahasa anda: Mengapa Islam? Siapa Pencipta? Apa tujuan hidup?",
+    "booksEmpty": "Buku tidak dapat dicapai sekarang. Layari di perpustakaan.",
+    "booksMore": "Lagi di perpustakaan"
+  },
+  "newsletter": {
+    "title": "Buletin",
+    "hint": "Berita Mustafti sebulan sekali. Tanpa spam.",
+    "label": "E-mel anda",
+    "placeholder": "anda@contoh.com",
+    "submit": "Langgan",
+    "sending": "…",
+    "success": "Langganan berjaya. Terima kasih!",
+    "already": "E-mel ini sudah melanggan.",
+    "invalid": "Masukkan alamat e-mel yang sah.",
+    "limited": "Terlalu banyak cubaan. Cuba sebentar lagi.",
+    "error": "Tidak dapat melanggan sekarang. Cuba kemudian."
+  },
+  "aboutPage": {
+    "kicker": "Tentang platform",
+    "pathsKicker": "Untuk siapa Mustafti?",
+    "sourcesTitle": "Sumber yang diiktiraf",
+    "sourcesLead": "Teks yang dipetik dan disandarkan (ayat, hadis, kata ulama, fatwa yang diterbitkan) hanya datang daripada sumber-sumber ini, bersama pautan asalnya.",
+    "teamTitle": "Pasukan dan pertandingan",
+    "teamBody": "Mustafti ialah projek individu yang dibina oleh Hamdi Bozkurt untuk Cabaran AI dalam Khidmat Kandungan Islam 2026, berdasarkan rujukan dan pakej ilmiah cabaran, dengan semakan peraturan fatwa oleh mentor pertandingan.",
+    "teamChallenge": "Cabaran AI dalam Khidmat Kandungan Islam 2026",
+    "start": "Ajukan soalan"
   }
 }

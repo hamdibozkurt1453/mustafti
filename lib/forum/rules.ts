@@ -5,13 +5,20 @@
  */
 
 import type { AdminRole, Role } from "@/lib/auth/role-rules";
+import { DEFAULT_FORUM_CATEGORIES } from "./categories-data";
 
-/** الأبواب (تطابق قيد category في الـ migration). */
-export const FORUM_CATEGORIES = ["aqeedah", "ibadat", "muamalat", "family", "new_muslim", "general"] as const;
-export type ForumCategory = (typeof FORUM_CATEGORIES)[number];
+/**
+ * F3: الأبواب في جدول forum_categories (تُضاف وتُعطَّل من اللوحة)، فالباب رمز بصيغة slug
+ * يُتحقق من وجوده وتفعيله في الخادم وفي RLS. هذه القائمة الأبواب الافتراضية (البذرة) فقط.
+ */
+export const FORUM_CATEGORIES: readonly string[] = DEFAULT_FORUM_CATEGORIES.map((c) => c.slug);
+export type ForumCategory = string;
+
+/** صيغة الباب: حروف لاتينية صغيرة وأرقام و_ (تطابق قيد slug في الـ migration). */
+export const CATEGORY_SLUG_RE = /^[a-z][a-z0-9_]{1,31}$/;
 
 export function isForumCategory(value: unknown): value is ForumCategory {
-  return (FORUM_CATEGORIES as readonly unknown[]).includes(value);
+  return typeof value === "string" && CATEGORY_SLUG_RE.test(value);
 }
 
 /** أسباب البلاغ (تطابق قيد reason). */

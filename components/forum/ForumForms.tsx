@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { createPost, createThread, reportContent, setExpertAnswer, type ForumResult } from "@/lib/forum/actions";
-import { FORUM_CATEGORIES, LIMITS, REPORT_REASONS, type ReportReason } from "@/lib/forum/rules";
+import { LIMITS, REPORT_REASONS, type ReportReason } from "@/lib/forum/rules";
 import { CloseIcon } from "../icons";
 
 /**
@@ -33,7 +33,8 @@ function ErrorLine({ text }: { text: string | null }) {
   );
 }
 
-export function NewThreadForm() {
+/** categories: الأبواب المفعّلة بأسمائها بلغة الواجهة (F3: من جدول forum_categories). */
+export function NewThreadForm({ categories }: { categories: { slug: string; name: string }[] }) {
   const t = useTranslations("forum");
   const locale = useLocale();
   const router = useRouter();
@@ -74,9 +75,9 @@ export function NewThreadForm() {
           {t("new.categoryLabel")}
         </label>
         <select id="forum-category" name="category" required defaultValue="general" className={field}>
-          {FORUM_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {t(`categories.${c}`)}
+          {categories.map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.name}
             </option>
           ))}
         </select>

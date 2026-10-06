@@ -482,14 +482,68 @@
         "unlock": "Unlock",
         "pin": "Pin",
         "unpin": "Unpin",
-        "resolve": "Resolve report"
+        "resolve": "Resolve report",
+        "delete": "Delete"
       },
       "errors": {
         "forbidden": "You do not have permission for this action.",
         "unauthorized": "Your session ended. Please sign in again.",
         "invalid": "Invalid request.",
         "generic": "Could not complete the action. Please try again."
+      },
+      "settings": {
+        "categoriesTitle": "Categories",
+        "categoriesLead": "Display order in the forum. A disabled category takes no new threads; its threads stay.",
+        "notReady": "Run migration 20261013_forum_categories.sql to enable category management.",
+        "threads": "{count, plural, =0 {No threads} one {# thread} other {# threads}}",
+        "active": "Active",
+        "inactive": "Disabled",
+        "enable": "Enable",
+        "disable": "Disable",
+        "up": "Up",
+        "down": "Down",
+        "addTitle": "New category",
+        "slugLabel": "Slug (lowercase latin letters and _)",
+        "nameLabel": "Arabic and English names are required; other languages are optional",
+        "add": "Add category",
+        "modsTitle": "Forum moderators",
+        "modsLead": "Give a registered account the moderator role by email (two-step verification is required on first admin sign-in).",
+        "emailLabel": "Account email",
+        "assign": "Make moderator",
+        "remove": "Remove role",
+        "noMods": "No forum moderators yet.",
+        "postsTitle": "Latest replies",
+        "noPosts": "No replies yet.",
+        "confirmDelete": "Delete this reply permanently? It is recorded in the audit log.",
+        "saved": "Done.",
+        "errors": {
+          "slug": "Invalid slug.",
+          "duplicate": "A category with this slug exists.",
+          "name": "Enter Arabic and English names (2–40 characters).",
+          "not_found": "Not found (no account with this email?).",
+          "already": "This account is already a forum moderator.",
+          "other_role": "This account has another admin role; it can't be changed here.",
+          "self": "You can't assign yourself.",
+          "invalid": "Invalid input.",
+          "forbidden": "You don't have this permission.",
+          "unauthorized": "Please sign in first.",
+          "generic": "Couldn't complete that. Please try again."
+        }
       }
+    },
+    "newsletter": {
+      "tab": "Newsletter",
+      "total": "{count, plural, =0 {No subscribers} one {# subscriber} other {# subscribers}}",
+      "export": "Export CSV",
+      "email": "Email",
+      "lang": "Language",
+      "date": "Date",
+      "confirmed": "Confirmed",
+      "yes": "Yes",
+      "no": "No",
+      "empty": "No subscribers yet.",
+      "notReady": "Run migration 20261014_newsletter.sql to enable the newsletter.",
+      "latest": "Latest 200 subscribers"
     }
   },
   "case": {
@@ -1145,5 +1199,84 @@
         "link": "Not posted: it contains a link from outside the reference sources."
       }
     }
+  },
+  "explore": {
+    "play": "Play video",
+    "watchOn": "On YouTube",
+    "langLabel": "Language",
+    "storiesKicker": "Real journeys",
+    "storiesTitle": "Stories of new Muslims",
+    "storiesLead": "New Muslims from different countries and languages tell how they came to Islam. Each video loads only when you press it.",
+    "stepsKicker": "Start here",
+    "stepsTitle": "Your first steps",
+    "stepsLead": "Six cards for your first days. Tap any card to ask the guide about it.",
+    "askCta": "Ask the guide",
+    "steps": {
+      "shahada": {
+        "title": "The Shahada",
+        "body": "What “there is no god but Allah, Muhammad is His Messenger” means and how to say it.",
+        "q": "What does the Shahada mean and how do I say it?"
+      },
+      "purity": {
+        "title": "Purification",
+        "body": "Ghusl and wudu, step by step, before your first prayer.",
+        "q": "How do I do ghusl and wudu for the first time?"
+      },
+      "prayer": {
+        "title": "Prayer",
+        "body": "The five prayers, and how to pray while you are still learning.",
+        "q": "How do I pray the five daily prayers as a new Muslim?"
+      },
+      "fasting": {
+        "title": "Fasting",
+        "body": "Fasting Ramadan, who is excused, and how to begin gently.",
+        "q": "How do I fast Ramadan for the first time?"
+      },
+      "quran": {
+        "title": "The Quran",
+        "body": "Where to start reading, and short surahs for prayer.",
+        "q": "Where should I start reading the Quran, and which surahs should I memorise first?"
+      },
+      "character": {
+        "title": "Character",
+        "body": "Honesty, mercy and kindness with your family and those around you.",
+        "q": "How do I treat my non-Muslim family with Islamic manners?"
+      }
+    },
+    "lecturesKicker": "Learn calmly",
+    "lecturesTitle": "Introductory lectures on Islam",
+    "lecturesLead": "Short lectures in different languages explaining what Islam is and what Muslims believe.",
+    "debatesKicker": "Big questions",
+    "debatesTitle": "Debates and dialogues",
+    "debatesLead": "Well-known dialogues between Muslims and atheists or agnostics on God's existence and the meaning of life.",
+    "externalNote": "External YouTube content, shown for reference. The speakers' views are their own.",
+    "booksKicker": "From IslamHouse",
+    "booksTitle": "Books on the big questions",
+    "booksLead": "Free books in your language: Why Islam? Who is the Creator? What is the purpose of life?",
+    "booksEmpty": "The books can't be reached right now. Browse them in the library.",
+    "booksMore": "More in the library"
+  },
+  "newsletter": {
+    "title": "Newsletter",
+    "hint": "Mustafti news once a month. No spam.",
+    "label": "Your email",
+    "placeholder": "you@example.com",
+    "submit": "Subscribe",
+    "sending": "…",
+    "success": "You're subscribed. Thank you!",
+    "already": "This email is already subscribed.",
+    "invalid": "Please enter a valid email address.",
+    "limited": "Too many attempts. Please try again shortly.",
+    "error": "Couldn't subscribe right now. Please try later."
+  },
+  "aboutPage": {
+    "kicker": "About the platform",
+    "pathsKicker": "Who is Mustafti for?",
+    "sourcesTitle": "Approved sources",
+    "sourcesLead": "Quoted and attributed text (a verse, a hadith, a scholar's words, a published fatwa) comes from these sources only, with its original link.",
+    "teamTitle": "Team and challenge",
+    "teamBody": "Mustafti is a solo project built by Hamdi Bozkurt for the AI in Service of Islamic Content Challenge 2026, on the challenge's reference sources and scholarly package, with the challenge mentor reviewing its fatwa rules.",
+    "teamChallenge": "AI in Service of Islamic Content Challenge 2026",
+    "start": "Ask your question"
   }
 }

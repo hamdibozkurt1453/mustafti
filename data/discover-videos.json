@@ -1,0 +1,17 @@
+{
+  "_note": "F3: محاضرات تعريفية ومناظرات (محتوى خارجي). المعرّفات من نتائج البحث (يوتيوب محجوب من بيئة البناء)، وتُفحص من متصفح قبل العرض.",
+  "lectures": [
+    { "id": "OsmYQl3xy_Y", "title": "What's Islam? Islam in Brief - Yusuf Estes", "channel": "Digital Mimbar", "lang": "en" },
+    { "id": "BhWzwX9Xqo8", "title": "التعريف بالإسلام لغير المسلمين - الشيخ عبدالعزيز بن باز", "channel": "مشروع كبار العلماء", "lang": "ar" },
+    { "id": "RhcVO6n8G1A", "title": "A Closer look into Islam (Urdu)", "channel": "Towards Eternity - Urdu", "lang": "ur" },
+    { "id": "kxNBg1a11Sc", "title": "Mengenal Agama Islam dengan Dalil - Ustadz Jamaludin, Lc.", "channel": "Yufid.TV", "lang": "id" },
+    { "id": "oqniiQO1jeQ", "title": "İslam'ı Öğrenmeye Nereden Ve Nasıl Başlamalıyım?", "channel": "Mehmed Yıldız", "lang": "tr" },
+    { "id": "Fa6rRGeHcHk", "title": "Uislamu ni nini? - Sheikh Ramadhan Mwangi", "channel": "", "lang": "sw" }
+  ],
+  "debates": [
+    { "id": "uSwJuOPG4FI", "title": "Lawrence Krauss vs Hamza Tzortzis — Islam or Atheism", "channel": "Sapience Institute", "lang": "en" },
+    { "id": "iZNleSuS8lg", "title": "Islam or Atheism - You Decide! Hamza Andreas Tzortzis & Dr Ed Buckner", "channel": "", "lang": "en" },
+    { "id": "dm46FPgRGbQ", "title": "Mohammed Hijab vs Edward Tabash — Does God Exist?", "channel": "SALAM", "lang": "en" },
+    { "id": "ZQwgZXY37DQ", "title": "\"Delilini Nötrleyebilirim!\" Diyen Ateist İle Müslüman Gencin Tartışması!", "channel": "Sözler Köşkü", "lang": "tr" }
+  ]
+}
