@@ -2,7 +2,7 @@
 
 import { AnimatePresence, LazyMotion, m, MotionConfig, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { setChatMode } from "@/lib/ui-store";
+import { consumeHomeRequest, setChatMode, useHomeRequests } from "@/lib/ui-store";
 import { useChat } from "../chat/useChat";
 import { ChatView } from "./ChatView";
 import { Hero, type Persona } from "./Hero";
@@ -26,7 +26,8 @@ export function HomeExperience({ adhkar, rtlMeaning }: { adhkar: Dhikr[]; rtlMea
   const reduced = useReducedMotion() ?? false;
   const [persona, setPersona] = useState<Persona | null>(null);
   const [text, setText] = useState("");
-  const { messages, send, retry, reset, busy, caseApi } = useChat();
+  const { messages, send, retry, reset, busy, loaded, caseApi } = useChat();
+  const homeRequests = useHomeRequests();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatting = messages.length > 0;
 
@@ -76,6 +77,16 @@ export function HomeExperience({ adhkar, rtlMeaning }: { adhkar: Dhikr[]; rtlMea
     reset();
     setText("");
   }
+
+  // F1: الضغط على الشعار (من هنا أو من صفحة أخرى) يعرض الواجهة الأولى: بعد قراءة المحفوظ، تُمسح المحادثة.
+  useEffect(() => {
+    if (!loaded || !consumeHomeRequest()) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- استجابة لطلب خارجي (الشعار)
+    newChat();
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+    // newChat ثابت المعنى؛ نعيد التشغيل عند كل طلب جديد فقط.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, homeRequests]);
 
 
   return (

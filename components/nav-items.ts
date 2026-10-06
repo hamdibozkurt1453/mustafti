@@ -15,3 +15,12 @@ const allNavItems = [
 
 /** الروابط الظاهرة بعد مفاتيح الميزات (lib/config). */
 export const navItems = allNavItems.filter((item) => isEnabledHref(item.href));
+
+/**
+ * عمود «عن المشروع» في التذييل (F1: بلا «دخول»؛ زر الدخول في الرأس). المفاتيح كاملة من messages.
+ */
+export const footerProjectLinks = [
+  { href: "/about", key: "nav.about" },
+  { href: "/eval", key: "footer.eval" },
+  { href: "/privacy", key: "footer.privacy" },
+] as const;

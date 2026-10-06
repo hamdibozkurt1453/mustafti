@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import type { Locale } from "@/i18n/locales";
-import { PagePlaceholder, placeholderMetadata } from "@/components/PagePlaceholder";
+import { InfoPage } from "@/components/InfoPage";
+import { placeholderMetadata } from "@/components/PagePlaceholder";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -18,8 +19,8 @@ function Attribution({ ar }: { ar: boolean }) {
   const dataset = "https://huggingface.co/datasets/kingkaung/islamqainfo_parallel_corpus";
   const license = "https://creativecommons.org/licenses/by-nc/4.0/";
   return (
-    <section className="mt-8 rounded-2xl border border-sand-200 bg-white p-6" dir={ar ? "rtl" : "ltr"}>
-      <h2 className="text-xl font-bold">{ar ? "المصادر والتراخيص" : "Sources and licenses"}</h2>
+    <section className="rounded-[24px] border border-sand-200 bg-white p-6 sm:p-8" dir={ar ? "rtl" : "ltr"}>
+      <h2 className="text-xl font-bold text-green-900">{ar ? "المصادر والتراخيص" : "Sources and licenses"}</h2>
       <p className="mt-3 text-ink-600">
         {ar ? (
           <>
@@ -59,13 +60,13 @@ function Attribution({ ar }: { ar: boolean }) {
   );
 }
 
-/** `/about` — عن مستفتي. */
+/** `/about` — عن مستفتي (F1): ما هو، ولمن، والمسارات الثلاثة، والمختصون، والمصادر، ثم الإسناد. */
 export default async function Page({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale as Locale); // اللغة متحقق منها في layout
   return (
-    <PagePlaceholder page="about">
+    <InfoPage page="about" locale={locale}>
       <Attribution ar={locale === "ar"} />
-    </PagePlaceholder>
+    </InfoPage>
   );
 }

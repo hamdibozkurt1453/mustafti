@@ -36,3 +36,26 @@ export function deleteConfirmed(typed: unknown, phrase: string): boolean {
 export function exportFileName(date: Date): string {
   return `mustafti-data-${date.toISOString().slice(0, 10)}.json`;
 }
+
+/**
+ * F1: ترتيب أقسام تبويب «الملف» عند الجميع: «بياناتي» ثم «الصورة والنبذة» ثم المواقيت.
+ * للمختص المقبول قسمه الكامل (الصورة والنبذة والبلد والتواصل في experts)، ولغيره صورة ونبذة في profiles.
+ */
+export type ProfileSection = "account" | "expertCard" | "userCard" | "prayer";
+export function profileSections(isApprovedExpert: boolean): ProfileSection[] {
+  return ["account", isApprovedExpert ? "expertCard" : "userCard", "prayer"];
+}
+
+export const BIO_MAX = 300;
+
+/** صورة الحساب (مسار في مجلد صاحبها بالمخزن العام) ونبذته، أو null إن لم يصلحا. الفارغ يُحفظ null. */
+export function parseProfileCardInput(input: unknown, userId: string): { avatarPath: string | null; bio: string | null } | null {
+  if (!input || typeof input !== "object") return null;
+  const o = input as Record<string, unknown>;
+  const path = o.avatarPath ?? null;
+  if (path !== null && (typeof path !== "string" || !new RegExp(`^${userId}/avatar-[a-z0-9]{6,32}\\.(jpg|png|webp)$`).test(path))) return null;
+  if (typeof o.bio !== "string") return null;
+  const bio = o.bio.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  if (bio.length > BIO_MAX) return null;
+  return { avatarPath: path, bio: bio || null };
+}

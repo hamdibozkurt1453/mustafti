@@ -11,19 +11,22 @@ import { DeleteAccount } from "@/components/me/DeleteAccount";
 import { MePrayerSettings } from "@/components/me/MePrayerSettings";
 import { MyCases } from "@/components/me/MyCases";
 import { MyForum } from "@/components/me/MyForum";
+import { ProfileCardForm } from "@/components/me/ProfileCardForm";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/locales";
-import { ME_TABS, resolveTab, type MeTab } from "@/lib/account/rules";
+import { ME_TABS, profileSections, resolveTab, type MeTab } from "@/lib/account/rules";
 import { getAuthContext, roleSatisfies } from "@/lib/auth/roles";
 import { countryOptions } from "@/lib/experts/countries";
+import { avatarUrl } from "@/lib/experts/types";
 import { ownExpertProfile } from "@/lib/experts/store";
 import { settingsFromProfile } from "@/lib/prayer/times";
 import { isAdminClientConfigured } from "@/lib/supabase/admin";
+import { SUPABASE_URL } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ tab?: string | string[] }>;
+  searchParams: Promise<{ tab?: string | string[]; password?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -68,9 +71,18 @@ export default async function MePage({ params, searchParams }: Props) {
     .eq("id", userId)
     .maybeSingle<{ display_name: string | null; preferred_lang: string | null; city: string | null; calc_method: string | null }>();
 
+  // F1: الصورة والنبذة (قبل migration ‏20261012_profile_avatar_bio.sql يفشل الاستعلام فتبقيان فارغتين).
+  const { data: extras } = await supabase
+    .from("profiles")
+    .select("avatar_path, bio")
+    .eq("id", userId)
+    .maybeSingle<{ avatar_path: string | null; bio: string | null }>();
+  const ownAvatarUrl = avatarUrl(extras?.avatar_path, SUPABASE_URL);
+
   const approved = ctx.expertStatus === "approved" && isAdminClientConfigured();
   const expert = approved ? await ownExpertProfile(userId) : null;
-  const tab: MeTab = resolveTab((await searchParams).tab, Boolean(expert));
+  const query = await searchParams;
+  const tab: MeTab = resolveTab(query.tab, Boolean(expert));
   const name = profile?.display_name || expert?.name || ctx.email?.split("@")[0] || "";
   const tabs = ME_TABS.filter((k) => k !== "public" || expert);
 
@@ -80,7 +92,7 @@ export default async function MePage({ params, searchParams }: Props) {
       <div className="mx-auto w-full max-w-4xl">
         {/* الرأس: الصورة الدائرية والاسم والبريد والدور */}
         <header className="mf-stagger flex flex-wrap items-center gap-5 text-ivory-50">
-          <ExpertAvatar url={expert?.avatarUrl ?? null} name={name} size={84} />
+          <ExpertAvatar url={ownAvatarUrl ?? expert?.avatarUrl ?? null} name={name} size={84} />
           <div className="min-w-0">
             <h1 className="truncate font-display text-[28px] font-semibold leading-tight sm:text-[34px]">{name}</h1>
             <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ivory-50/75">
@@ -111,40 +123,73 @@ export default async function MePage({ params, searchParams }: Props) {
         </nav>
 
         <div key={tab} className="mf-fade mt-6 space-y-6">
+          {/* F1: بعد تحديث كلمة المرور من رابط إعادة التعيين. */}
+          {query.password === "updated" && (
+            <p role="status" className="rounded-2xl border border-green-600/30 bg-white px-4 py-3 text-sm font-semibold text-green-600">
+              {tr("passwordUpdated")}
+            </p>
+          )}
           {tab === "profile" && (
             <>
-              <section className={card}>
-                <h2 className="text-lg font-bold text-green-900">{t("profile.title")}</h2>
-                <div className="mt-5">
-                  <AccountForm initial={{ displayName: profile?.display_name ?? "", preferredLang: profile?.preferred_lang ?? locale }} />
-                </div>
-              </section>
-              <section className={card}>
-                <h2 className="text-lg font-bold text-green-900">{t("profile.prayerTitle")}</h2>
-                <p className="mt-1 text-sm text-ink-600">{t("profile.prayerHint")}</p>
-                <div className="mt-5">
-                  <MePrayerSettings initial={settingsFromProfile(profile)} />
-                </div>
-              </section>
-              {expert && (
-                <section className={card}>
-                  <h2 className="text-lg font-bold text-green-900">{t("profile.expertTitle")}</h2>
-                  <p className="mt-1 text-sm text-ink-600">{tp("lead")}</p>
-                  <div className="mt-5">
-                    <ProfileEditor
-                      userId={userId}
-                      countries={countryOptions(locale)}
-                      initial={{
-                        countryCode: expert.countryCode ?? "",
-                        bio: expert.bio ?? "",
-                        avatar: expert.avatarPath && expert.avatarUrl ? { path: expert.avatarPath, url: expert.avatarUrl } : null,
-                        contact: expert.contact,
-                        socials: expert.socials,
-                      }}
-                    />
-                  </div>
-                </section>
-              )}
+              {/* F1: «بياناتي» ثم «الصورة والنبذة» ثم المواقيت، عند الجميع (profileSections). */}
+              {profileSections(Boolean(expert)).map((section) => {
+                if (section === "account")
+                  return (
+                    <section key={section} className={card}>
+                      <h2 className="text-lg font-bold text-green-900">{t("profile.title")}</h2>
+                      <div className="mt-5">
+                        <AccountForm initial={{ displayName: profile?.display_name ?? "", preferredLang: profile?.preferred_lang ?? locale }} />
+                      </div>
+                    </section>
+                  );
+                if (section === "expertCard" && expert)
+                  return (
+                    <section key={section} className={card}>
+                      <h2 className="text-lg font-bold text-green-900">{t("profile.expertTitle")}</h2>
+                      <p className="mt-1 text-sm text-ink-600">{tp("lead")}</p>
+                      <div className="mt-5">
+                        <ProfileEditor
+                          userId={userId}
+                          countries={countryOptions(locale)}
+                          initial={{
+                            countryCode: expert.countryCode ?? "",
+                            bio: expert.bio ?? "",
+                            avatar: expert.avatarPath && expert.avatarUrl ? { path: expert.avatarPath, url: expert.avatarUrl } : null,
+                            contact: expert.contact,
+                            socials: expert.socials,
+                          }}
+                        />
+                      </div>
+                    </section>
+                  );
+                if (section === "userCard")
+                  return (
+                    <section key={section} className={card}>
+                      <h2 className="text-lg font-bold text-green-900">{t("profile.expertTitle")}</h2>
+                      <p className="mt-1 text-sm text-ink-600">{t("profile.cardHint")}</p>
+                      <div className="mt-5">
+                        <ProfileCardForm
+                          userId={userId}
+                          initial={{
+                            avatar: extras?.avatar_path && ownAvatarUrl ? { path: extras.avatar_path, url: ownAvatarUrl } : null,
+                            bio: extras?.bio ?? "",
+                          }}
+                        />
+                      </div>
+                    </section>
+                  );
+                if (section === "prayer")
+                  return (
+                    <section key={section} className={card}>
+                      <h2 className="text-lg font-bold text-green-900">{t("profile.prayerTitle")}</h2>
+                      <p className="mt-1 text-sm text-ink-600">{t("profile.prayerHint")}</p>
+                      <div className="mt-5">
+                        <MePrayerSettings initial={settingsFromProfile(profile)} />
+                      </div>
+                    </section>
+                  );
+                return null;
+              })}
               {!expert && (
                 <p className="text-sm text-ink-600">
                   {ctx.expertStatus ? t("profile.applicationHint") : t("profile.joinHint")}{" "}

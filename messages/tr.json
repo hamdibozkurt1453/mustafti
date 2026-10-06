@@ -38,8 +38,7 @@
     "tagline": "",
     "colPlatform": "",
     "colProject": "",
-    "sourceNote": "",
-    "login": ""
+    "sourceNote": ""
   },
   "home": {
     "intro": "",
@@ -274,7 +273,12 @@
       "hadith": "Hadis"
     },
     "openDownload": "Aç / indir",
-    "showText": "Metni göster"
+    "showText": "Metni göster",
+    "guest": {
+      "text": "Giriş yapmadığınız için sohbetiniz kaydedilmiyor. Sohbetlerinizi saklamak için giriş yapın.",
+      "login": "Giriş yap",
+      "close": "Kapat"
+    }
   },
   "case": {
     "start": "",
@@ -415,7 +419,11 @@
       "applicationHint": "Uzman başvurunuz:",
       "applicationLink": "Başvuru durumu",
       "joinHint": "İlim ehlinden misiniz?",
-      "joinLink": "Uzman olarak katılın"
+      "joinLink": "Uzman olarak katılın",
+      "bio": "Kısa tanıtım",
+      "bioPlaceholder": "Kendiniz hakkında bir iki satır (isteğe bağlı)",
+      "cardHint": "Fotoğrafınız “Hesabım” düğmesinde ve Forum'da adınızın baş harfi yerine görünür.",
+      "cardUnavailable": "Fotoğraf ve tanıtım hazırlanıyor, yakında kullanılabilecek."
     },
     "forum": {
       "title": "Henüz gönderi yok",
@@ -619,6 +627,25 @@
         "invalid": "Geçersiz istek.",
         "generic": "İşlem tamamlanamadı. Lütfen tekrar deneyin."
       }
+    }
+  },
+  "auth": {
+    "showPassword": "Şifreyi göster",
+    "hidePassword": "Şifreyi gizle",
+    "forgot": "Şifrenizi mi unuttunuz?",
+    "resetTitle": "Şifrenizi sıfırlayın",
+    "resetLead": "E-postanızı yazın, yeni şifre belirlemeniz için bir bağlantı gönderelim.",
+    "sendReset": "Sıfırlama bağlantısı gönder",
+    "sentReset": "Bu e-postaya ait bir hesap varsa sıfırlama bağlantısı gönderildi. Gelen kutunuzu kontrol edin.",
+    "backToLogin": "Girişe dön",
+    "updateTitle": "Yeni şifre",
+    "updateLead": "Hesabınız için yeni bir şifre seçin.",
+    "newPassword": "Yeni şifre",
+    "confirmPassword": "Şifreyi onayla",
+    "savePassword": "Şifreyi kaydet",
+    "passwordUpdated": "Şifreniz güncellendi.",
+    "errors": {
+      "mismatch": "Şifreler eşleşmiyor."
     }
   }
 }

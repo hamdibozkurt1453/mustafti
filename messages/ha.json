@@ -38,8 +38,7 @@
     "tagline": "",
     "colPlatform": "",
     "colProject": "",
-    "sourceNote": "",
-    "login": ""
+    "sourceNote": ""
   },
   "home": {
     "intro": "",
@@ -274,7 +273,12 @@
       "hadith": "Hadisi"
     },
     "openDownload": "Buɗe / sauke",
-    "showText": "Nuna rubutu"
+    "showText": "Nuna rubutu",
+    "guest": {
+      "text": "Ba a ajiye tattaunawarka saboda ba ka shiga ba. Shiga don a ajiye tattaunawarka.",
+      "login": "Shiga",
+      "close": "Rufe"
+    }
   },
   "case": {
     "start": "",
@@ -415,7 +419,11 @@
       "applicationHint": "Buƙatarka ta ƙwararre:",
       "applicationLink": "Matsayin buƙata",
       "joinHint": "Kai malami ne ko ƙwararre?",
-      "joinLink": "Shiga a matsayin ƙwararre"
+      "joinLink": "Shiga a matsayin ƙwararre",
+      "bio": "Takaitaccen bayani",
+      "bioPlaceholder": "Layi daya ko biyu game da kai (na zabi)",
+      "cardHint": "Hotonka yana bayyana a maballin “Asusuna” da cikin Tattaunawa maimakon harafin farko na sunanka.",
+      "cardUnavailable": "Ana shirya hoto da bayani, za su samu nan ba da jimawa ba."
     },
     "forum": {
       "title": "Babu rubutu tukuna",
@@ -619,6 +627,25 @@
         "invalid": "Buƙata mara inganci.",
         "generic": "Ba a iya kammala aikin ba. Da fatan za ka sake gwadawa."
       }
+    }
+  },
+  "auth": {
+    "showPassword": "Nuna kalmar sirri",
+    "hidePassword": "Boye kalmar sirri",
+    "forgot": "Ka manta kalmar sirri?",
+    "resetTitle": "Sake saita kalmar sirri",
+    "resetLead": "Rubuta imel dinka, za mu aiko da hanyar saita sabuwar kalmar sirri.",
+    "sendReset": "Aika hanyar sake saitawa",
+    "sentReset": "Idan wannan imel yana da asusu, mun aika masa hanyar sake saitawa. Duba akwatin imel dinka.",
+    "backToLogin": "Koma zuwa shiga",
+    "updateTitle": "Sabuwar kalmar sirri",
+    "updateLead": "Zabi sabuwar kalmar sirri don asusunka.",
+    "newPassword": "Sabuwar kalmar sirri",
+    "confirmPassword": "Tabbatar da kalmar sirri",
+    "savePassword": "Ajiye kalmar sirri",
+    "passwordUpdated": "An sabunta kalmar sirrinka.",
+    "errors": {
+      "mismatch": "Kalmomin sirrin ba su yi daidai ba."
     }
   }
 }

@@ -90,7 +90,18 @@ export function AccountButton() {
 
   return (
     <div ref={box} className="relative">
-      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} className={buttonClass}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={`${buttonClass} ${menu?.avatarUrl ? "ps-1 sm:ps-1" : ""}`}
+      >
+        {/* F1: صورة الحساب في الزر إن وُجدت (من المخزن العام، فلا next/image). */}
+        {menu?.avatarUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={menu.avatarUrl} alt="" width={26} height={26} className="size-[26px] rounded-full border border-green-900/20 object-cover" />
+        )}
         {t("account")}
         <CountBadge count={total} label={t("notifications", { count: total })} />
       </button>

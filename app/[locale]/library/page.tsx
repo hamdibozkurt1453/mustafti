@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { localeNames, type Locale } from "@/i18n/locales";
-import { cleanQuery, LIBRARY_TOPICS, shamelaSearchUrl } from "@/lib/library/items";
+import { cleanQuery, LIBRARY_TOPICS, shamelaSearchUrl, topicForQuery, type LibraryTopic } from "@/lib/library/items";
 import { searchLibrary } from "@/lib/library/search";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -36,7 +36,9 @@ export default async function LibraryPage({ params, searchParams }: Props) {
   let limited = false;
   if (q) {
     const rate = await checkRateLimit("library", await headers(), LIBRARY_LIMIT_PER_HOUR, 3600);
-    if (rate.ok) cards = await searchLibrary(q, locale);
+    // F1: عنوان التصنيف يُبحث بكلماته العربية والإنجليزية معاً (lib/library/items.ts → TOPIC_TERMS).
+    const labels = Object.fromEntries(LIBRARY_TOPICS.map((k) => [k, t(`topics.${k}`)])) as Record<LibraryTopic, string>;
+    if (rate.ok) cards = await searchLibrary(q, locale, topicForQuery(q, labels));
     else limited = true;
   }
 

@@ -207,3 +207,14 @@ body {
   .mf-marquee-wrap { overflow-x: auto; scrollbar-width: none; }
   .mf-marquee-dup { display: none; }
 }
+
+/*
+ * F1: النص القرآني (في الجواب بين ﴿ ﴾ وفي بطاقة المصدر) بخط Amiri Quran، لأنه يغطي الرسم العثماني
+ * كاملاً؛ خط الهاتف الافتراضي لا يدعم علاماته الصغيرة فتظهر مربعات. والنص يُنظَّف قبل العرض (lib/quran-text.ts).
+ */
+.quran-text {
+  font-family: var(--font-quran), "Amiri Quran", var(--mf-font);
+  font-feature-settings: normal;
+  line-height: 2.1;
+  word-spacing: 0.05em;
+}

@@ -20,6 +20,8 @@ export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 export type ForumAuthor = {
   id: string | null;
   name: string | null;
+  /** F1: صورة الحساب من profiles (بدل الحرف الأول)، وللمختص صورته في experts إن لم تكن. */
+  avatarUrl?: string | null;
   /** المختص المقبول حالياً فقط. */
   expert: { role: ExpertRole; slug: string; avatarUrl: string | null } | null;
 };
@@ -83,8 +85,14 @@ export async function authorsFor(ids: (string | null)[]): Promise<Map<string, Fo
   for (const id of unique) out.set(id, { id, name: null, expert: null });
   if (!unique.length || !isAdminClientConfigured()) return out;
   const db = createAdminClient();
+  type ProfileRow = { id: string; display_name: string | null; avatar_path?: string | null };
+  const readProfiles = async () => {
+    const first = await db.from("profiles").select("id, display_name, avatar_path").in("id", unique).returns<ProfileRow[]>();
+    // قبل migration ‏20261012_profile_avatar_bio.sql: بلا عمود الصورة.
+    return first.error ? await db.from("profiles").select("id, display_name").in("id", unique).returns<ProfileRow[]>() : first;
+  };
   const [{ data: profiles, error: pErr }, { data: experts, error: eErr }] = await Promise.all([
-    db.from("profiles").select("id, display_name").in("id", unique).returns<{ id: string; display_name: string | null }[]>(),
+    readProfiles(),
     db
       .from("experts")
       .select("id, role, slug, avatar_path")
@@ -94,7 +102,10 @@ export async function authorsFor(ids: (string | null)[]): Promise<Map<string, Fo
   ]);
   if (pErr) console.error("forum authors:", pErr.message);
   if (eErr) console.error("forum experts:", eErr.message);
-  for (const p of profiles ?? []) out.get(p.id)!.name = p.display_name?.trim() || null;
+  for (const p of profiles ?? []) {
+    out.get(p.id)!.name = p.display_name?.trim() || null;
+    out.get(p.id)!.avatarUrl = avatarUrl(p.avatar_path, SUPABASE_URL);
+  }
   for (const e of experts ?? []) {
     if (e.slug) out.get(e.id)!.expert = { role: e.role, slug: e.slug, avatarUrl: avatarUrl(e.avatar_path, SUPABASE_URL) };
   }

@@ -43,6 +43,8 @@ create table if not exists public.profiles (
   preferred_lang text not null default 'ar',
   city           text,
   calc_method    text,
+  avatar_path    text,  -- F1 (migrations/20261012_profile_avatar_bio.sql)
+  bio            text check (bio is null or char_length(bio) <= 300),
   created_at     timestamptz not null default now()
 );
 
@@ -328,7 +330,7 @@ grant select (
 ) on public.cases to authenticated;
 
 -- المستخدم يعدّل تفضيلاته فقط (لا البريد ولا المعرّف).
-grant update (display_name, preferred_lang, city, calc_method) on public.profiles to authenticated;
+grant update (display_name, preferred_lang, city, calc_method, avatar_path, bio) on public.profiles to authenticated;
 
 -- rate_limits: لا امتيازات لأحد غير service role.
 

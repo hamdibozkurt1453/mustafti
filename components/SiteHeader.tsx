@@ -1,9 +1,9 @@
 import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
 import { getDirection } from "@/i18n/locales";
 import { AccountButton } from "./AccountButton";
 import { HeaderShell } from "./HeaderShell";
+import { HomeLink } from "./HomeLink";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MobileMenu } from "./MobileMenu";
 import { NavLinks } from "./NavLinks";
@@ -23,7 +23,7 @@ export async function SiteHeader() {
     <HeaderShell>
       <div className="mx-auto grid h-16 max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:gap-6">
         <div className="flex min-w-0 justify-start">
-          <Link href="/" aria-label={t("homeLink")} className="mf-press shrink-0 rounded-lg">
+          <HomeLink label={t("homeLink")} className="mf-press shrink-0 rounded-lg">
             {arabicLogo ? (
               <Image
                 src="/brand/logo-ar-on-dark.svg"
@@ -43,7 +43,7 @@ export async function SiteHeader() {
                 className="h-6 w-auto sm:h-7"
               />
             )}
-          </Link>
+          </HomeLink>
         </div>
 
         <nav aria-label={t("mainNav")} className="hidden xl:block">
