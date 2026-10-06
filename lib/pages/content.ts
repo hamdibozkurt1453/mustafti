@@ -1,4 +1,5 @@
 import type { Locale } from "@/i18n/locales";
+import { PRIVACY } from "./privacy";
 
 /**
  * F1: محتوى صفحات «عن مُستفتي» (/about) و«الشفافية والاختبار» (/eval) و«الخصوصية» (/privacy).
@@ -16,11 +17,12 @@ export type PageSection = {
   link?: { label: string; href: string };
 };
 
-export type PageContent = { sections: PageSection[] };
+/** updated: سطر «آخر تحديث» أعلى الصفحة. topLink: زر في أعلى الصفحة (F1b: المستودع في /eval). */
+export type PageContent = { sections: PageSection[]; updated?: string; topLink?: { label: string; href: string } };
 
 export type InfoPage = "about" | "eval" | "privacy";
 
-const ar: Record<InfoPage, PageContent> = {
+const ar: Record<Exclude<InfoPage, "privacy">, PageContent> = {
   about: {
     sections: [
       {
@@ -51,6 +53,11 @@ const ar: Record<InfoPage, PageContent> = {
         link: { label: "انضم كمختص", href: "/experts/join" },
       },
       {
+        title: "مفتوح المصدر",
+        paras: ["الكود كله منشور للاطلاع والتقييم."],
+        link: { label: "المستودع على GitHub", href: REPO_URL },
+      },
+      {
         title: "المصادر",
         paras: [
           "النص المنقول والمنسوب (آية، أو حديث، أو قول عالم، أو فتوى منشورة) يأتي من المرجعية المعتمدة وحدها: خادم المحتوى الإسلامي الرسمي للجمعية (القرآن الكريم وترجماته وتفاسيره، وموسوعة الأحاديث النبوية، ومكتبة دار الإسلام IslamHouse)، ومواقع المرجعية والحزمة العلمية للتحدي، ومنها مواقع الفتاوى المعتمدة. لا بحث في الويب العام.",
@@ -60,6 +67,7 @@ const ar: Record<InfoPage, PageContent> = {
     ],
   },
   eval: {
+    topLink: { label: "المستودع على GitHub", href: REPO_URL },
     sections: [
       {
         title: "كيف يعمل",
@@ -90,45 +98,9 @@ const ar: Record<InfoPage, PageContent> = {
       },
     ],
   },
-  privacy: {
-    sections: [
-      {
-        title: "ما نجمعه",
-        items: [
-          "لا تحتاج حساباً لتسأل. محادثة الزائر تبقى في متصفحه وحده (التخزين المحلي)، ولا تُربط بهويته.",
-          "لكي نجيب، تصل رسالتك وآخر رسائل المحادثة إلى الخادم سياقاً للجواب، ولا تُحفظ باسمك.",
-          "إحصاءات عامة بلا نص السؤال ولا هوية: اللغة، والمستوى، وعدد المصادر.",
-          "الأجوبة عن الأسئلة العامة قد تُخزَّن 7 أيام بلا أي بيانات عن السائل، لتسريع الجواب عن السؤال نفسه.",
-          "إن أنشأت حساباً: بريدك، واسمك المعروض، ولغتك المفضّلة، ومدينتك وطريقة حساب المواقيت إن اخترتها، وصورتك ونبذتك إن أضفتهما.",
-          "ملف المسألة المحال إلى مختص: الوقائع التي كتبتها بلا هويتك، وبلدك فقط (لا عنوانك) لتوجيهه إلى مختص من بلدك، وبريد المتابعة إن أدخلته.",
-          "مشاركاتك في «الحوار» تُنشر باسمك المعروض.",
-          "حد الطلبات يُحسب ببصمة لعنوان IP لا بالعنوان نفسه، لحماية الخدمة من الإساءة.",
-        ],
-      },
-      {
-        title: "ما لا نجمعه",
-        items: [
-          "لا إعلانات، ولا تتبّع من جهات خارجية، ولا بيع لأي بيانات.",
-          "لا نطلب هويتك ولا رقم هاتفك ولا موقعك الدقيق. «استعمل موقعي» في بطاقة المواقيت يُحسب في متصفحك.",
-          "لا يرى المختص اسمك ولا بريدك؛ يرى وقائع المسألة فقط.",
-        ],
-      },
-      {
-        title: "تنزيل بياناتك",
-        paras: ["من «حسابي» ← «الإعدادات» ← «تنزيل بياناتي»: ملف JSON فيه حسابك ومسائلك وملفاتها والأجوبة عليها."],
-        link: { label: "الإعدادات", href: "/me?tab=settings" },
-      },
-      {
-        title: "حذف الحساب",
-        paras: [
-          "من «حسابي» ← «الإعدادات» ← «حذف حسابي وبياناتي»، بتأكيد مزدوج. يُحذف حسابك وملفك الشخصي وصورك ووثائقك نهائياً، وتُفصل مسائلك عن حسابك ويُمحى بريد المتابعة منها، وتبقى أجوبة المختصين.",
-        ],
-      },
-    ],
-  },
 };
 
-const en: Record<InfoPage, PageContent> = {
+const en: Record<Exclude<InfoPage, "privacy">, PageContent> = {
   about: {
     sections: [
       {
@@ -159,6 +131,11 @@ const en: Record<InfoPage, PageContent> = {
         link: { label: "Join as a specialist", href: "/experts/join" },
       },
       {
+        title: "Open source",
+        paras: ["All the code is published for review and evaluation."],
+        link: { label: "Repository on GitHub", href: REPO_URL },
+      },
+      {
         title: "Sources",
         paras: [
           "Quoted and attributed text (a verse, a hadith, a scholar's words or a published fatwa) comes only from the approved references: the official Islamic content server (the Qur'an with its translations and tafsir, the Hadith Encyclopedia, and the IslamHouse library), and the sites listed in the challenge's reference pack, including approved fatwa sites. No general web search.",
@@ -168,6 +145,7 @@ const en: Record<InfoPage, PageContent> = {
     ],
   },
   eval: {
+    topLink: { label: "Repository on GitHub", href: REPO_URL },
     sections: [
       {
         title: "How it works",
@@ -198,72 +176,32 @@ const en: Record<InfoPage, PageContent> = {
       },
     ],
   },
-  privacy: {
-    sections: [
-      {
-        title: "What we collect",
-        items: [
-          "You don't need an account to ask. A visitor's chat stays in their own browser (local storage) and is not linked to their identity.",
-          "To answer, your message and the latest messages of the chat reach the server as context, and are not saved under your name.",
-          "Anonymous statistics without the question text: language, level and number of sources.",
-          "Answers to general questions may be cached for 7 days, with no data about the asker, to answer the same question faster.",
-          "If you create an account: your email, display name, preferred language, your city and prayer-time method if you choose them, and your photo and bio if you add them.",
-          "A case file referred to a specialist: the facts you wrote without your identity, your country only (not your address) to route it to a specialist from your country, and a follow-up email if you enter one.",
-          "Your posts in the Forum are published under your display name.",
-          "Rate limiting uses a fingerprint of the IP address, not the address itself, to protect the service from abuse.",
-        ],
-      },
-      {
-        title: "What we don't collect",
-        items: [
-          "No ads, no third-party tracking, and no selling of any data.",
-          "We don't ask for your identity, phone number or precise location. \"Use my location\" on the prayer card is computed in your browser.",
-          "A specialist never sees your name or email; only the facts of the case.",
-        ],
-      },
-      {
-        title: "Download your data",
-        paras: ["From My account → Settings → Download my data: a JSON file with your account, your cases, their files and the answers."],
-        link: { label: "Settings", href: "/me?tab=settings" },
-      },
-      {
-        title: "Delete your account",
-        paras: [
-          "From My account → Settings → Delete my account and data, with a double confirmation. Your account, profile, photos and documents are deleted permanently; your cases are detached from your account and their follow-up email erased; specialists' answers remain.",
-        ],
-      },
-    ],
-  },
 };
 
-/** ترجمة مختصرة: ثلاثة أقسام لكل صفحة بالعبارات الأساسية، والروابط كما في العربية والإنجليزية. */
+/** ترجمة مختصرة لـ about وeval (أربعة أقسام وثلاثة) بالعبارات الأساسية، والروابط كما في العربية والإنجليزية. */
 function brief(t: {
   about: [string, string, string, string, string, string];
   eval: [string, string, string, string, string, string];
-  privacy: [string, string, string, string, string, string];
   repo: string;
   settings: string;
-}): Record<InfoPage, PageContent> {
+  /** F1b: «مفتوح المصدر»: العنوان والسطر. */
+  open: [string, string];
+}): Record<Exclude<InfoPage, "privacy">, PageContent> {
   return {
     about: {
       sections: [
         { title: t.about[0], paras: [t.about[1]] },
         { title: t.about[2], paras: [t.about[3]] },
         { title: t.about[4], paras: [t.about[5]] },
+        { title: t.open[0], paras: [t.open[1]], link: { label: t.repo, href: REPO_URL } },
       ],
     },
     eval: {
+      topLink: { label: t.repo, href: REPO_URL },
       sections: [
         { title: t.eval[0], paras: [t.eval[1]] },
         { title: t.eval[2], paras: [t.eval[3]] },
         { title: t.eval[4], paras: [t.eval[5]], link: { label: t.repo, href: REPO_URL } },
-      ],
-    },
-    privacy: {
-      sections: [
-        { title: t.privacy[0], paras: [t.privacy[1]] },
-        { title: t.privacy[2], paras: [t.privacy[3]] },
-        { title: t.privacy[4], paras: [t.privacy[5]], link: { label: t.settings, href: "/me?tab=settings" } },
       ],
     },
   };
@@ -286,14 +224,7 @@ const id = brief({
     "Pengujian",
     "Tes otomatis berjalan pada setiap perubahan. Tabel hasil akan segera diterbitkan di sini.",
   ],
-  privacy: [
-    "Yang kami kumpulkan",
-    "Bertanya tanpa akun. Obrolan pengunjung tetap di peramban. Untuk akun: email, nama, bahasa, kota, foto dan bio jika ditambahkan. Berkas kasus tanpa identitas, hanya negara.",
-    "Yang tidak kami kumpulkan",
-    "Tanpa iklan, tanpa pelacakan pihak ketiga, tanpa menjual data. Ahli tidak melihat nama atau email Anda.",
-    "Unduh dan hapus",
-    "Dari Akun saya → Pengaturan: unduh data Anda (JSON) atau hapus akun Anda secara permanen.",
-  ],
+  open: ["Sumber terbuka", "Seluruh kode dipublikasikan untuk ditinjau dan dinilai."],
   repo: "Repositori di GitHub",
   settings: "Pengaturan",
 });
@@ -315,14 +246,7 @@ const ur = brief({
     "جانچ",
     "ہر تبدیلی پر خودکار جانچ چلتی ہے۔ نتائج کا جدول جلد یہاں شائع ہوگا۔",
   ],
-  privacy: [
-    "ہم کیا جمع کرتے ہیں",
-    "سوال کے لیے اکاؤنٹ ضروری نہیں۔ مہمان کی گفتگو اس کے براؤزر میں رہتی ہے۔ اکاؤنٹ کے لیے: ای میل، نام، زبان، شہر، اور تصویر و تعارف اگر شامل کریں۔ مسئلے کی فائل شناخت کے بغیر، صرف ملک کے ساتھ۔",
-    "ہم کیا جمع نہیں کرتے",
-    "نہ اشتہار، نہ بیرونی ٹریکنگ، نہ ڈیٹا کی فروخت۔ ماہر آپ کا نام یا ای میل نہیں دیکھتا۔",
-    "ڈاؤن لوڈ اور حذف",
-    "میرا اکاؤنٹ ← ترتیبات: اپنا ڈیٹا (JSON) ڈاؤن لوڈ کریں یا اکاؤنٹ مستقل طور پر حذف کریں۔",
-  ],
+  open: ["اوپن سورس", "سارا کوڈ جائزے اور جانچ کے لیے شائع ہے۔"],
   repo: "GitHub پر ریپوزٹری",
   settings: "ترتیبات",
 });
@@ -344,14 +268,7 @@ const bn = brief({
     "পরীক্ষা",
     "প্রতিটি পরিবর্তনে স্বয়ংক্রিয় পরীক্ষা চলে। ফলাফলের টেবিল শীঘ্রই এখানে প্রকাশিত হবে।",
   ],
-  privacy: [
-    "আমরা যা সংগ্রহ করি",
-    "প্রশ্ন করতে অ্যাকাউন্ট লাগে না। অতিথির কথোপকথন তার ব্রাউজারেই থাকে। অ্যাকাউন্টের জন্য: ইমেল, নাম, ভাষা, শহর, এবং ছবি ও পরিচিতি যোগ করলে। মাসআলার ফাইল পরিচয় ছাড়া, শুধু দেশসহ।",
-    "যা সংগ্রহ করি না",
-    "কোনো বিজ্ঞাপন, তৃতীয় পক্ষের ট্র্যাকিং বা ডেটা বিক্রি নেই। বিশেষজ্ঞ আপনার নাম বা ইমেল দেখেন না।",
-    "ডাউনলোড ও মুছে ফেলা",
-    "আমার অ্যাকাউন্ট → সেটিংস: আপনার ডেটা (JSON) ডাউনলোড করুন বা অ্যাকাউন্ট স্থায়ীভাবে মুছুন।",
-  ],
+  open: ["ওপেন সোর্স", "পুরো কোড পর্যালোচনা ও মূল্যায়নের জন্য প্রকাশিত।"],
   repo: "GitHub-এ রিপোজিটরি",
   settings: "সেটিংস",
 });
@@ -373,14 +290,7 @@ const tr = brief({
     "Test",
     "Her değişiklikte otomatik testler çalışır. Sonuç tablosu yakında burada yayımlanacak.",
   ],
-  privacy: [
-    "Topladıklarımız",
-    "Soru sormak için hesap gerekmez. Ziyaretçinin sohbeti kendi tarayıcısında kalır. Hesap için: e-posta, ad, dil, şehir ve eklerseniz fotoğraf ile kısa tanıtım. Mesele dosyası kimliksiz, yalnızca ülke bilgisiyle.",
-    "Toplamadıklarımız",
-    "Reklam, üçüncü taraf takibi ve veri satışı yok. Uzman adınızı veya e-postanızı görmez.",
-    "İndirme ve silme",
-    "Hesabım → Ayarlar: verilerinizi (JSON) indirin veya hesabınızı kalıcı olarak silin.",
-  ],
+  open: ["Açık kaynak", "Kodun tamamı incelenmek ve değerlendirilmek üzere yayımlanmıştır."],
   repo: "GitHub'daki depo",
   settings: "Ayarlar",
 });
@@ -402,14 +312,7 @@ const fa = brief({
     "آزمون",
     "با هر تغییر آزمون‌های خودکار اجرا می‌شوند. جدول نتایج به‌زودی اینجا منتشر می‌شود.",
   ],
-  privacy: [
-    "آنچه جمع می‌کنیم",
-    "برای پرسیدن حساب لازم نیست. گفت‌وگوی مهمان در مرورگر خودش می‌ماند. برای حساب: ایمیل، نام، زبان، شهر، و تصویر و معرفی اگر بیفزایید. پرونده مسئله بدون هویت، فقط با کشور.",
-    "آنچه جمع نمی‌کنیم",
-    "بدون تبلیغ، بدون ردیابی شخص ثالث، بدون فروش داده. متخصص نام یا ایمیل شما را نمی‌بیند.",
-    "دریافت و حذف",
-    "حساب من ← تنظیمات: داده‌های خود (JSON) را دریافت کنید یا حساب را برای همیشه حذف کنید.",
-  ],
+  open: ["متن‌باز", "همه کد برای بررسی و ارزیابی منتشر شده است."],
   repo: "مخزن در GitHub",
   settings: "تنظیمات",
 });
@@ -431,14 +334,7 @@ const fr = brief({
     "Tests",
     "Des tests automatiques s'exécutent à chaque modification. Le tableau des résultats sera publié ici prochainement.",
   ],
-  privacy: [
-    "Ce que nous collectons",
-    "Pas besoin de compte pour poser une question. La discussion d'un visiteur reste dans son navigateur. Pour un compte : e-mail, nom, langue, ville, photo et présentation si vous les ajoutez. Le dossier d'une question est anonyme, avec le pays seulement.",
-    "Ce que nous ne collectons pas",
-    "Ni publicité, ni pistage tiers, ni vente de données. Le spécialiste ne voit ni votre nom ni votre e-mail.",
-    "Téléchargement et suppression",
-    "Mon compte → Paramètres : téléchargez vos données (JSON) ou supprimez définitivement votre compte.",
-  ],
+  open: ["Code ouvert", "Tout le code est publié pour consultation et évaluation."],
   repo: "Dépôt sur GitHub",
   settings: "Paramètres",
 });
@@ -460,14 +356,7 @@ const ms = brief({
     "Ujian",
     "Ujian automatik dijalankan pada setiap perubahan. Jadual keputusan akan diterbitkan di sini tidak lama lagi.",
   ],
-  privacy: [
-    "Apa yang kami kumpul",
-    "Bertanya tanpa akaun. Perbualan pelawat kekal dalam pelayarnya. Untuk akaun: e-mel, nama, bahasa, bandar, serta foto dan bio jika ditambah. Fail kes tanpa identiti, hanya negara.",
-    "Apa yang tidak kami kumpul",
-    "Tiada iklan, tiada penjejakan pihak ketiga, tiada penjualan data. Pakar tidak melihat nama atau e-mel anda.",
-    "Muat turun dan padam",
-    "Akaun saya → Tetapan: muat turun data anda (JSON) atau padam akaun anda secara kekal.",
-  ],
+  open: ["Sumber terbuka", "Seluruh kod diterbitkan untuk semakan dan penilaian."],
   repo: "Repositori di GitHub",
   settings: "Tetapan",
 });
@@ -489,14 +378,7 @@ const ru = brief({
     "Тестирование",
     "Автоматические тесты запускаются при каждом изменении. Таблица результатов скоро будет опубликована здесь.",
   ],
-  privacy: [
-    "Что мы собираем",
-    "Для вопроса аккаунт не нужен. Чат гостя остаётся в его браузере. Для аккаунта: e-mail, имя, язык, город, а также фото и описание, если вы их добавите. Файл вопроса анонимен, указывается только страна.",
-    "Что мы не собираем",
-    "Никакой рекламы, стороннего отслеживания и продажи данных. Специалист не видит вашего имени и e-mail.",
-    "Скачивание и удаление",
-    "Мой аккаунт → Настройки: скачайте свои данные (JSON) или удалите аккаунт навсегда.",
-  ],
+  open: ["Открытый код", "Весь код опубликован для ознакомления и оценки."],
   repo: "Репозиторий на GitHub",
   settings: "Настройки",
 });
@@ -518,14 +400,7 @@ const sw = brief({
     "Majaribio",
     "Majaribio ya kiotomatiki huendeshwa kwa kila mabadiliko. Jedwali la matokeo litachapishwa hapa hivi karibuni.",
   ],
-  privacy: [
-    "Tunachokusanya",
-    "Huhitaji akaunti kuuliza. Mazungumzo ya mgeni hubaki kwenye kivinjari chake. Kwa akaunti: barua pepe, jina, lugha, mji, na picha na wasifu ukiongeza. Faili la swali halina utambulisho, nchi tu.",
-    "Tusichokusanya",
-    "Hakuna matangazo, ufuatiliaji wa watu wengine, wala uuzaji wa data. Mtaalamu haoni jina wala barua pepe yako.",
-    "Kupakua na kufuta",
-    "Akaunti yangu → Mipangilio: pakua data yako (JSON) au futa akaunti yako kabisa.",
-  ],
+  open: ["Chanzo huria", "Msimbo wote umechapishwa kwa ajili ya kukaguliwa na kutathminiwa."],
   repo: "Hazina kwenye GitHub",
   settings: "Mipangilio",
 });
@@ -547,21 +422,19 @@ const ha = brief({
     "Gwaji",
     "Gwaje-gwaje na atomatik suna gudana a kowane canji. Za a wallafa teburin sakamako a nan ba da jimawa ba.",
   ],
-  privacy: [
-    "Abin da muke tattarawa",
-    "Ba ka bukatar asusu don yin tambaya. Tattaunawar bako tana zama a burauzarsa. Don asusu: imel, suna, harshe, gari, da hoto da takaitaccen bayani idan ka kara. Fayil din tambaya ba shi da bayanan mutum, sai kasa kawai.",
-    "Abin da ba mu tattarawa",
-    "Babu talla, babu bin diddigin wasu kamfanoni, babu sayar da bayanai. Kwararre ba ya ganin sunanka ko imel dinka.",
-    "Saukewa da gogewa",
-    "Asusuna → Saituna: sauke bayananka (JSON) ko goge asusunka har abada.",
-  ],
+  open: ["Bude tushe", "An wallafa dukkan lambar don dubawa da tantancewa."],
   repo: "Ma'ajiya a GitHub",
   settings: "Saituna",
 });
 
-export const PAGE_CONTENT: Record<Locale, Record<InfoPage, PageContent>> = { ar, en, id, ur, bn, tr, fa, fr, ms, ru, sw, ha };
+const BASE: Record<Locale, Record<Exclude<InfoPage, "privacy">, PageContent>> = { ar, en, id, ur, bn, tr, fa, fr, ms, ru, sw, ha };
+
+/** F1b: الخصوصية سياسة كاملة في privacy.ts. */
+export const PAGE_CONTENT = Object.fromEntries(
+  (Object.keys(BASE) as Locale[]).map((l) => [l, { ...BASE[l], privacy: PRIVACY[l] }]),
+) as Record<Locale, Record<InfoPage, PageContent>>;
 
 /** محتوى الصفحة بلغة الواجهة (والإنجليزية احتياطاً). */
 export function pageContent(locale: string, page: InfoPage): PageContent {
-  return (PAGE_CONTENT[locale as Locale] ?? en)[page];
+  return (PAGE_CONTENT[locale as Locale] ?? PAGE_CONTENT.en)[page];
 }

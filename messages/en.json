@@ -879,7 +879,7 @@
   "library": {
     "kicker": "IslamHouse",
     "title": "Library",
-    "lead": "Free books, articles and audio from IslamHouse in your language. Open or download them from their official link.",
+    "lead": "Free books from IslamHouse in your language. Read or download them from their official link.",
     "searchLabel": "Search the library",
     "placeholder": "Type a topic or a book title",
     "search": "Search",
@@ -890,16 +890,17 @@
       "fasting": "Fasting",
       "seerah": "Prophet's biography",
       "newMuslim": "New Muslim",
-      "family": "Family"
+      "family": "Family",
+      "tafsir": "Tafsir",
+      "hadith": "Hadith",
+      "akhlaq": "Character",
+      "dawah": "Da'wah"
     },
     "resultsFor": "Results for “{q}”",
-    "shamela": "Search Al-Maktaba Al-Shamela",
     "limited": "Too many searches in a short time. Please wait a moment and try again.",
     "unavailable": "The library can't be reached right now. Please try again shortly.",
-    "empty": "No materials found. Try another word or one of the suggested topics.",
-    "open": "Open / Download",
+    "empty": "No books found. Try another word or one of the topics.",
     "note": "Materials come from IslamHouse (islamhouse.com) and open from their official link. We host no files.",
-    "hint": "Pick a topic or type what you are looking for.",
     "types": {
       "books": "Book",
       "articles": "Article",
@@ -908,7 +909,14 @@
       "fatwa": "Fatwa",
       "posters": "Card",
       "other": "Material"
-    }
+    },
+    "latest": "Latest books",
+    "downloadPdf": "Download PDF",
+    "islamhousePage": "Page on IslamHouse",
+    "by": "By",
+    "arabicToo": "Books in Arabic too",
+    "ownLanguage": "Books in my language",
+    "timeout": "The library took more than 8 seconds to respond. Please try again shortly."
   },
   "me": {
     "title": "My account",

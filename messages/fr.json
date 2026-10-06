@@ -364,7 +364,7 @@
   "library": {
     "kicker": "IslamHouse",
     "title": "Bibliothèque",
-    "lead": "Livres, articles et audios gratuits d'IslamHouse dans votre langue, à ouvrir ou télécharger depuis leur lien officiel.",
+    "lead": "Livres gratuits d'IslamHouse dans votre langue, à lire ou télécharger depuis leur lien officiel.",
     "searchLabel": "Rechercher dans la bibliothèque",
     "placeholder": "Saisissez un sujet ou un titre",
     "search": "Rechercher",
@@ -375,16 +375,17 @@
       "fasting": "Jeûne",
       "seerah": "Biographie du Prophète",
       "newMuslim": "Nouveau musulman",
-      "family": "Famille"
+      "family": "Famille",
+      "tafsir": "Exégèse",
+      "hadith": "Hadith",
+      "akhlaq": "Éthique",
+      "dawah": "Prédication"
     },
     "resultsFor": "Résultats pour « {q} »",
-    "shamela": "Rechercher dans Al-Maktaba Al-Shamela",
     "limited": "Trop de recherches en peu de temps. Patientez un instant puis réessayez.",
     "unavailable": "La bibliothèque est inaccessible pour le moment. Réessayez dans un instant.",
-    "empty": "Aucun document trouvé. Essayez un autre mot ou l'un des thèmes suggérés.",
-    "open": "Ouvrir / Télécharger",
+    "empty": "Aucun livre trouvé. Essayez un autre mot ou un thème.",
     "note": "Les documents proviennent d'IslamHouse (islamhouse.com) et s'ouvrent depuis leur lien officiel ; nous n'hébergeons aucun fichier.",
-    "hint": "Choisissez un thème ou saisissez ce que vous cherchez.",
     "types": {
       "books": "Livre",
       "articles": "Article",
@@ -393,7 +394,14 @@
       "fatwa": "Fatwa",
       "posters": "Carte",
       "other": "Document"
-    }
+    },
+    "latest": "Derniers livres",
+    "downloadPdf": "Télécharger le PDF",
+    "islamhousePage": "Page sur IslamHouse",
+    "by": "Par",
+    "arabicToo": "Livres en arabe aussi",
+    "ownLanguage": "Livres dans ma langue",
+    "timeout": "La bibliothèque n'a pas répondu en 8 secondes. Réessayez dans un instant."
   },
   "me": {
     "title": "Mon compte",

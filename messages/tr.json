@@ -364,7 +364,7 @@
   "library": {
     "kicker": "IslamHouse",
     "title": "Kütüphane",
-    "lead": "IslamHouse'tan kendi dilinizde ücretsiz kitaplar, makaleler ve sesli içerikler; resmî bağlantısından açın veya indirin.",
+    "lead": "IslamHouse'tan kendi dilinizde ücretsiz kitaplar; resmî bağlantısından okuyun veya indirin.",
     "searchLabel": "Kütüphanede ara",
     "placeholder": "Bir konu veya kitap adı yazın",
     "search": "Ara",
@@ -375,16 +375,17 @@
       "fasting": "Oruç",
       "seerah": "Siyer",
       "newMuslim": "Yeni Müslüman",
-      "family": "Aile"
+      "family": "Aile",
+      "tafsir": "Tefsir",
+      "hadith": "Hadis",
+      "akhlaq": "Ahlak",
+      "dawah": "Davet"
     },
     "resultsFor": "“{q}” sonuçları",
-    "shamela": "el-Mektebetü'ş-Şâmile'de ara",
     "limited": "Kısa sürede çok fazla arama yaptınız. Biraz bekleyip tekrar deneyin.",
     "unavailable": "Kütüphaneye şu anda ulaşılamıyor. Biraz sonra tekrar deneyin.",
-    "empty": "Bu aramayla içerik bulunamadı. Başka bir kelime veya önerilen konulardan birini deneyin.",
-    "open": "Aç / İndir",
+    "empty": "Kitap bulunamadı. Başka bir kelime veya konu deneyin.",
     "note": "İçerikler IslamHouse'tandır (islamhouse.com) ve resmî bağlantısından açılır; hiçbir dosyayı barındırmıyoruz.",
-    "hint": "Bir konu seçin veya aradığınızı yazın.",
     "types": {
       "books": "Kitap",
       "articles": "Makale",
@@ -393,7 +394,14 @@
       "fatwa": "Fetva",
       "posters": "Kart",
       "other": "İçerik"
-    }
+    },
+    "latest": "En yeni kitaplar",
+    "downloadPdf": "PDF indir",
+    "islamhousePage": "IslamHouse sayfası",
+    "by": "Yazar:",
+    "arabicToo": "Arapça kitaplar da",
+    "ownLanguage": "Kendi dilimdeki kitaplar",
+    "timeout": "Kütüphane 8 saniye içinde yanıt vermedi. Biraz sonra tekrar deneyin."
   },
   "me": {
     "title": "Hesabım",

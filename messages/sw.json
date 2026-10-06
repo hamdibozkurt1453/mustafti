@@ -364,7 +364,7 @@
   "library": {
     "kicker": "IslamHouse",
     "title": "Maktaba",
-    "lead": "Vitabu, makala na sauti za bure kutoka IslamHouse kwa lugha yako. Fungua au pakua kupitia kiungo chake rasmi.",
+    "lead": "Vitabu vya bure kutoka IslamHouse kwa lugha yako; soma au pakua kutoka kiungo rasmi.",
     "searchLabel": "Tafuta kwenye maktaba",
     "placeholder": "Andika mada au jina la kitabu",
     "search": "Tafuta",
@@ -375,16 +375,17 @@
       "fasting": "Saumu",
       "seerah": "Sira ya Mtume",
       "newMuslim": "Muislamu mpya",
-      "family": "Familia"
+      "family": "Familia",
+      "tafsir": "Tafsiri",
+      "hadith": "Hadithi",
+      "akhlaq": "Maadili",
+      "dawah": "Da'wah"
     },
     "resultsFor": "Matokeo ya “{q}”",
-    "shamela": "Tafuta kwenye Al-Maktaba Al-Shamela",
     "limited": "Umetafuta mara nyingi kwa muda mfupi. Subiri kidogo kisha ujaribu tena.",
     "unavailable": "Maktaba haipatikani kwa sasa. Jaribu tena baada ya muda mfupi.",
-    "empty": "Hakuna kilichopatikana. Jaribu neno jingine au moja ya mada zinazopendekezwa.",
-    "open": "Fungua / Pakua",
+    "empty": "Hakuna kitabu kilichopatikana. Jaribu neno au mada nyingine.",
     "note": "Maudhui yanatoka IslamHouse (islamhouse.com) na yanafunguliwa kupitia kiungo chake rasmi; hatuhifadhi faili lolote.",
-    "hint": "Chagua mada au andika unachotafuta.",
     "types": {
       "books": "Kitabu",
       "articles": "Makala",
@@ -393,7 +394,14 @@
       "fatwa": "Fatwa",
       "posters": "Kadi",
       "other": "Maudhui"
-    }
+    },
+    "latest": "Vitabu vipya",
+    "downloadPdf": "Pakua PDF",
+    "islamhousePage": "Ukurasa kwenye IslamHouse",
+    "by": "Na",
+    "arabicToo": "Vitabu vya Kiarabu pia",
+    "ownLanguage": "Vitabu kwa lugha yangu",
+    "timeout": "Maktaba haikujibu ndani ya sekunde 8. Jaribu tena baadaye kidogo."
   },
   "me": {
     "title": "Akaunti yangu",
