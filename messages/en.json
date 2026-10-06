@@ -308,6 +308,25 @@
       "text": "Your chat isn't saved because you're not signed in. Sign in to keep your chats.",
       "login": "Sign in",
       "close": "Close"
+    },
+    "history": {
+      "title": "My chats",
+      "close": "Close",
+      "search": "Search your chats",
+      "empty": "No saved chats yet. Ask a question and your chat is saved here automatically.",
+      "noResults": "No results.",
+      "untitled": "Untitled chat",
+      "rename": "Rename",
+      "delete": "Delete",
+      "confirmDelete": "Delete",
+      "cancel": "Cancel",
+      "note": "Your chats are saved in your account, deleted with it, and downloadable from My account.",
+      "groups": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "week": "Previous 7 days",
+        "older": "Older"
+      }
     }
   },
   "auth": {
@@ -369,7 +388,9 @@
     "newPassword": "New password",
     "confirmPassword": "Confirm password",
     "savePassword": "Save password",
-    "passwordUpdated": "Your password has been updated."
+    "passwordUpdated": "Your password has been updated.",
+    "brandGreeting": "Assalamu alaikum",
+    "brandLine": "Mustafti guides you to knowledge from its trusted sources in your language, and connects you with qualified experts for your own question."
   },
   "admin": {
     "mfaTitle": "Two-step verification",
@@ -882,15 +903,19 @@
     "savedAccount": "Your choice is saved in this browser and in your account (city and method only, never your location).",
     "saveError": "Couldn't save to your account; it is still saved in this browser.",
     "change": "Change city & method",
-    "done": "Done"
+    "done": "Done",
+    "autoLocation": "Approximate location, detected automatically"
   },
   "adhkar": {
     "note": "Every remembrance here is quoted verbatim from the Encyclopedia of Translated Prophetic Hadiths; only hadiths graded sahih or hasan are included.",
     "tabsLabel": "Remembrance times",
     "tabs": {
-      "morning": "Morning",
-      "evening": "Evening",
-      "after_prayer": "After prayer"
+      "morning": "Morning adhkar",
+      "evening": "Evening adhkar",
+      "after_prayer": "After prayer",
+      "before_prayer": "Before prayer",
+      "sleep": "Before sleep",
+      "waking": "On waking up"
     },
     "reset": "Restart the count",
     "empty": "The remembrances haven't been fetched from the source yet. Please check back soon.",
@@ -906,7 +931,21 @@
     "viewSource": "View source",
     "title": "Adhkar",
     "prev": "Previous dhikr",
-    "next": "Next dhikr"
+    "next": "Next dhikr",
+    "now": "Dhikr now",
+    "openNow": "Open the adhkar",
+    "all": "All adhkar",
+    "kicker": "Fortress of the Muslim",
+    "pageLead": "The authentic adhkar for every time of day, from the Sahihs and the Sunan, with their text and references.",
+    "pageNote": "Every dhikr here carries its reference (book and hadith number) and a link to its source; nothing is listed without a source. The counter stays in this browser and restarts every day.",
+    "moments": {
+      "morning": "Morning adhkar",
+      "evening": "Evening adhkar",
+      "before_prayer": "Before prayer",
+      "after_prayer": "After prayer",
+      "sleep": "Before sleep",
+      "waking": "On waking up"
+    }
   },
   "newMuslim": {
     "kicker": "For new Muslims",
@@ -970,7 +1009,10 @@
     "by": "By",
     "arabicToo": "Books in Arabic too",
     "ownLanguage": "Books in my language",
-    "timeout": "The library took more than 8 seconds to respond. Please try again shortly."
+    "timeout": "The library took more than 8 seconds to respond. Please try again shortly.",
+    "more": "Discover more",
+    "loadingMore": "One moment…",
+    "moreError": "Couldn't load more. Try again."
   },
   "me": {
     "title": "My account",

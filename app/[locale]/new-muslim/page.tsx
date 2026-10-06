@@ -44,7 +44,7 @@ export default async function Page({ params }: Props) {
         {t("more")}{" "}
         <Link href={{ pathname: "/", hash: "prayer" }} className="font-semibold text-green-600 underline underline-offset-4">{t("prayerLink")}</Link>
         {" · "}
-        <Link href={{ pathname: "/", hash: "adhkar" }} className="font-semibold text-green-600 underline underline-offset-4">{t("adhkarLink")}</Link>
+        <Link href="/adhkar" className="font-semibold text-green-600 underline underline-offset-4">{t("adhkarLink")}</Link>
       </p>
 
       <StepCards />

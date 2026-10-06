@@ -8,11 +8,10 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 const L = `:locale(${locales.join("|")})`;
 
 const nextConfig: NextConfig = {
-  // R2: المواقيت والأذكار بطاقتان في الرئيسية، و«ملفي الشخصي» تبويب في /me.
+  // R2: المواقيت بطاقة في الرئيسية، و«ملفي الشخصي» تبويب في /me. (F2: ‎/adhkar عاد صفحة كاملة بالفئات.)
   async redirects() {
     return [
       { source: `/${L}/prayer`, destination: "/:locale#prayer", permanent: false },
-      { source: `/${L}/adhkar`, destination: "/:locale#adhkar", permanent: false },
       { source: `/${L}/expert/profile`, destination: "/:locale/me", permanent: false },
     ];
   },

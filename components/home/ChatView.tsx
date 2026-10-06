@@ -7,6 +7,8 @@ import type { GlossaryTerm } from "@/lib/brain/glossary";
 import { BotReply } from "../chat/BotReply";
 import { GuestNotice } from "../chat/GuestNotice";
 import type { CaseApi } from "../chat/CaseFlow";
+import { ConversationSidebar } from "../chat/ConversationSidebar";
+import type { ConversationsApi } from "../chat/useConversations";
 import { TermDialog } from "../chat/TermDialog";
 import type { ChatMessage } from "../chat/useChat";
 import { BubbleMark } from "./BubbleMark";
@@ -27,13 +29,15 @@ type Props = {
   reduced: boolean;
   /** R3: اسم المحادثة الموجّهة فوق «محادثة جديدة» («رفيق المسلم الجديد»، «تعرّف على الإسلام»). */
   title?: string;
+  /** F2: سجل المحادثات للمسجّل (الشريط الجانبي). */
+  history?: ConversationsApi;
 };
 
 /**
  * واجهة المحادثة: السائل في فقاعة خضراء داكنة، ومُستفتي في فقاعة بيضاء مع بطاقات المصادر،
  * والخانة مثبتة في الأسفل. اتجاه كل فقاعة حسب لغة نصها (RTL للعربية والأردية والفارسية).
  */
-export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, onAsk, caseApi, busy, inputRef, reduced, title }: Props) {
+export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, onAsk, caseApi, busy, inputRef, reduced, title, history }: Props) {
   const t = useTranslations();
   const endRef = useRef<HTMLDivElement>(null);
   const [term, setTerm] = useState<GlossaryTerm | null>(null);
@@ -49,8 +53,12 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, 
     }
   }, [messages.length, last, reduced]);
 
+  // F2: مكان الشريط الجانبي على الشاشات الواسعة (في بداية السطر).
+  const docked = history?.signedIn ? "lg:ps-72" : "";
+
   return (
-    <div className="flex min-h-[100svh] flex-col bg-ivory-50">
+    <div className={`flex min-h-[100svh] flex-col bg-ivory-50 ${docked}`}>
+      {history && <ConversationSidebar api={history} onNew={onReset} docked />}
       <section aria-label={t("chat.label")} className="mx-auto w-full max-w-3xl flex-1 px-4 pb-48 pt-24">
         {/* F1: الزائر غير المسجّل يعرف أن محادثته لا تُحفظ، وبإمكانه الدخول أو إغلاق الشريط. */}
         <GuestNotice />
@@ -99,7 +107,7 @@ export function ChatView({ messages, text, setText, onSubmit, onReset, onRetry, 
         <div ref={endRef} />
       </section>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-ivory-50 via-ivory-50/95 to-transparent pt-8">
+      <div className={`fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t ${docked} from-ivory-50 via-ivory-50/95 to-transparent pt-8`}>
         <div className="mx-auto w-full max-w-3xl px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Composer ref={inputRef} value={text} onChange={setText} onSubmit={onSubmit} variant="dock" reduced={reduced} disabled={busy} />
           <p className="mt-2 text-center text-[11px] text-ink-600">{t("disclosure.text")}</p>

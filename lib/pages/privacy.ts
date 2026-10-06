@@ -26,8 +26,8 @@ const ar: PageContent = {
     {
       title: "2. ما نجمعه",
       items: [
-        "الحساب (اختياري): بريدك الإلكتروني، والاسم المعروض الذي تختاره، ولغتك المفضّلة، ومدينتك وطريقة حساب المواقيت إن اخترتهما، وصورتك ونبذتك إن أضفتهما. كلمة المرور لا نراها؛ تُحفظ مشفّرة لدى مزوّد المصادقة.",
-        "المحادثات: تُحفظ في متصفحك وحده (التخزين المحلي)، للزائر والمسجّل، لا في خوادمنا. لكي نجيب، تصل رسالتك وآخر رسائل المحادثة إلى الخادم سياقاً للجواب، ولا تُحفظ باسمك. وقد يُخزَّن الجواب عن سؤال عام 7 أيام بلا أي بيانات عنك، لتسريع الجواب عن السؤال نفسه.",
+        "الحساب (اختياري): بريدك الإلكتروني، والاسم المعروض الذي تختاره، ولغتك المفضّلة، ومدينتك وطريقة حساب المواقيت إن اخترتهما سابقاً، وصورتك ونبذتك إن أضفتهما. كلمة المرور لا نراها؛ تُحفظ مشفّرة لدى مزوّد المصادقة.",
+        "المحادثات: للزائر تُحفظ في متصفحك وحده (التخزين المحلي)، لا في خوادمنا. وللمستخدم المسجّل تُحفظ في الخادم في حسابه (سجل المحادثات: الأسئلة والأجوبة ومصادرها)، لا يراها غيره، وتُحذف مع حذف الحساب، وتُنزَّل مع بياناته من «حسابي». لكي نجيب، تصل رسالتك وآخر رسائل المحادثة إلى الخادم سياقاً للجواب، ولا تُحفظ باسمك. وقد يُخزَّن الجواب عن سؤال عام 7 أيام بلا أي بيانات عنك، لتسريع الجواب عن السؤال نفسه.",
         "المسائل المحالة إلى مختص: الوقائع التي تكتبها بلا اسمك، وبلدك فقط (لا عنوانك) لتوجيه المسألة إلى مختص من بلدك، والملفات التي ترفقها، وبريد المتابعة إن أدخلته، وأجوبة المختص.",
         "المنتدى («الحوار»): مواضيعك وردودك وبلاغاتك، وتُنشر المشاركات باسمك المعروض.",
         "المختصون: من يتقدّم مختصاً يرسل بيانات مؤهله ووثائق شهاداته أو تزكياته للمراجعة اليدوية، وملفه العام إن قُبل.",
@@ -37,7 +37,7 @@ const ar: PageContent = {
     {
       title: "3. ما لا نجمعه",
       items: [
-        "لا نسأل عن هويتك الحقيقية، ولا رقم هاتفك، ولا عنوانك، ولا موقعك الدقيق. «استعمل موقعي» في بطاقة المواقيت يُحسب في متصفحك ولا يُرسل إلينا.",
+        "لا نسأل عن هويتك الحقيقية، ولا رقم هاتفك، ولا عنوانك، ولا موقعك الدقيق. بطاقة المواقيت تستعمل موقعاً تقريبياً (المدينة) يُستنتج من عنوان IP عند الطلب لحساب المواقيت فقط، ولا يُحفظ.",
         "الزائر غير المسجّل مجهول لدينا: لا حساب ولا ملف تعريف.",
         "لا إعلانات، ولا أدوات تتبّع أو تحليلات من جهات خارجية، ولا ملفات تعريف تسويقية.",
         "لا يرى المختص اسمك ولا بريدك؛ يرى وقائع المسألة فقط.",
@@ -78,7 +78,7 @@ const ar: PageContent = {
       title: "7. مدة الاحتفاظ",
       items: [
         "الحساب والملف الشخصي والصورة: حتى تحذف حسابك.",
-        "المحادثة: في متصفحك حتى تمسحها («محادثة جديدة» أو مسح بيانات المتصفح).",
+        "المحادثة: للزائر في متصفحك حتى تمسحها (مسح بيانات المتصفح)؛ وللمسجّل في حسابه حتى يحذفها من سجل المحادثات أو يحذف حسابه.",
         "ذاكرة الأجوبة العامة: 7 أيام، بلا بيانات عن السائل.",
         "المسائل: ما دام حسابك قائماً؛ وعند الحذف تُفصل عن حسابك ويُمحى بريد المتابعة منها، وتبقى أجوبة المختصين بلا ما يدل عليك.",
         "مشاركات المنتدى: حتى تُحذف أو تُخفى؛ وعند حذف الحساب تبقى بلا اسم.",
@@ -101,7 +101,7 @@ const ar: PageContent = {
       title: "9. ملفات الارتباط والتخزين المحلي",
       items: [
         "ملفات ارتباط ضرورية فقط: جلسة الدخول لمن سجّل. لا ملفات ارتباط إعلانية ولا تحليلية.",
-        "التخزين المحلي في متصفحك: المحادثة، وإعدادات المواقيت للزائر، وإغلاق الأشرطة. لا يصل إلينا إلا ما ترسله في سؤالك.",
+        "التخزين المحلي في متصفحك: المحادثة (للزائر، ونسخة من المحادثة المفتوحة للمسجّل)، وعدّاد الأذكار، وإغلاق الأشرطة. لا يصل إلينا إلا ما ترسله في سؤالك.",
       ],
     },
     {
@@ -138,8 +138,8 @@ const en: PageContent = {
     {
       title: "2. What we collect",
       items: [
-        "Account (optional): your email, the display name you choose, your preferred language, your city and prayer-time method if you set them, and your photo and bio if you add them. We never see your password; it is stored hashed by the authentication provider.",
-        "Chats: stored only in your browser (local storage), for visitors and signed-in users alike, not on our servers. To answer, your message and the latest messages of the chat reach the server as context and are not saved under your name. An answer to a general question may be cached for 7 days with no data about you, to answer the same question faster.",
+        "Account (optional): your email, the display name you choose, your preferred language, your city and prayer-time method if you set them earlier, and your photo and bio if you add them. We never see your password; it is stored hashed by the authentication provider.",
+        "Chats: for visitors, stored only in your browser (local storage), not on our servers. For signed-in users, stored on our server in your account (chat history: questions, answers and their sources), visible only to you, deleted when you delete your account, and included in your data download from My account. To answer, your message and the latest messages of the chat reach the server as context and are not saved under your name. An answer to a general question may be cached for 7 days with no data about you, to answer the same question faster.",
         "Cases referred to a specialist: the facts you write without your name, your country only (not your address) to route it to a specialist from your country, any files you attach, a follow-up email if you enter one, and the specialist's answers.",
         "Forum: your topics, replies and reports; posts are published under your display name.",
         "Specialists: applicants send their qualifications and certificates or recommendations for manual review, and their public profile if accepted.",
@@ -149,7 +149,7 @@ const en: PageContent = {
     {
       title: "3. What we don't collect",
       items: [
-        "We don't ask for your real identity, phone number, address or precise location. \"Use my location\" on the prayer card is computed in your browser and never sent to us.",
+        "We don't ask for your real identity, phone number, address or precise location. The prayer card uses an approximate location (city) derived from your IP address on request, only to compute prayer times, and it is not stored.",
         "A visitor who isn't signed in is anonymous to us: no account and no profile.",
         "No ads, no third-party tracking or analytics tools, no marketing profiles.",
         "A specialist never sees your name or email; only the facts of the case.",
@@ -190,7 +190,7 @@ const en: PageContent = {
       title: "7. Retention",
       items: [
         "Account, profile and photo: until you delete your account.",
-        "Chats: in your browser until you clear them (New chat, or clearing browser data).",
+        "Chats: for visitors, in your browser until you clear them (clearing browser data); for signed-in users, in your account until you delete them from your chat history or delete your account.",
         "General answer cache: 7 days, with no data about the asker.",
         "Cases: while your account exists; on deletion they are detached from your account, their follow-up email is erased, and specialists' answers remain with nothing that identifies you.",
         "Forum posts: until deleted or hidden; when you delete your account they remain without your name.",
@@ -213,7 +213,7 @@ const en: PageContent = {
       title: "9. Cookies and local storage",
       items: [
         "Essential cookies only: the sign-in session for signed-in users. No advertising or analytics cookies.",
-        "Local storage in your browser: your chat, prayer settings for visitors, and dismissed banners. Nothing reaches us except what you send in a question.",
+        "Local storage in your browser: your chat (for visitors, and a copy of the open chat for signed-in users), the adhkar counter, and dismissed banners. Nothing reaches us except what you send in a question.",
       ],
     },
     {
@@ -259,7 +259,7 @@ const others: Record<Exclude<Locale, "ar" | "en">, PageContent> = {
     settings: "Pengaturan",
     s: [
       ["Siapa kami", `Mustafti (mustafti.com) menjawab pertanyaan umum dari sumber resmi dan tidak berfatwa. Pengendali data: Hamdi Bozkurt — ${E}.`],
-      ["Yang kami kumpulkan", "Akun opsional (email, nama, bahasa, kota, foto, bio). Obrolan disimpan hanya di peramban Anda. Berkas kasus tanpa nama, hanya negara. Postingan forum dengan nama tampilan. Sidik jari IP untuk batas permintaan."],
+      ["Yang kami kumpulkan", "Akun opsional (email, nama, bahasa, kota, foto, bio). Obrolan tamu di peramban Anda; obrolan pengguna terdaftar di akunnya (dihapus bersama akun, bisa diunduh). Berkas kasus tanpa nama, hanya negara. Postingan forum dengan nama tampilan. Sidik jari IP untuk batas permintaan."],
       ["Yang tidak kami kumpulkan", "Identitas asli, nomor telepon, alamat, atau lokasi tepat. Pengunjung anonim. Tanpa iklan atau pelacakan pihak ketiga."],
       ["Mengapa", "Untuk menjawab, merujuk kasus ke ahli, menjalankan akun, dan melindungi layanan. Kami tidak menjual data."],
       ["Dasar hukum", "Pelaksanaan layanan, persetujuan Anda untuk data opsional, kepentingan sah (keamanan), dan kewajiban hukum."],
@@ -277,7 +277,7 @@ const others: Record<Exclude<Locale, "ar" | "en">, PageContent> = {
     settings: "ترتیبات",
     s: [
       ["ہم کون ہیں", `مستفتی (mustafti.com) معتبر مصادر سے عمومی سوالات کا جواب دیتا ہے اور فتویٰ نہیں دیتا۔ ڈیٹا کے ذمہ دار: حمدی بوزکورت — ${E}۔`],
-      ["ہم کیا جمع کرتے ہیں", "اختیاری اکاؤنٹ (ای میل، نام، زبان، شہر، تصویر، تعارف)۔ گفتگو صرف آپ کے براؤزر میں رہتی ہے۔ مسئلے کی فائل نام کے بغیر، صرف ملک کے ساتھ۔ مباحثے کی پوسٹس نمایاں نام سے۔ درخواستوں کی حد کے لیے IP کا فنگر پرنٹ۔"],
+      ["ہم کیا جمع کرتے ہیں", "اختیاری اکاؤنٹ (ای میل، نام، زبان، شہر، تصویر، تعارف)۔ مہمان کی گفتگو آپ کے براؤزر میں؛ رجسٹرڈ صارف کی گفتگو اس کے اکاؤنٹ میں (اکاؤنٹ کے ساتھ حذف، ڈاؤن لوڈ کے قابل)۔ مسئلے کی فائل نام کے بغیر، صرف ملک کے ساتھ۔ مباحثے کی پوسٹس نمایاں نام سے۔ درخواستوں کی حد کے لیے IP کا فنگر پرنٹ۔"],
       ["جو ہم جمع نہیں کرتے", "اصل شناخت، فون نمبر، پتہ یا درست مقام نہیں۔ مہمان گمنام ہے۔ نہ اشتہار، نہ بیرونی ٹریکنگ۔"],
       ["کیوں", "جواب دینے، ماہر کو حوالہ دینے، اکاؤنٹ چلانے اور سروس کی حفاظت کے لیے۔ ہم ڈیٹا فروخت نہیں کرتے۔"],
       ["قانونی بنیاد", "سروس کی فراہمی، اختیاری ڈیٹا کے لیے آپ کی رضامندی، جائز مفاد (سیکیورٹی) اور قانونی ذمہ داری۔"],
@@ -295,7 +295,7 @@ const others: Record<Exclude<Locale, "ar" | "en">, PageContent> = {
     settings: "সেটিংস",
     s: [
       ["আমরা কারা", `মুস্তাফতি (mustafti.com) অনুমোদিত উৎস থেকে সাধারণ প্রশ্নের উত্তর দেয় এবং ফতোয়া দেয় না। ডেটা নিয়ন্ত্রক: হামদি বোজকুর্ত — ${E}।`],
-      ["যা সংগ্রহ করি", "ঐচ্ছিক অ্যাকাউন্ট (ইমেল, নাম, ভাষা, শহর, ছবি, পরিচিতি)। কথোপকথন শুধু আপনার ব্রাউজারে থাকে। মাসআলার ফাইল নাম ছাড়া, শুধু দেশসহ। ফোরামের পোস্ট প্রদর্শিত নামে। অনুরোধ-সীমার জন্য IP-এর ফিঙ্গারপ্রিন্ট।"],
+      ["যা সংগ্রহ করি", "ঐচ্ছিক অ্যাকাউন্ট (ইমেল, নাম, ভাষা, শহর, ছবি, পরিচিতি)। অতিথির কথোপকথন আপনার ব্রাউজারে; নিবন্ধিত ব্যবহারকারীর কথোপকথন তার অ্যাকাউন্টে (অ্যাকাউন্টের সাথে মুছে যায়, ডাউনলোড করা যায়)। মাসআলার ফাইল নাম ছাড়া, শুধু দেশসহ। ফোরামের পোস্ট প্রদর্শিত নামে। অনুরোধ-সীমার জন্য IP-এর ফিঙ্গারপ্রিন্ট।"],
       ["যা সংগ্রহ করি না", "প্রকৃত পরিচয়, ফোন নম্বর, ঠিকানা বা সঠিক অবস্থান নয়। অতিথি বেনামী। বিজ্ঞাপন বা তৃতীয় পক্ষের ট্র্যাকিং নেই।"],
       ["কেন", "উত্তর দিতে, বিশেষজ্ঞের কাছে পাঠাতে, অ্যাকাউন্ট চালাতে ও সেবা রক্ষা করতে। আমরা ডেটা বিক্রি করি না।"],
       ["আইনি ভিত্তি", "সেবা প্রদান, ঐচ্ছিক ডেটার জন্য আপনার সম্মতি, বৈধ স্বার্থ (নিরাপত্তা) ও আইনি বাধ্যবাধকতা।"],
@@ -313,7 +313,7 @@ const others: Record<Exclude<Locale, "ar" | "en">, PageContent> = {
     settings: "Ayarlar",
     s: [
       ["Biz kimiz", `Mustafti (mustafti.com) genel sorulara onaylı kaynaklardan cevap verir ve fetva vermez. Veri sorumlusu: Hamdi Bozkurt — ${E}.`],
-      ["Topladıklarımız", "İsteğe bağlı hesap (e-posta, ad, dil, şehir, fotoğraf, tanıtım). Sohbetler yalnızca tarayıcınızda tutulur. Mesele dosyası isimsiz, yalnızca ülke bilgisiyle. Forum gönderileri görünen adınızla. İstek sınırı için IP parmak izi."],
+      ["Topladıklarımız", "İsteğe bağlı hesap (e-posta, ad, dil, şehir, fotoğraf, tanıtım). Ziyaretçi sohbetleri tarayıcınızda; kayıtlı kullanıcı sohbetleri hesabında tutulur (hesapla silinir, indirilebilir). Mesele dosyası isimsiz, yalnızca ülke bilgisiyle. Forum gönderileri görünen adınızla. İstek sınırı için IP parmak izi."],
       ["Toplamadıklarımız", "Gerçek kimlik, telefon, adres veya kesin konum yok. Ziyaretçi anonimdir. Reklam veya üçüncü taraf takibi yok."],
       ["Neden", "Cevap vermek, meseleyi uzmana yönlendirmek, hesabı çalıştırmak ve hizmeti korumak için. Veri satmayız."],
       ["Hukuki dayanak", "Hizmetin ifası, isteğe bağlı veriler için rızanız, meşru menfaat (güvenlik) ve yasal yükümlülük."],
@@ -331,7 +331,7 @@ const others: Record<Exclude<Locale, "ar" | "en">, PageContent> = {
     settings: "تنظیمات",
     s: [
       ["ما که هستیم", `مستفتی (mustafti.com) به پرسش‌های عمومی از منابع معتبر پاسخ می‌دهد و فتوا نمی‌دهد. مسئول داده: حمدی بوزکورت — ${E}.`],
-      ["آنچه جمع می‌کنیم", "حساب اختیاری (ایمیل، نام، زبان، شهر، تصویر، معرفی). گفت‌وگو فقط در مرورگر شما می‌ماند. پرونده مسئله بی‌نام، فقط با کشور. پست‌های انجمن با نام نمایشی. اثر انگشت IP برای محدودیت درخواست."],
+      ["آنچه جمع می‌کنیم", "حساب اختیاری (ایمیل، نام، زبان، شهر، تصویر، معرفی). گفت‌وگوی مهمان در مرورگر شما؛ گفت‌وگوی کاربر ثبت‌نام‌شده در حسابش (همراه حساب حذف می‌شود و قابل دانلود است). پرونده مسئله بی‌نام، فقط با کشور. پست‌های انجمن با نام نمایشی. اثر انگشت IP برای محدودیت درخواست."],
       ["آنچه جمع نمی‌کنیم", "هویت واقعی، تلفن، نشانی یا موقعیت دقیق نه. مهمان ناشناس است. بدون تبلیغ و ردیابی شخص ثالث."],
       ["چرا", "برای پاسخ، ارجاع به متخصص، اداره حساب و حفاظت از سرویس. داده نمی‌فروشیم."],
       ["مبنای قانونی", "اجرای خدمت، رضایت شما برای داده‌های اختیاری، منافع مشروع (امنیت) و تکلیف قانونی."],
@@ -349,7 +349,7 @@ const others: Record<Exclude<Locale, "ar" | "en">, PageContent> = {
     settings: "Paramètres",
     s: [
       ["Qui sommes-nous", `Mustafti (mustafti.com) répond aux questions générales à partir de sources approuvées et ne délivre pas de fatwa. Responsable du traitement : Hamdi Bozkurt — ${E}.`],
-      ["Ce que nous collectons", "Compte facultatif (e-mail, nom, langue, ville, photo, présentation). Les discussions restent uniquement dans votre navigateur. Dossier anonyme, avec le pays seulement. Messages du forum sous votre nom affiché. Empreinte de l'adresse IP pour limiter les requêtes."],
+      ["Ce que nous collectons", "Compte facultatif (e-mail, nom, langue, ville, photo, présentation). Les discussions des visiteurs restent dans votre navigateur ; celles des utilisateurs inscrits sont enregistrées dans leur compte (supprimées avec lui, téléchargeables). Dossier anonyme, avec le pays seulement. Messages du forum sous votre nom affiché. Empreinte de l'adresse IP pour limiter les requêtes."],
       ["Ce que nous ne collectons pas", "Ni identité réelle, ni téléphone, ni adresse, ni position précise. Le visiteur est anonyme. Ni publicité ni pistage tiers."],
       ["Pourquoi", "Pour répondre, transmettre un cas à un spécialiste, gérer le compte et protéger le service. Nous ne vendons aucune donnée."],
       ["Base légale", "Exécution du service, votre consentement pour les données facultatives, intérêt légitime (sécurité) et obligation légale."],
@@ -367,7 +367,7 @@ const others: Record<Exclude<Locale, "ar" | "en">, PageContent> = {
     settings: "Tetapan",
     s: [
       ["Siapa kami", `Mustafti (mustafti.com) menjawab soalan umum daripada sumber rasmi dan tidak berfatwa. Pengawal data: Hamdi Bozkurt — ${E}.`],
-      ["Apa yang kami kumpul", "Akaun pilihan (e-mel, nama, bahasa, bandar, foto, bio). Perbualan disimpan hanya dalam pelayar anda. Fail kes tanpa nama, hanya negara. Hantaran forum dengan nama paparan. Cap jari IP untuk had permintaan."],
+      ["Apa yang kami kumpul", "Akaun pilihan (e-mel, nama, bahasa, bandar, foto, bio). Perbualan pelawat dalam pelayar anda; perbualan pengguna berdaftar dalam akaunnya (dipadam bersama akaun, boleh dimuat turun). Fail kes tanpa nama, hanya negara. Hantaran forum dengan nama paparan. Cap jari IP untuk had permintaan."],
       ["Apa yang tidak kami kumpul", "Identiti sebenar, telefon, alamat atau lokasi tepat. Pelawat tanpa nama. Tiada iklan atau penjejakan pihak ketiga."],
       ["Mengapa", "Untuk menjawab, merujuk kes kepada pakar, mengendalikan akaun dan melindungi perkhidmatan. Kami tidak menjual data."],
       ["Asas undang-undang", "Pelaksanaan perkhidmatan, persetujuan anda untuk data pilihan, kepentingan sah (keselamatan) dan kewajipan undang-undang."],
@@ -385,7 +385,7 @@ const others: Record<Exclude<Locale, "ar" | "en">, PageContent> = {
     settings: "Настройки",
     s: [
       ["Кто мы", `Мустафти (mustafti.com) отвечает на общие вопросы по утверждённым источникам и не выносит фетв. Оператор данных: Хамди Бозкурт — ${E}.`],
-      ["Что мы собираем", "Необязательный аккаунт (e-mail, имя, язык, город, фото, описание). Чаты хранятся только в вашем браузере. Файл вопроса без имени, только страна. Сообщения форума под отображаемым именем. Отпечаток IP для ограничения запросов."],
+      ["Что мы собираем", "Необязательный аккаунт (e-mail, имя, язык, город, фото, описание). Чаты гостей — в вашем браузере; чаты зарегистрированных пользователей — в их аккаунте (удаляются вместе с ним, доступны для скачивания). Файл вопроса без имени, только страна. Сообщения форума под отображаемым именем. Отпечаток IP для ограничения запросов."],
       ["Чего мы не собираем", "Ни настоящей личности, ни телефона, ни адреса, ни точного местоположения. Гость анонимен. Без рекламы и стороннего отслеживания."],
       ["Зачем", "Чтобы отвечать, передавать вопрос специалисту, вести аккаунт и защищать сервис. Мы не продаём данные."],
       ["Правовое основание", "Оказание услуги, ваше согласие на необязательные данные, законный интерес (безопасность) и требования закона."],
@@ -403,7 +403,7 @@ const others: Record<Exclude<Locale, "ar" | "en">, PageContent> = {
     settings: "Mipangilio",
     s: [
       ["Sisi ni nani", `Mustafti (mustafti.com) hujibu maswali ya jumla kutoka vyanzo rasmi na haitoi fatwa. Msimamizi wa data: Hamdi Bozkurt — ${E}.`],
-      ["Tunachokusanya", "Akaunti ya hiari (barua pepe, jina, lugha, mji, picha, wasifu). Mazungumzo hubaki kwenye kivinjari chako pekee. Faili la swali bila jina, nchi tu. Machapisho ya jukwaa kwa jina lako. Alama ya IP kwa kikomo cha maombi."],
+      ["Tunachokusanya", "Akaunti ya hiari (barua pepe, jina, lugha, mji, picha, wasifu). Mazungumzo ya mgeni hubaki kwenye kivinjari chako; ya mtumiaji aliyesajiliwa huhifadhiwa kwenye akaunti yake (hufutwa pamoja nayo, yanapakuliwa). Faili la swali bila jina, nchi tu. Machapisho ya jukwaa kwa jina lako. Alama ya IP kwa kikomo cha maombi."],
       ["Tusichokusanya", "Utambulisho halisi, simu, anwani au mahali halisi hapana. Mgeni hajulikani. Hakuna matangazo wala ufuatiliaji wa nje."],
       ["Kwa nini", "Kujibu, kupeleka swali kwa mtaalamu, kuendesha akaunti na kulinda huduma. Hatuuzi data."],
       ["Msingi wa kisheria", "Utoaji wa huduma, ridhaa yako kwa data ya hiari, maslahi halali (usalama) na wajibu wa kisheria."],
@@ -421,7 +421,7 @@ const others: Record<Exclude<Locale, "ar" | "en">, PageContent> = {
     settings: "Saituna",
     s: [
       ["Su wane ne mu", `Mustafti (mustafti.com) yana amsa tambayoyi na gama-gari daga majiyoyin hukuma kuma ba ya bayar da fatawa. Mai kula da bayanai: Hamdi Bozkurt — ${E}.`],
-      ["Abin da muke tattarawa", "Asusu na zabi (imel, suna, harshe, gari, hoto, bayani). Tattaunawa tana zama a burauzarka kawai. Fayil din tambaya ba suna, sai kasa. Rubuce-rubucen dandali da sunanka. Alamar IP don iyakance bukatu."],
+      ["Abin da muke tattarawa", "Asusu na zabi (imel, suna, harshe, gari, hoto, bayani). Tattaunawar baƙo tana a burauzarka; ta mai rajista tana a asusunsa (ana goge ta tare da asusun, ana iya sauke ta). Fayil din tambaya ba suna, sai kasa. Rubuce-rubucen dandali da sunanka. Alamar IP don iyakance bukatu."],
       ["Abin da ba mu tattarawa", "Ba ainihin bayananka, waya, adireshi ko wurin da kake daidai ba. Bako ba a san shi ba. Babu talla ko bin diddigi na waje."],
       ["Me ya sa", "Don amsawa, mika tambaya ga kwararre, gudanar da asusu da kare sabis. Ba ma sayar da bayanai."],
       ["Tushen doka", "Bayar da sabis, yardarka ga bayanan zabi, halaltacciyar bukata (tsaro) da wajibin doka."],

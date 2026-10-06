@@ -214,8 +214,9 @@ const UID = "11111111-1111-4111-8111-111111111111";
 
 describe("8) «الصورة والنبذة»: ترتيب الأقسام والمدخلات", () => {
   it("ثانياً بعد «بياناتي» وقبل المواقيت عند الجميع", () => {
-    assert.deepEqual(profileSections(false), ["account", "userCard", "prayer"]);
-    assert.deepEqual(profileSections(true), ["account", "expertCard", "prayer"]);
+    // F2: حُذف قسم المواقيت من /me.
+    assert.deepEqual(profileSections(false), ["account", "userCard"]);
+    assert.deepEqual(profileSections(true), ["account", "expertCard"]);
   });
 
   it("الصورة في مجلد صاحبها فقط، والنبذة حتى الحد", () => {

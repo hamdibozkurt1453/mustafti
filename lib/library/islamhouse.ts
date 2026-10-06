@@ -2,14 +2,17 @@ import "server-only";
 
 import {
   apiBase,
+  collectPage,
   fetchJson,
   filterBooks,
   flattenTree,
   LIBRARY_TOPIC_DEFS,
+  pageSlice,
   paths,
   resolveTopicIds,
   toBookCards,
   type BookCard,
+  type BookPage,
   type LibraryTopicKey,
 } from "./islamhouse-core";
 
@@ -30,9 +33,9 @@ function get(path: string): Promise<unknown> {
   });
 }
 
-/** أحدث الكتب بلغة (الصفحة الأولى قبل أي بحث: 12). */
-export async function latestBooks(lang: string, count = 12): Promise<BookCard[]> {
-  return toBookCards(await get(paths.books(lang, 1, count)), lang).slice(0, count);
+/** F2: أحدث الكتب بلغة، 6 في كل صفحة (من صفحات الواجهة البرمجية بخمسين، المخزّنة 24 ساعة). */
+export async function latestBooks(lang: string, page = 1): Promise<BookPage> {
+  return collectPage((p) => get(paths.books(lang, p, SEARCH_PER_PAGE)), lang, page);
 }
 
 /** أحدث 200 كتاب بلغة، للبحث المحلي. صفحة فشلت لا تُسقط الباقي، إلا إن فشلت كلها. */
@@ -46,9 +49,9 @@ async function searchPool(lang: string): Promise<BookCard[]> {
   return ok.flatMap((p) => toBookCards(p.value, lang)).filter((b) => !seen.has(b.id) && seen.add(b.id));
 }
 
-/** البحث بالكلمة: لا مسار بحث موثّقاً في الواجهة البرمجية، ففلترة محلية بالعنوان والمؤلف والوصف. */
-export async function searchBooks(query: string, lang: string): Promise<BookCard[]> {
-  return filterBooks(await searchPool(lang), query).slice(0, 24);
+/** البحث بالكلمة: لا مسار بحث موثّقاً في الواجهة البرمجية، ففلترة محلية بالعنوان والمؤلف والوصف. 6 في كل صفحة. */
+export async function searchBooks(query: string, lang: string, page = 1): Promise<BookPage> {
+  return pageSlice(filterBooks(await searchPool(lang), query), page);
 }
 
 /** معرّفات تصنيفات الصفحة من شجرة التصنيفات العربية (العناوين العربية ثابتة، والمعرّف واحد لكل اللغات). */
@@ -62,22 +65,26 @@ async function topicIds(): Promise<Partial<Record<LibraryTopicKey, number | null
 }
 
 /**
- * كتب تصنيف: عناصر التصنيف من الواجهة البرمجية (الكتب وحدها)، وإن لم يوجد التصنيف في الشجرة
+ * كتب تصنيف، 6 في كل صفحة: عناصر التصنيف من الواجهة البرمجية (الكتب وحدها)، وإن لم يوجد التصنيف في الشجرة
  * أو لم يكن فيه كتب بهذه اللغة، فكلمات التصنيف على أحدث 200 كتاب.
  */
-export async function topicBooks(key: LibraryTopicKey, lang: string): Promise<BookCard[]> {
+export async function topicBooks(key: LibraryTopicKey, lang: string, page = 1): Promise<BookPage> {
   const def = LIBRARY_TOPIC_DEFS.find((t) => t.key === key);
-  if (!def) return [];
+  if (!def) return { books: [], hasMore: false, page };
   const id = (await topicIds())[key];
   if (id) {
     try {
-      const books = toBookCards(await get(paths.categoryItems(id, lang, 1, 50)), lang).slice(0, 24);
-      if (books.length) return books;
+      const source = (p: number) => get(paths.categoryItems(id, lang, p, SEARCH_PER_PAGE));
+      const result = await collectPage(source, lang, page);
+      // التصنيف فيه كتب بهذه اللغة؟ (الصفحة الأولى مخزّنة، فالسؤال رخيص.)
+      const first = page === 1 ? result : await collectPage(source, lang, 1);
+      if (first.books.length) return result;
     } catch (error) {
       console.error(`islamhouse category ${id}:`, error instanceof Error ? error.message : error);
     }
   }
   const pool = await searchPool(lang);
   const seen = new Set<number>();
-  return def.keywords.flatMap((k) => filterBooks(pool, k)).filter((b) => !seen.has(b.id) && seen.add(b.id)).slice(0, 24);
+  const books: BookCard[] = def.keywords.flatMap((k) => filterBooks(pool, k)).filter((b) => !seen.has(b.id) && seen.add(b.id));
+  return pageSlice(books, page);
 }

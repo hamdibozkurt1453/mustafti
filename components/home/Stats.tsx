@@ -3,6 +3,7 @@
 import { animate, useInView } from "motion/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { GeometricPattern } from "./GeometricPattern";
 import { Reveal } from "./Reveal";
 
 /** رقم يعدّ من الصفر عند ظهوره. */
@@ -29,7 +30,11 @@ function CountUp({ to, reduced, locale }: { to: number; reduced: boolean; locale
   );
 }
 
-/** قسم الأرقام على الأخضر العميق. */
+/**
+ * قسم «المعرفة من مصادرها، بلغات العالم» على الأخضر العميق.
+ * F2: النقش الهندسي نفسه في الواجهة الأولى بانجراف خفيف جداً (mf-drift)، والأرقام تعدّ تصاعدياً عند الظهور،
+ * والبطاقات الأربع بحدود رقيقة وظهور متدرج. مع prefers-reduced-motion: بلا حركة، والأرقام نهائية فوراً.
+ */
 export function Stats({ reduced }: { reduced: boolean }) {
   const t = useTranslations("stats");
   const locale = useLocale();
@@ -38,9 +43,16 @@ export function Stats({ reduced }: { reduced: boolean }) {
     { n: 72, label: t("hadith") },
     { n: 130, label: t("library") },
   ];
+  const card = "flex flex-col gap-3 rounded-3xl border border-ivory-50/15 bg-green-900/60 p-5 backdrop-blur-[2px] transition-colors hover:border-gold-500/40 sm:p-8";
 
   return (
-    <section className="relative isolate overflow-hidden bg-green-900 text-ivory-50">
+    <section data-testid="stats" className="relative isolate overflow-hidden bg-green-900 text-ivory-50">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.22] [mask-image:radial-gradient(ellipse_75%_70%_at_50%_45%,#000_30%,transparent_100%)]"
+      >
+        <GeometricPattern className="mf-drift h-full w-full" />
+      </div>
       <div aria-hidden className="mf-grain pointer-events-none absolute inset-0 -z-10 opacity-[0.07]" />
       <div className="mx-auto max-w-6xl px-4 py-20 sm:py-28">
         <Reveal>
@@ -50,16 +62,16 @@ export function Stats({ reduced }: { reduced: boolean }) {
           </h2>
         </Reveal>
 
-        <dl className="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-3xl bg-ivory-50/10 lg:grid-cols-4">
-          {items.map((it) => (
-            <div key={it.label} className="flex flex-col gap-2 bg-green-900 p-5 sm:p-8">
+        <dl className="mt-12 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          {items.map((it, i) => (
+            <Reveal key={it.label} delay={reduced ? 0 : 0.08 * (i + 1)} className={card}>
               <dt className="order-2 text-[13px] leading-snug text-ivory-50/75 sm:text-sm">{it.label}</dt>
               <dd className="order-1 font-display text-5xl font-semibold leading-none sm:text-7xl">
                 <CountUp to={it.n} reduced={reduced} locale={locale} />
               </dd>
-            </div>
+            </Reveal>
           ))}
-          <div className="flex flex-col gap-2 bg-green-900 p-5 sm:p-8">
+          <Reveal delay={reduced ? 0 : 0.32} className={`${card} border-gold-500/30!`}>
             <dt className="order-2 text-[13px] leading-snug text-ivory-50/75 sm:text-sm">
               {t("fatwa")}
               <span className="mt-1 block font-semibold text-gold-500">{t("fatwaNote")}</span>
@@ -67,7 +79,7 @@ export function Stats({ reduced }: { reduced: boolean }) {
             <dd className="order-1 font-display text-5xl font-semibold leading-none text-gold-500 sm:text-7xl">
               <CountUp to={0} reduced={reduced} locale={locale} />
             </dd>
-          </div>
+          </Reveal>
         </dl>
         <p className="mt-5 text-xs text-ivory-50/55">{t("source")}</p>
       </div>

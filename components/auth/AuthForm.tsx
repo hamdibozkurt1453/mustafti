@@ -20,7 +20,7 @@ const fieldClass =
 const buttonClass =
   "w-full rounded-full bg-gold-500 px-5 py-3 font-semibold text-green-900 transition hover:brightness-105 disabled:opacity-60";
 
-/** نموذج الدخول وإنشاء الحساب: كلمة المرور أساسية، والرابط السحري خيار ثانٍ. */
+/** نموذج الدخول وإنشاء الحساب: كلمة المرور أساسية، والرابط السحري خيار ثانٍ (يُنشئ الحساب عند أول دخول). */
 export function AuthForm({ mode, next = "", initialError }: Props) {
   const t = useTranslations("auth");
   const locale = useLocale();
@@ -44,24 +44,23 @@ export function AuthForm({ mode, next = "", initialError }: Props) {
 
   return (
     <div className="space-y-5">
-      {mode === "login" && (
-        <div role="tablist" className="grid grid-cols-2 gap-1 rounded-full bg-sand-200/60 p-1 text-sm font-semibold">
-          {(["password", "magic"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="tab"
-              aria-selected={method === m}
-              onClick={() => setMethod(m)}
-              className={`rounded-full px-3 py-2 transition ${
-                method === m ? "bg-white text-green-900 shadow-sm" : "text-ink-600 hover:text-green-900"
-              }`}
-            >
-              {m === "password" ? t("methodPassword") : t("methodMagic")}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* F2: الطريقتان (كلمة المرور، ورابط على البريد) في الدخول والتسجيل معاً. */}
+      <div role="tablist" className="grid grid-cols-2 gap-1 rounded-full bg-sand-200/60 p-1 text-sm font-semibold">
+        {(["password", "magic"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={method === m}
+            onClick={() => setMethod(m)}
+            className={`rounded-full px-3 py-2 transition ${
+              method === m ? "bg-white text-green-900 shadow-sm" : "text-ink-600 hover:text-green-900"
+            }`}
+          >
+            {m === "password" ? t("methodPassword") : t("methodMagic")}
+          </button>
+        ))}
+      </div>
 
       {error && (
         <p role="alert" className="rounded-xl border border-alert-600/30 bg-alert-600/5 px-4 py-3 text-sm text-alert-600">

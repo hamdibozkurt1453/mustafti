@@ -246,10 +246,11 @@ describe("F1b · صفحة المكتبة", () => {
     assert.doesNotMatch(page, /shamela|mcpSearch|searchLibrary/);
   });
 
-  it("أحدث 12 كتاباً قبل أي بحث، والتصنيف، والبحث، و«كتب بالعربية أيضاً»", () => {
-    assert.match(page, /latestBooks\(lang, 12\)/);
+  it("أحدث الكتب قبل أي بحث (F2: 6 ثم «اكتشف المزيد»)، والتصنيف، والبحث، و«كتب بالعربية أيضاً»", () => {
+    assert.match(page, /latestBooks\(lang\)/);
     assert.match(page, /topicBooks\(topic, lang\)/);
     assert.match(page, /searchBooks\(q, lang\)/);
+    assert.match(page, /<LoadMoreBooks/);
     assert.match(page, /t\("arabicToo"\)/);
     assert.match(page, /className="mf-stagger mt-6 grid/);
   });
@@ -307,9 +308,9 @@ describe("F1b · سياسة الخصوصية", () => {
     }
   });
 
-  it("المحتوى: المحادثة في المتصفح، والتنزيل والحذف من «حسابي»، ونماذج اللغة بلا أسماء مزوّدين", () => {
+  it("المحتوى: المحادثة في المتصفح (F2: للزائر)، والتنزيل والحذف من «حسابي»، ونماذج اللغة بلا أسماء مزوّدين", () => {
     const ar = JSON.stringify(PRIVACY.ar);
-    assert.match(ar, /المحادثات: تُحفظ في متصفحك/);
+    assert.match(ar, /المحادثات: للزائر تُحفظ في متصفحك/);
     assert.match(ar, /تنزيل بياناتي[\s\S]*حذف حسابي وبياناتي/);
     assert.match(ar, /مزوّد نماذج اللغة/);
     assert.match(ar, /دون 13 عاماً/);

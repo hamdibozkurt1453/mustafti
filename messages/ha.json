@@ -278,6 +278,25 @@
       "text": "Ba a ajiye tattaunawarka saboda ba ka shiga ba. Shiga don a ajiye tattaunawarka.",
       "login": "Shiga",
       "close": "Rufe"
+    },
+    "history": {
+      "title": "Hirarrakina",
+      "close": "Rufe",
+      "search": "Nemo a cikin hirarrakinka",
+      "empty": "Babu hira da aka adana tukuna. Yi tambaya, za a adana hirarka a nan kai tsaye.",
+      "noResults": "Babu sakamako.",
+      "untitled": "Hira mara suna",
+      "rename": "Sake suna",
+      "delete": "Goge",
+      "confirmDelete": "Goge",
+      "cancel": "Soke",
+      "note": "Ana adana hirarrakinka a asusunka, ana goge su tare da shi, kuma ana sauke su daga Asusuna.",
+      "groups": {
+        "today": "Yau",
+        "yesterday": "Jiya",
+        "week": "Kwanaki 7 da suka gabata",
+        "older": "Na da"
+      }
     }
   },
   "case": {
@@ -354,12 +373,35 @@
   },
   "prayer": {
     "change": "Canza gari da hanya",
-    "done": "An gama"
+    "done": "An gama",
+    "autoLocation": "Wuri na kimanin, kai tsaye"
   },
   "adhkar": {
     "title": "Azkar",
     "prev": "Zikirin baya",
-    "next": "Zikiri na gaba"
+    "next": "Zikiri na gaba",
+    "now": "Zikiri yanzu",
+    "openNow": "Buɗe azkar",
+    "all": "Dukkan azkar",
+    "kicker": "Hisnul Muslim",
+    "pageLead": "Ingantattun azkar na kowane lokaci, daga Sahihai biyu da Sunan, tare da rubutu da madogara.",
+    "pageNote": "Kowane zikiri a nan yana da madogararsa (littafi da lambar hadisi) da mahaɗin tushensa. Ƙirgawa tana nan a wannan burauza kuma tana sake farawa kowace rana.",
+    "moments": {
+      "morning": "Azkar na safe",
+      "evening": "Azkar na yamma",
+      "before_prayer": "Kafin sallah",
+      "after_prayer": "Bayan sallah",
+      "sleep": "Kafin barci",
+      "waking": "Lokacin tashi"
+    },
+    "tabs": {
+      "morning": "Azkar na safe",
+      "evening": "Azkar na yamma",
+      "before_prayer": "Kafin sallah",
+      "after_prayer": "Bayan sallah",
+      "sleep": "Kafin barci",
+      "waking": "Lokacin tashi"
+    }
   },
   "library": {
     "kicker": "IslamHouse",
@@ -401,7 +443,10 @@
     "by": "Na",
     "arabicToo": "Littattafan Larabci ma",
     "ownLanguage": "Littattafai da harshena",
-    "timeout": "Dakin karatu bai amsa cikin dakika 8 ba. Sake gwadawa nan gaba kadan."
+    "timeout": "Dakin karatu bai amsa cikin dakika 8 ba. Sake gwadawa nan gaba kadan.",
+    "more": "Gano ƙari",
+    "loadingMore": "Ɗan lokaci…",
+    "moreError": "An kasa ɗauko ƙari. Sake gwadawa."
   },
   "me": {
     "title": "Asusuna",
@@ -654,7 +699,9 @@
     "passwordUpdated": "An sabunta kalmar sirrinka.",
     "errors": {
       "mismatch": "Kalmomin sirrin ba su yi daidai ba."
-    }
+    },
+    "brandGreeting": "Assalamu alaikum",
+    "brandLine": "Mustafti yana jagorantar ka zuwa ilimi daga amintattun tushe da harshenka, kuma yana haɗa ka da masana a kan matsalarka."
   },
   "explore": {
     "play": "Kunna bidiyo",

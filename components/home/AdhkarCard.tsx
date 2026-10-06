@@ -37,7 +37,8 @@ function defaultTab(): Occasion {
 
 /**
  * بطاقة الأذكار في الرئيسية (R2، بدل صفحة /adhkar): تبويبات الصباح والمساء وبعد الصلاة من جدول adhkar،
- * ذكر واحد في كل مرة بعدّاده، وينتقل إلى التالي عند اكتمال العدد. النص منقول بحروفه من موسوعة الأحاديث.
+ * ذكر واحد في كل مرة بعدّاده، وينتقل إلى التالي عند اكتمال العدد. النص منقول بحروفه من موسوعة الأحاديث،
+ * أو من بذرة الأذكار المشهورة بتخريجها (F2: الكتاب ورقم الحديث بدل اسم الموسوعة).
  * إن كان الجدول فارغاً تُخفى البطاقة كلها بلا رسالة خطأ.
  */
 export function AdhkarCard({ items, rtlMeaning }: { items: Dhikr[]; rtlMeaning: boolean }) {
@@ -192,7 +193,7 @@ export function AdhkarCard({ items, rtlMeaning }: { items: Dhikr[]; rtlMeaning: 
 
             <p className="mt-5 flex flex-wrap gap-x-3 gap-y-1 border-t border-sand-200 pt-3 text-xs text-ink-600">
               <span>
-                {t("source")}: <span className="font-semibold text-green-900">{t("sourceName")}</span>
+                {t("source")}: <bdi className="font-semibold text-green-900">{d.reference ?? t("sourceName")}</bdi>
               </span>
               <span>
                 {t("grade")}: <bdi className="font-semibold text-green-900">{d.meaningGrade ?? d.grade}</bdi>

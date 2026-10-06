@@ -278,6 +278,25 @@
       "text": "Mazungumzo yako hayahifadhiwi kwa sababu hujaingia. Ingia ili mazungumzo yako yabaki.",
       "login": "Ingia",
       "close": "Funga"
+    },
+    "history": {
+      "title": "Mazungumzo yangu",
+      "close": "Funga",
+      "search": "Tafuta katika mazungumzo",
+      "empty": "Bado hakuna mazungumzo yaliyohifadhiwa. Uliza swali, na mazungumzo yako yatahifadhiwa hapa yenyewe.",
+      "noResults": "Hakuna matokeo.",
+      "untitled": "Mazungumzo bila jina",
+      "rename": "Badilisha jina",
+      "delete": "Futa",
+      "confirmDelete": "Futa",
+      "cancel": "Ghairi",
+      "note": "Mazungumzo yako yanahifadhiwa kwenye akaunti yako, yanafutwa pamoja nayo, na yanapakuliwa kutoka Akaunti yangu.",
+      "groups": {
+        "today": "Leo",
+        "yesterday": "Jana",
+        "week": "Siku 7 zilizopita",
+        "older": "Zamani zaidi"
+      }
     }
   },
   "case": {
@@ -354,12 +373,35 @@
   },
   "prayer": {
     "change": "Badilisha mji na njia",
-    "done": "Imekamilika"
+    "done": "Imekamilika",
+    "autoLocation": "Mahali kwa makadirio, kiotomatiki"
   },
   "adhkar": {
     "title": "Adhkar",
     "prev": "Dhikr iliyotangulia",
-    "next": "Dhikr inayofuata"
+    "next": "Dhikr inayofuata",
+    "now": "Dhikri sasa",
+    "openNow": "Fungua adhkar",
+    "all": "Adhkar zote",
+    "kicker": "Ngome ya Muislamu",
+    "pageLead": "Adhkar sahihi za kila wakati, kutoka Sahih mbili na Sunan, pamoja na matini na marejeo yake.",
+    "pageNote": "Kila dhikri hapa ina marejeo (kitabu na namba ya hadithi) na kiungo cha chanzo chake. Kihesabu kinabaki kwenye kivinjari hiki na huanza upya kila siku.",
+    "moments": {
+      "morning": "Adhkar za asubuhi",
+      "evening": "Adhkar za jioni",
+      "before_prayer": "Kabla ya swala",
+      "after_prayer": "Baada ya swala",
+      "sleep": "Kabla ya kulala",
+      "waking": "Unapoamka"
+    },
+    "tabs": {
+      "morning": "Adhkar za asubuhi",
+      "evening": "Adhkar za jioni",
+      "before_prayer": "Kabla ya swala",
+      "after_prayer": "Baada ya swala",
+      "sleep": "Kabla ya kulala",
+      "waking": "Unapoamka"
+    }
   },
   "library": {
     "kicker": "IslamHouse",
@@ -401,7 +443,10 @@
     "by": "Na",
     "arabicToo": "Vitabu vya Kiarabu pia",
     "ownLanguage": "Vitabu kwa lugha yangu",
-    "timeout": "Maktaba haikujibu ndani ya sekunde 8. Jaribu tena baadaye kidogo."
+    "timeout": "Maktaba haikujibu ndani ya sekunde 8. Jaribu tena baadaye kidogo.",
+    "more": "Gundua zaidi",
+    "loadingMore": "Subiri kidogo…",
+    "moreError": "Imeshindikana kupakia. Jaribu tena."
   },
   "me": {
     "title": "Akaunti yangu",
@@ -654,7 +699,9 @@
     "passwordUpdated": "Nenosiri lako limesasishwa.",
     "errors": {
       "mismatch": "Manenosiri hayalingani."
-    }
+    },
+    "brandGreeting": "Assalamu alaykum",
+    "brandLine": "Mustafti inakuongoza kwenye elimu kutoka vyanzo vya kuaminika kwa lugha yako, na kukuunganisha na wataalamu kwa suala lako."
   },
   "explore": {
     "play": "Cheza video",
